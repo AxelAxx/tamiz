@@ -31,6 +31,7 @@ docker compose up
 (Available after task `T-OPS-01`.) The full README with the simulator GIF, eval results
 table and limitations is written in task `T-DOC-01`.
 
-## Licence
+## License
 
-To be decided (MIT assumed).
+Apache License 2.0. Copyright 2026 Alex Martinez. See `LICENSE` and `NOTICE`
+(rationale in `docs/adr/ADR-0003-apache-2-licence.md`).

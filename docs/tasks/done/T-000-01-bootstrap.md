@@ -67,8 +67,8 @@ Python dependencies were installed on purpose: feature 001 starts that in its ow
 - The Redis circuit-state adapter (`T-003-06`) is scheduled on day 7 with the other
   infrastructure (Postgres, Jaeger) rather than on day 4, to keep day 4 focused on the
   pure resilience logic.
-- Licence not committed: MIT assumed for a portfolio project, pending the maintainer's
-  confirmation (see `CLAUDE.md` section 13).
+- Licence: not committed in the first commit; decided the same day (Apache-2.0, see the
+  follow-up below and ADR-0003).
 
 ## How it was verified
 
@@ -84,8 +84,8 @@ exists. No tests exist yet (no code).
 
 ## Pending / follow-ups
 
-- `T-OPS-00` (GitHub remote and push) is `blocked` on the maintainer's choice of handle
-  (`tamiz` / `tamiz-ai`) and licence.
+- `T-OPS-00` (GitHub remote and push) is `todo`: handle and licence are decided (see the
+  follow-up below); it still needs the maintainer's explicit go-ahead.
 - First real task: `T-001-01` (spec, plan and tasks for `001-contracts-and-skeleton`).
 - `docs/architecture.md` has the system view and layer diagrams; the C4 context and
   container diagrams are completed in `T-DOC-02`.
@@ -107,10 +107,34 @@ exists. No tests exist yet (no code).
 - `docs/tamiz-project.md` is in Spanish by design (it is the source document). Do not
   translate it in place; quote it in English in specs.
 
+## Follow-up 2026-10-18 — language, licence and handle decided
+
+Alex closed the three open points of this task the same day:
+
+1. **Language**: `CLAUDE.md` and the whole repository stay in English (confirmed;
+   ADR-0002). The "pending confirmation" wording was removed from `CLAUDE.md` section 13.
+2. **Licence**: Apache License 2.0, copyright holder "Alex Martinez", 2026. `LICENSE`
+   fetched verbatim from `https://www.apache.org/licenses/LICENSE-2.0.txt` (SHA-256
+   `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`), `NOTICE` added,
+   README updated, `T-001-02` now requires `"license": "Apache-2.0"` in the root
+   `package.json`. Rationale in `docs/adr/ADR-0003-apache-2-licence.md`.
+3. **Handle**: checked on GitHub and npm on 2026-10-18. The GitHub user `TAMIZ` exists
+   since 2023 and an empty organisation `tamiz-ai` was created on 2026-09-22 by someone
+   else; the npm package `tamiz` is an unrelated validation library. Decision: the
+   repository lives under Alex's personal GitHub account as `tamiz` (display name
+   "Tamiz"), no organisation. Workspace packages stay `@tamiz/*`, private and never
+   published; re-check the scope (likely `@tamiz-ai`) if anything is ever published.
+   `T-OPS-00` moved from `blocked` to `todo`; creating the public repo and pushing still
+   requires Alex's explicit go-ahead.
+
+Files touched by the follow-up: `LICENSE`, `NOTICE`, `README.md`, `CLAUDE.md`,
+`docs/adr/ADR-0003-apache-2-licence.md`, `docs/tasks/BACKLOG.md`, this record.
+
 ## Links
 
 - Foundational document: `docs/tamiz-project.md`
 - Constitution: `.specify/memory/constitution.md`
 - ADRs: `docs/adr/ADR-0001-clean-architecture-contract-first.md`,
-  `docs/adr/ADR-0002-english-single-repository-language.md`
+  `docs/adr/ADR-0002-english-single-repository-language.md`,
+  `docs/adr/ADR-0003-apache-2-licence.md`
 - Backlog: `docs/tasks/BACKLOG.md`
