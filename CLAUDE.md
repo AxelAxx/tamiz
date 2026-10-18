@@ -71,12 +71,12 @@ presented as a defence layer with published metrics, never as a guarantee. Citar
 integration (feature 010) is optional and independent.
 
 **Naming (decided 2026-10-18).** Brand **Tamiz**, subtitle *Privacy-aware LLM gateway*.
-The repository lives under Alex's **personal** GitHub account as `tamiz` (display name
-"Tamiz"); no organisation: the GitHub user `TAMIZ` and the organisation `tamiz-ai` are
+The repository is **https://github.com/AxelAxx/tamiz** (Alex's personal GitHub account,
+display name "Tamiz"); no organisation: the GitHub user `TAMIZ` and the organisation `tamiz-ai` are
 taken by others, and the npm package `tamiz` is an unrelated library. Workspace packages
 stay `@tamiz/*` and are **private, never published**; if a package is ever published to
 npm, re-check the scope then (likely `@tamiz-ai`). Licence: **Apache-2.0** (ADR-0003).
-The GitHub remote is not created yet: `T-OPS-00` needs Alex's explicit go-ahead.
+`origin` points there; `main` tracks `origin/main` (`T-OPS-00`, 2026-10-18).
 
 ---
 
@@ -335,11 +335,10 @@ Git: `git log --oneline`, branches `T-FFF-NN-slug`, commits via Conventional Com
 ## 13. Decisions taken and still open
 
 Decided on 2026-10-18: this file and the whole repository are in English (ADR-0002);
-licence Apache-2.0 (ADR-0003, `LICENSE` + `NOTICE` at the root); GitHub handle `tamiz`
-under Alex's personal account (section 2).
+licence Apache-2.0 (ADR-0003, `LICENSE` + `NOTICE` at the root); public repository
+https://github.com/AxelAxx/tamiz under Alex's personal account (section 2; branch
+protection requiring CI arrives with `T-001-05`).
 
 Still open (ask Alex, do not assume):
 
-- Creating the public GitHub repository and pushing (`T-OPS-00`) requires his explicit
-  go-ahead.
 - Public demo hosting details (VPS provider and region).

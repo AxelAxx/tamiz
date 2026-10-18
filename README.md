@@ -12,6 +12,8 @@ and proves it all with privacy-leak and routing evals that gate CI.
 
 > Status: bootstrap. The repository structure, constitution and task backlog are in
 > place; implementation starts with feature `001-contracts-and-skeleton`.
+>
+> Repository: https://github.com/AxelAxx/tamiz
 
 ## Where to start
 
