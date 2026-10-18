@@ -10,8 +10,9 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: bootstrap. The repository structure, constitution and task backlog are in
-> place; implementation starts with feature `001-contracts-and-skeleton`.
+> Status: feature `001-contracts-and-skeleton` in progress. Spec approved
+> (`specs/001-contracts-and-skeleton/`); the pnpm + Turborepo + Biome workspace is in
+> place (`T-001-02`). Next: contracts, gateway skeleton, architecture limits and CI.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
@@ -23,6 +24,21 @@ and proves it all with privacy-leak and routing evals that gate CI.
 - `docs/architecture.md` — diagrams.
 - `docs/adr/` — architecture decision records.
 - `docs/tasks/BACKLOG.md` — the task list for the 14-day roadmap.
+
+## Developing
+
+Node.js 22 LTS (`.nvmrc`) and pnpm 10 (pinned by `packageManager`; `corepack enable pnpm`
+or `npm install -g pnpm@10`).
+
+```bash
+pnpm install      # also installs the commit-message hook
+pnpm lint         # Biome
+pnpm typecheck    # tsc per package
+pnpm test         # Vitest per package
+pnpm build        # tsc per package
+```
+
+Commits follow Conventional Commits and are checked by commitlint on `commit-msg`.
 
 ## Planned quick start
 
