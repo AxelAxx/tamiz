@@ -34,7 +34,7 @@ Legend for the *Area* column: `G` gateway, `C` contracts, `P` privacy service, `
 
 | ID | Day | Feature | Area | Title | Depends on | Deliverable | Definition of done | Status |
 |---|---|---|---|---|---|---|---|---|
-| T-001-01 | 1 | 001 | X | Spec, plan and tasks for `001-contracts-and-skeleton` | T-000-01 | `specs/001-contracts-and-skeleton/{spec,plan,tasks}.md` via `/speckit-specify`, `/speckit-plan`, `/speckit-tasks` | Spec has Given/When/Then for health endpoint, contract validation and architecture check; plan lists the stack of section 4 of `CLAUDE.md`; reviewed by Alex | todo |
+| T-001-01 | 1 | 001 | X | Spec, plan and tasks for `001-contracts-and-skeleton` | T-000-01 | `specs/001-contracts-and-skeleton/{spec,plan,tasks}.md` via `/speckit-specify`, `/speckit-plan`, `/speckit-tasks` | Spec has Given/When/Then for health endpoint, contract validation and architecture check; plan lists the stack of section 4 of `CLAUDE.md`; reviewed by Alex | done |
 | T-001-02 | 1 | 001 | X | Monorepo tooling: pnpm workspaces, Turborepo, Biome, shared tsconfig, commitlint, Renovate | T-001-01 | Root `package.json` (with `"license": "Apache-2.0"`, `"private": true`), `pnpm-workspace.yaml`, `turbo.json`, `biome.json`, `packages/tsconfig/*.json` (strict flags on), commitlint + git hook, `renovate.json`, `.nvmrc`/`engines` Node 22 | `pnpm install`, `pnpm lint`, `pnpm typecheck` exit 0 on the empty workspace; a non-conventional commit message is rejected by the hook | todo |
 | T-001-03 | 1 | 001 | C | `packages/contracts`: chat completions, health and error schemas + branded types | T-001-02 | Zod schemas for OpenAI-compatible `ChatCompletionRequest`/`Response` (non-streaming subset), `HealthResponse`, `ErrorEnvelope`; branded `RequestId`, `PolicyId`, `Usd`, `Milliseconds`; inferred types exported; unit tests | `pnpm --filter @tamiz/contracts test` green; a request with an unknown field or wrong type fails validation in a test; package builds | todo |
 | T-001-04 | 1 | 001 | G | Gateway skeleton: Hono app, Clean Architecture folders, `Result`, config, logger, `/health` | T-001-03 | `apps/gateway/src/{domain,application,infrastructure,presentation}`, `domain/result.ts`, `domain/errors.ts`, Zod env schema in `infrastructure/config`, pino with redaction, `main.ts` composition root, `GET /health` | In-process test with `app.request()` asserts `/health` matches `HealthResponse`; booting with an invalid env exits non-zero with a clear message; logger redacts `prompt`, `messages`, `authorization` in a test | todo |
@@ -165,4 +165,6 @@ Legend for the *Area* column: `G` gateway, `C` contracts, `P` privacy service, `
   Branch protection on `main` requiring CI is part of `T-001-05`.
 - Spec-writing tasks (`T-00N-01`) use the Spec Kit skills; they create a `NNN-short-name`
   branch that is merged before the implementation tasks of that feature start.
+- `T-001-01` artefacts are written (2026-10-18, record `done/T-001-01-spec-plan-tasks-001.md`);
+  spec approved by Alex on 2026-10-18 (PR #1); `T-001-02` may start.
 - Day assignments are nominal. Reorder within a feature freely; keep dependencies.
