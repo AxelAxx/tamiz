@@ -1,0 +1,31 @@
+{
+  "name": "tamiz",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tamiz - Privacy-aware LLM gateway (monorepo root)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "packageManager": "pnpm@10.34.7",
+  "engines": {
+    "node": ">=22 <23"
+  },
+  "scripts": {
+    "lint": "biome check .",
+    "format": "biome format --write .",
+    "typecheck": "turbo run typecheck",
+    "arch": "echo \"arch: dependency-cruiser is configured in T-001-05\"",
+    "test": "turbo run test",
+    "build": "turbo run build",
+    "commitlint": "commitlint --edit",
+    "prepare": "husky"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.15",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@commitlint/types": "^21.2.3",
+    "husky": "^9.1.7",
+    "turbo": "^2.11.9",
+    "typescript": "^5.9.3"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "name": "@tamiz/gateway",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tamiz gateway: privacy-aware, OpenAI-compatible LLM routing service (Hono, Node.js 22)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run --passWithNoTests",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@tamiz/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

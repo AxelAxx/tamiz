@@ -1,0 +1,9 @@
+{
+  "extends": "@tamiz/tsconfig/node-app.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "noEmit": false
+  },
+  "include": ["src"]
+}

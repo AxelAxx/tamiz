@@ -308,19 +308,25 @@ privacy. The full task list per day is `docs/tasks/BACKLOG.md`.
 
 ## 12. Useful commands
 
-Tooling for the TypeScript workspace is installed by task `T-001-02`; until then only
-Spec Kit and git exist. Expected commands once the workspace is in place:
+The TypeScript workspace tooling exists since `T-001-02` (pnpm 10 pinned by
+`packageManager`, Node 22 by `.nvmrc`/`engines`; on this machine pnpm was installed with
+`npm install -g pnpm@10` because `corepack enable` needs admin rights). Commands marked
+*(later)* arrive with the task in brackets:
 
 ```bash
-pnpm install                 # workspace install
-pnpm lint                    # biome check
-pnpm typecheck               # tsc --noEmit across packages (turbo)
-pnpm arch                    # dependency-cruiser
-pnpm test                    # vitest
-pnpm evals                   # eval runner with thresholds
-pnpm build                   # turbo build
-docker compose up            # full local stack (feature OPS)
+pnpm install                 # workspace install (also installs the husky hooks)
+pnpm lint                    # biome check . (whole repo, one run)
+pnpm format                  # biome format --write .
+pnpm typecheck               # tsc --noEmit per package (turbo)
+pnpm arch                    # dependency-cruiser                 (later: T-001-05)
+pnpm test                    # vitest per package (turbo); root Vitest projects + coverage (later: T-001-06)
+pnpm build                   # tsc -p tsconfig.build.json per package (turbo)
+pnpm evals                   # eval runner with thresholds        (later: T-007-02)
+docker compose up            # full local stack                   (later: OPS)
 ```
+
+Commit messages are checked by commitlint through the husky `commit-msg` hook; a
+non-conventional message is refused locally.
 
 Privacy service (`services/privacy`): `uv sync`, `uv run ruff check .`, `uv run mypy .`,
 `uv run pytest`, `uv run fastapi dev src/privacy/api/main.py`.
