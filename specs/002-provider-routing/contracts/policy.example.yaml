@@ -1,0 +1,64 @@
+# Default routing policy for Tamiz (feature 002). Review projection of
+# RoutingPolicySchema; shipped by T-002-05 as apps/gateway/policies/default.yaml.
+# Prices are illustrative USD per million tokens at the time of writing: data, not code.
+# Sensitivity conditions and privacy actions arrive with feature 005.
+
+id: default
+version: 1
+defaultTimeoutMs: 30000
+
+targets:
+  - id: ollama-llama
+    provider: ollama
+    model: llama3.1:8b
+    region: local
+    residency: local
+    pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+    timeoutMs: 60000
+  - id: mistral-small
+    provider: mistral
+    model: mistral-small-latest
+    region: eu-west
+    residency: eu
+    pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 }
+  - id: openai-mini
+    provider: openai
+    model: gpt-4o-mini
+    region: us-east
+    residency: us
+    pricing: { inputUsdPerMillion: 0.15, outputUsdPerMillion: 0.6 }
+  - id: anthropic-sonnet
+    provider: anthropic
+    model: claude-sonnet-4-5
+    region: us-east
+    residency: us
+    pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15 }
+    timeoutMs: 45000
+
+rules:
+  # A client can ask for the local chain explicitly with model: "tamiz-local".
+  - id: pinned-local
+    when: { requestedModel: [tamiz-local] }
+    route: [ollama-llama]
+
+  # Code goes to the strongest model first (FR-023: code → frontier).
+  - id: code-to-frontier
+    when: { taskType: [code] }
+    route: [anthropic-sonnet, openai-mini, mistral-small]
+
+  # Long documents stay in the EU first.
+  - id: long-documents-eu
+    when: { taskType: [summarize, extract], size: [long] }
+    route: [mistral-small, openai-mini]
+
+  # Cheap, well-defined tasks: cheapest first (FR-023: cost ordering).
+  # Resolved order: ollama-llama (0), mistral-small (0.4), openai-mini (0.75).
+  # A per-rule timeout (per task type) wins over the target and policy timeouts.
+  - id: cheap-short-tasks
+    when: { taskType: [classify, translate, extract, summarize], size: [short, medium] }
+    route: [openai-mini, mistral-small, ollama-llama]
+    orderBy: cost
+    timeoutMs: 20000
+
+default:
+  route: [mistral-small, openai-mini, ollama-llama]
