@@ -166,5 +166,5 @@ Legend for the *Area* column: `G` gateway, `C` contracts, `P` privacy service, `
 - Spec-writing tasks (`T-00N-01`) use the Spec Kit skills; they create a `NNN-short-name`
   branch that is merged before the implementation tasks of that feature start.
 - `T-001-01` artefacts are written (2026-10-18, record `done/T-001-01-spec-plan-tasks-001.md`);
-  `spec.md` stays `Draft` until Alex reviews it. That review is the gate for `T-001-02`.
+  spec approved by Alex on 2026-10-18 (PR #1); `T-001-02` may start.
 - Day assignments are nominal. Reorder within a feature freely; keep dependencies.

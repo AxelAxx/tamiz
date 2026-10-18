@@ -8,7 +8,7 @@
 | Branch / PR | `001-contracts-and-skeleton` (Spec Kit naming, see `CLAUDE.md` section 8) / PR opened after this commit |
 | Date | 2026-10-18 |
 | Session | Claude Code (Claude Fable 5.1) |
-| Status | done (artefacts written and self-checked); **Alex's review pending**: `spec.md` stays `Status: Draft` until he approves, which is the gate for `T-001-02` |
+| Status | done (spec approved by Alex on 2026-10-18 in PR #1; `T-001-02` may start) |
 
 ## What was done
 
