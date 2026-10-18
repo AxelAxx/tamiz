@@ -1,0 +1,55 @@
+# --- Node / pnpm / Turborepo ---
+node_modules/
+.pnpm-store/
+.turbo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+.eslintcache
+npm-debug.log*
+pnpm-debug.log*
+yarn-error.log*
+
+# --- Next.js ---
+.next/
+next-env.d.ts
+.vercel/
+
+# --- Playwright ---
+test-results/
+playwright-report/
+blob-report/
+playwright/.cache/
+
+# --- Python / uv ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+
+# --- Environment and secrets ---
+.env
+.env.*
+!.env.example
+
+# --- Evals reports (generated) ---
+packages/evals/reports/
+
+# --- Editors / OS ---
+.vscode/
+.idea/
+*.swp
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+*.log
+docker-data/
+
+# --- Spec Kit machine-local state is handled by .specify/.gitignore ---
