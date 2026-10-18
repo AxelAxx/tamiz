@@ -5,7 +5,7 @@
 | Task | `T-002-01` (see `docs/tasks/BACKLOG.md`) |
 | Feature | `002-provider-routing` |
 | Spec | `specs/002-provider-routing/spec.md` |
-| Branch / PR | `002-provider-routing` (Spec Kit naming), stacked on `001-contracts-and-skeleton` / not pushed yet |
+| Branch / PR | `002-provider-routing` (Spec Kit naming), rebased onto `main` after PR #1 (001) was squash-merged / PR opened after this commit |
 | Date | 2026-10-18 |
 | Session | Claude Code (Claude Fable 5.1), side session started from the `T-001-01` session |
 | Status | done (artefacts written and self-checked); **Alex's review pending**: `spec.md` stays `Status: Draft` until he approves, which is the gate for `T-002-02` |
@@ -110,10 +110,9 @@ peer `zod ^3.25 || ^4`.
 - **Alex reviews** `spec.md`, `plan.md`, `tasks.md`; decides on R-01 (domain brands vs
   type-only imports); on approval flip the spec status to `Approved`, merge the PR
   (after `001-contracts-and-skeleton`), then start `T-002-02` once `T-001-06` is done.
-- The branch is stacked on `001-contracts-and-skeleton` (unmerged at the time of
-  writing) so that the backlog flip of `T-001-01` and the 001 artefacts are in the tree;
-  open the PR against `001-contracts-and-skeleton` or rebase onto `main` after 001
-  merges.
+- The branch was first created from `001-contracts-and-skeleton` (so the 001 artefacts
+  were in the tree) and rebased onto `main` once PR #1 had been squash-merged; the PR
+  targets `main`.
 - New backlog row `T-002-08` (routing dataset v1 and gate test); `T-003-01` and
   `T-005-01` depend on this task and can start.
 - `T-002-06` deletes `specs/001-contracts-and-skeleton/contracts/openapi.yaml` (001
@@ -121,6 +120,9 @@ peer `zod ^3.25 || ^4`.
 
 ## Pitfalls for the next session
 
+- Spec branches that start from an unmerged sibling branch must be rebased with
+  `git rebase --onto origin/main <old-base-commit>` once that sibling is
+  squash-merged, or the PR will re-add the sibling's files.
 - Same script pitfalls as `T-001-01`: create the git branch yourself, pass
   `SPECIFY_FEATURE=002-provider-routing` from Git Bash, pass `-Number 2 -ShortName
   provider-routing`. `.specify/feature.json` is per checkout and gitignored.
