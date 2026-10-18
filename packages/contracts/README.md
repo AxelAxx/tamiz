@@ -1,13 +1,23 @@
 # packages/contracts
 
-Zod schemas that are the single source of truth for every public contract: the
-OpenAI-compatible chat completions API, health and error envelopes, the routing policy
-document, the admin API (audit, cost, providers, policy), the simulator, the mirrored
-privacy-service contract and the MCP tool schemas. TypeScript types and OpenAPI are
-derived from here, never hand-written. Branded types for identifiers (`RequestId`,
-`PolicyId`) and units (`Usd`, `Milliseconds`) live here too. Package scaffold created in
-`T-001-02`; schemas arrive in `T-001-03`.
+Zod 4 schemas that are the single source of truth for every public contract (constitution
+II). TypeScript types and OpenAPI are derived from here, never hand-written. Only runtime
+dependency allowed: `zod`.
+
+Contents since `T-001-03` (feature 001, `specs/001-contracts-and-skeleton/data-model.md`
+sections 1–5):
+
+| Module | Exports |
+|---|---|
+| `src/branded.ts` | `RequestIdSchema`, `PolicyIdSchema`, `UsdSchema`, `MillisecondsSchema`; types `RequestId`, `PolicyId`, `Usd`, `Milliseconds`; constructors `requestId`, `policyId`, `usd`, `milliseconds` (parse and throw) and `safeRequestId`, `safePolicyId`, `safeUsd`, `safeMilliseconds` (return a Zod safe-parse result) |
+| `src/chat-completion.ts` | OpenAI-compatible non-streaming subset: `ChatMessageSchema`, `ChatCompletionRequestSchema` (`stream` accepts only `false` until feature 003), `ChatCompletionChoiceSchema`, `ChatCompletionUsageSchema`, `ChatCompletionResponseSchema` and their types |
+| `src/health.ts` | `HealthCheckSchema`, `HealthResponseSchema` (`checks` required when `status` is `degraded`) and their types |
+| `src/error.ts` | `ErrorTypeSchema` (seven closed values), `ErrorEnvelopeSchema`, `errorTypeToHttpStatus` and their types |
+
+Every object schema is a `z.strictObject`: unknown keys are rejected with an
+`unrecognized_keys` issue that names them. Later features add the routing policy document,
+the admin API (audit, cost, providers, policy), the simulator, the mirrored
+privacy-service contract and the MCP tool schemas.
 
 Scripts: `pnpm --filter @tamiz/contracts typecheck | test | build` (`tsc --noEmit`,
-`vitest run`, `tsc -p tsconfig.build.json` → `dist/`). Only runtime dependency allowed:
-`zod`.
+`vitest run` with type tests in `test/*.test-d.ts`, `tsc -p tsconfig.build.json` → `dist/`).
