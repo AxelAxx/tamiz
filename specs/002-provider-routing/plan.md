@@ -89,7 +89,7 @@ port beyond the two above; the `ProviderRegistry` is an application-level type b
 
 ```text
 specs/002-provider-routing/
-├── spec.md              # Specification (T-002-01), Draft until Alex reviews
+├── spec.md              # Specification (T-002-01), approved 2026-10-18
 ├── plan.md              # This file
 ├── research.md          # Phase 0: decisions R-01 … R-15
 ├── data-model.md        # Phase 1: contract extensions, domain types, ports, config, dataset

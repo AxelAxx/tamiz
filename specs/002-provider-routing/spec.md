@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-18
 
-**Status**: Draft (awaiting review by Alex)
+**Status**: Approved (reviewed by Alex, 2026-10-18)
 
 **Input**: User description: "Provider routing for Tamiz: rule-based task classification
 (type and size), a declarative routing policy whose pure decision function returns a

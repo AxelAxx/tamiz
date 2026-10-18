@@ -8,7 +8,7 @@
 | Branch / PR | `002-provider-routing` (Spec Kit naming), rebased onto `main` after PR #1 (001) was squash-merged / PR opened after this commit |
 | Date | 2026-10-18 |
 | Session | Claude Code (Claude Fable 5.1), side session started from the `T-001-01` session |
-| Status | done (artefacts written and self-checked); **Alex's review pending**: `spec.md` stays `Status: Draft` until he approves, which is the gate for `T-002-02` |
+| Status | done; spec reviewed and approved by Alex on 2026-10-18 (`spec.md` flipped to `Approved` in the PR); `T-002-02` may start once `T-001-06` is done |
 
 ## What was done
 
@@ -81,8 +81,8 @@ dataset and its ≥ 95 % check are a session of their own and no existing row co
   the unused requested model; Phase 7 dependencies include Phase 2; dataset policy path
   resolved from the repository root; `createdAt` assigned in the use case; FR-012's cost
   step explicitly delivered by `T-002-07`.
-- **Spec status stays `Draft`** until Alex reviews; flip to `Approved` in the PR before
-  merging.
+- **Spec status** was `Draft` at the first commit and flipped to `Approved` in the same
+  PR after Alex's review.
 
 ## How it was verified
 
@@ -107,9 +107,8 @@ peer `zod ^3.25 || ^4`.
 
 ## Pending / follow-ups
 
-- **Alex reviews** `spec.md`, `plan.md`, `tasks.md`; decides on R-01 (domain brands vs
-  type-only imports); on approval flip the spec status to `Approved`, merge the PR
-  (after `001-contracts-and-skeleton`), then start `T-002-02` once `T-001-06` is done.
+- Alex approved the artefacts on 2026-10-18 without changes; R-01 (domain-owned brands)
+  stands as planned. Merge PR #4, then start `T-002-02` once `T-001-06` is done.
 - The branch was first created from `001-contracts-and-skeleton` (so the 001 artefacts
   were in the tree) and rebased onto `main` once PR #1 had been squash-merged; the PR
   targets `main`.
