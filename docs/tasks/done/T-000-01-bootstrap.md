@@ -34,7 +34,7 @@ Python dependencies were installed on purpose: feature 001 starts that in its ow
 - `docs/adr/TEMPLATE.md`, `docs/adr/ADR-0001-clean-architecture-contract-first.md`,
   `docs/adr/ADR-0002-english-single-repository-language.md`.
 - `docs/architecture.md` — Mermaid system view, request flow and layer dependencies.
-- `README.md`, `.gitignore`, `.editorconfig`.
+- `README.md`, `.gitignore`, `.editorconfig`, `.gitattributes` (LF everywhere except `*.ps1`; added in a second commit because the machine has `core.autocrlf=true`).
 - `apps/{gateway,dashboard,mcp-server}/README.md`, `services/privacy/README.md`,
   `packages/{contracts,evals,tsconfig,test-utils}/README.md`, `specs/README.md`,
   `docs/adr/README.md`.
