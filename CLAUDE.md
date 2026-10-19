@@ -318,7 +318,7 @@ pnpm install                 # workspace install (also installs the husky hooks)
 pnpm lint                    # biome check . (whole repo, one run)
 pnpm format                  # biome format --write .
 pnpm typecheck               # tsc --noEmit per package (turbo)
-pnpm arch                    # dependency-cruiser                 (later: T-001-05)
+pnpm arch                    # dependency-cruiser over apps/gateway/src (root run, like lint)
 pnpm test                    # vitest per package (turbo); root Vitest projects + coverage (later: T-001-06)
 pnpm build                   # tsc -p tsconfig.build.json per package (turbo)
 pnpm evals                   # eval runner with thresholds        (later: T-007-02)
@@ -326,7 +326,9 @@ docker compose up            # full local stack                   (later: OPS)
 ```
 
 Commit messages are checked by commitlint through the husky `commit-msg` hook; a
-non-conventional message is refused locally.
+non-conventional message is refused locally. CI (`.github/workflows/ci.yml`, one job `ci`)
+runs lint → typecheck → arch → test → build on every pull request and on `main`, plus
+commitlint over the PR range; `main` requires that check (`T-001-05`).
 
 Privacy service (`services/privacy`): `uv sync`, `uv run ruff check .`, `uv run mypy .`,
 `uv run pytest`, `uv run fastapi dev src/privacy/api/main.py`.
