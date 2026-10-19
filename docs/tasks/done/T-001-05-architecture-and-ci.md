@@ -5,7 +5,7 @@
 | Task | `T-001-05` (see `docs/tasks/BACKLOG.md`) |
 | Feature | `001-contracts-and-skeleton` |
 | Spec | `specs/001-contracts-and-skeleton/spec.md` (US6, FR-021 … FR-024, SC-003, SC-006); `tasks.md` Phase 4 (T052–T063); `research.md` R-12; `quickstart.md` section 6 |
-| Branch / PR | `T-001-05-architecture-and-ci` / PR opened after this commit |
+| Branch / PR | `T-001-05-architecture-and-ci` / https://github.com/AxelAxx/tamiz/pull/6 |
 | Date | 2026-10-19 |
 | Session | Claude Code (Claude Fable 5.1), side session started from the `T-001-04` session |
 | Status | done (branch protection on `main` pending Alex's go-ahead, see Pending) |
@@ -129,15 +129,21 @@ The second cycle in the deliberate-violation output is real: `infrastructure/con
 imports `domain/result.ts`, so the injected import closes a loop. The spec only requires the
 file and `domain-imports-nothing` to be named; both are.
 
-CI run on the pull request and branch protection: see Pending (filled in once they happen).
+CI on the pull request (US6-6): PR #6 https://github.com/AxelAxx/tamiz/pull/6, workflow run
+39243909783 (`pull_request`), job `ci` **success** in 38 s on the first attempt. Steps in order:
+Checkout → Set up pnpm → Set up Node.js → Install → Commit messages → Lint → Typecheck →
+Architecture check → Test → Build, every one `success`. The PR shows one check, `ci`, and
+`mergeStateStatus: CLEAN`.
+
+Branch protection: see Pending.
 
 The engine warning `Unsupported engine: wanted {"node":">=22 <23"} (current: v24.14.0)` is
 printed by every pnpm command and is expected.
 
 ## Pending / follow-ups
 
-- **CI result on the PR**: to be recorded in a follow-up commit on this branch once the `ci`
-  job has run (US6-6). T059's deliberate lint-failure push is optional and was not done.
+- T059's optional deliberate lint-failure push was not done (the `ci` job already proves the
+  step order and the single required status; a red push would only add noise to the history).
 - **Branch protection on `main` (T060/T061, FR-024, US6-7)**: a repository-settings change,
   so it waits for Alex's explicit go-ahead in the chat. Command to run from the repository
   root once approved (classic protection, `ci` required with `strict`, PR required, no force
