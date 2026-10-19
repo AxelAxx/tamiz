@@ -344,8 +344,8 @@ Git: `git log --oneline`, branches `T-FFF-NN-slug`, commits via Conventional Com
 
 Decided on 2026-10-18: this file and the whole repository are in English (ADR-0002);
 licence Apache-2.0 (ADR-0003, `LICENSE` + `NOTICE` at the root); public repository
-https://github.com/AxelAxx/tamiz under Alex's personal account (section 2; branch
-protection requiring CI arrives with `T-001-05`).
+https://github.com/AxelAxx/tamiz under Alex's personal account (section 2); `main` is
+protected since `T-001-05`: required check `ci`, pull requests only, admins included.
 
 Still open (ask Alex, do not assume):
 

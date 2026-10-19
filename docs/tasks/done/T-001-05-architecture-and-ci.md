@@ -8,7 +8,7 @@
 | Branch / PR | `T-001-05-architecture-and-ci` / https://github.com/AxelAxx/tamiz/pull/6 |
 | Date | 2026-10-19 |
 | Session | Claude Code (Claude Fable 5.1), side session started from the `T-001-04` session |
-| Status | done (branch protection on `main` pending Alex's go-ahead, see Pending) |
+| Status | done |
 
 ## What was done
 
@@ -23,8 +23,9 @@ offending file, the target and the rule name; the clean tree passes with zero vi
 exactly one rule (US6-2 … US6-5, nine tests). `.github/workflows/ci.yml` runs one job `ci`
 on every pull request and on pushes to `main`: install → commitlint (PRs) → lint → typecheck
 → arch → test → build, failing at the first red step (FR-023, US6-6). Branch protection on
-`main` (FR-024, US6-7) is a repository-settings change and waits for Alex's explicit go-ahead
-(see Pending).
+`main` (FR-024, US6-7, SC-006) is configured with `gh api` after Alex's explicit go-ahead in the
+chat: required status check `ci` (strict), pull request required, no force pushes, no
+deletions, admins included; a direct push was refused (GH006).
 
 ## Files touched
 
@@ -135,7 +136,44 @@ Checkout → Set up pnpm → Set up Node.js → Install → Commit messages → 
 Architecture check → Test → Build, every one `success`. The PR shows one check, `ci`, and
 `mergeStateStatus: CLEAN`.
 
-Branch protection: see Pending.
+Branch protection (T060/T061, FR-024, US6-7), run after Alex's go-ahead ("Yes, configure branch
+protection on main with gh api as described in the task record"):
+
+```bash
+gh api -X PUT repos/AxelAxx/tamiz/branches/main/protection   -H "Accept: application/vnd.github+json"   --input - <<'JSON'
+{
+  "required_status_checks": { "strict": true, "contexts": ["ci"] },
+  "enforce_admins": true,
+  "required_pull_request_reviews": { "required_approving_review_count": 0 },
+  "restrictions": null,
+  "allow_force_pushes": false,
+  "allow_deletions": false
+}
+JSON
+# exit 0; response (url fields omitted):
+# {
+#   "required_status_checks": { "strict": true, "contexts": ["ci"],
+#                               "checks": [{ "context": "ci", "app_id": 15368 }] },
+#   "enforce_admins": { "enabled": true },
+#   "required_pull_request_reviews": { "dismiss_stale_reviews": false, "require_code_owner_reviews": false,
+#                                      "require_last_push_approval": false, "required_approving_review_count": 0 },
+#   "allow_force_pushes": { "enabled": false },
+#   "allow_deletions": { "enabled": false }
+# }
+
+gh api repos/AxelAxx/tamiz/branches/main/protection --jq '.required_status_checks.contexts'
+# ["ci"]
+
+git push origin HEAD:main            # from the task branch, one refused attempt (SC-006)
+# remote: error: GH006: Protected branch update failed for refs/heads/main.
+# remote: - Required status check "ci" is in progress.
+#  ! [remote rejected] HEAD -> main (protected branch hook declined)
+# exit 1
+```
+
+`required_approving_review_count: 0` keeps the pull-request requirement without demanding
+a second reviewer in a single-maintainer repository; `enforce_admins` makes the rules apply
+to Alex too, so `main` only moves through a green pull request (GitHub UI merge, T062).
 
 The engine warning `Unsupported engine: wanted {"node":">=22 <23"} (current: v24.14.0)` is
 printed by every pnpm command and is expected.
@@ -144,30 +182,8 @@ printed by every pnpm command and is expected.
 
 - T059's optional deliberate lint-failure push was not done (the `ci` job already proves the
   step order and the single required status; a red push would only add noise to the history).
-- **Branch protection on `main` (T060/T061, FR-024, US6-7)**: a repository-settings change,
-  so it waits for Alex's explicit go-ahead in the chat. Command to run from the repository
-  root once approved (classic protection, `ci` required with `strict`, PR required, no force
-  pushes, no deletions, admins included):
-
-  ```bash
-  gh api -X PUT repos/AxelAxx/tamiz/branches/main/protection \
-    -H "Accept: application/vnd.github+json" \
-    --input - <<'JSON'
-  {
-    "required_status_checks": { "strict": true, "contexts": ["ci"] },
-    "enforce_admins": true,
-    "required_pull_request_reviews": { "required_approving_review_count": 0 },
-    "restrictions": null,
-    "allow_force_pushes": false,
-    "allow_deletions": false
-  }
-  JSON
-  gh api repos/AxelAxx/tamiz/branches/main/protection --jq '.required_status_checks.contexts'   # ["ci"]
-  git push origin HEAD:main   # must be refused
-  ```
-
-  Until it runs, `main` accepts direct pushes; the command, its JSON response and the
-  refused push go in this record when done.
+- **T062 (merge PR #6 through the GitHub UI once `ci` is green, confirm `main` CI)** is Alex's
+  step; the first `push` run of the workflow on `main` happens with that merge.
 - `presentation-allowed-imports` has no fixture (see Decisions); add one with the second
   workspace dependency of the gateway.
 - `T-001-06` adds `pnpm test -- --coverage` to CI when the root Vitest projects exist
