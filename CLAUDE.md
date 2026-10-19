@@ -319,7 +319,9 @@ pnpm lint                    # biome check . (whole repo, one run)
 pnpm format                  # biome format --write .
 pnpm typecheck               # tsc --noEmit per package (turbo)
 pnpm arch                    # dependency-cruiser                 (later: T-001-05)
-pnpm test                    # vitest per package (turbo); root Vitest projects + coverage (later: T-001-06)
+pnpm test                    # build deps (turbo), then one root Vitest run over every project
+pnpm test --coverage         # same, plus the v8 coverage table (text) and coverage/lcov.info
+pnpm test:packages           # vitest per package (turbo, cached)
 pnpm build                   # tsc -p tsconfig.build.json per package (turbo)
 pnpm evals                   # eval runner with thresholds        (later: T-007-02)
 docker compose up            # full local stack                   (later: OPS)
