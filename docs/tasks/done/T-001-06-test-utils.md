@@ -2,13 +2,13 @@
 
 | Field | Value |
 |---|---|
-| Task | `T-001-06` (see `docs/tasks/BACKLOG.md`) |
+| Task | `T-001-06`, plus `T-001-07` folded in (see `docs/tasks/BACKLOG.md`) |
 | Feature | `001-contracts-and-skeleton` |
 | Spec | `specs/001-contracts-and-skeleton/spec.md` (US7, FR-025, FR-026, SC-001); `tasks.md` Phase 5 (T064–T073) and Phase 6 (T074, T075, T077); `research.md` R-02, R-09; `quickstart.md` section 7 |
-| Branch / PR | `T-001-06-test-utils` / PR opened after this commit |
+| Branch / PR | `T-001-06-test-utils` / https://github.com/AxelAxx/tamiz/pull/7 |
 | Date | 2026-10-19 |
 | Session | Claude Code, side session started from the `T-001-04` session (began on Claude Fable 5.1, finished on Claude Opus 5.5 after Alex switched the model) |
-| Status | done, except the CI workflow step (see Pending) |
+| Status | done |
 
 ## What was done
 
@@ -41,7 +41,8 @@ US7-3 is the root run below: three projects reported and a coverage table printe
 - `CLAUDE.md` — section 12 test commands (T075).
 - `specs/001-contracts-and-skeleton/quickstart.md` — section 7 uses `pnpm test --coverage`.
 - `pnpm-lock.yaml`.
-- `docs/tasks/BACKLOG.md` — `T-001-06` row set to `done`; new row `T-001-07`.
+- `.github/workflows/ci.yml` — Test step is `pnpm test --coverage` (`T-001-07`, T056/T072).
+- `docs/tasks/BACKLOG.md` — `T-001-06` row set to `done`; row `T-001-07` added and set to `done`. The merge from `main` also carries `T-001-05`'s own `done`.
 
 ## Decisions
 
@@ -66,7 +67,7 @@ US7-3 is the root run below: three projects reported and a coverage table printe
   `--` to the script (`vitest run "--" "--coverage"`), and Vitest then treats
   `--coverage` as a positional argument: tests run, no coverage. Quickstart section 7 now
   says `pnpm test --coverage`. `research.md` line 202 and `tasks.md` T056/T072 keep the
-  old wording as written history; the CI step in `T-001-07` must use the working form.
+  old wording as written history; the CI step uses the working form.
 - **Coverage `include` is `packages/*/src/**/*.ts` and `apps/*/src/**/*.ts`**, not
   `src/**` as `tasks.md` T070 wrote. The gateway's layer `README.md` files live under
   `src/`, and v8 coverage tried to parse them as JavaScript and printed a parse error per
@@ -107,7 +108,8 @@ pnpm test:packages   # Tasks: 5 successful; test-utils 17, contracts 95, gateway
 pnpm lint            # Checked 59 files. No fixes applied.
 pnpm typecheck       # Tasks: 5 successful
 pnpm build           # Tasks: 3 successful
-pnpm arch            # still the T-001-05 placeholder on this base (PR #6 not merged)
+pnpm arch            # after merging main (T-001-05): no dependency violations found (20 modules, 26 dependencies cruised)
+pnpm test --coverage # after merging main: Test Files 16 passed, Tests 164 passed (arch.test.ts runs in the gateway project)
 ```
 
 **SC-001 timing (T077).** Fresh `git clone` of this branch into a short temporary folder,
@@ -115,23 +117,21 @@ then the quickstart sequence:
 
 ```bash
 time (pnpm install && pnpm lint && pnpm typecheck && pnpm arch && pnpm test --coverage && pnpm build)
-# exit 0, 12 s wall clock (install 3.3 s)
+# before T-001-05 merged: exit 0, 12 s (install 3.3 s, arch a placeholder)
+# after merging main:     exit 0, 13 s (install 3.5 s, arch real, 164 tests)
 ```
 
 The pnpm content store on this machine was warm, so the install is a best case; a cold
-store adds the download time. `pnpm arch` was the placeholder, so the architecture check
-is not in this number. Both are well inside the 5-minute target. The CI-side number
+store adds the download time. Both are well inside the 5-minute target. The CI-side number
 (under 10 minutes) is measured on `T-001-05`'s PR #6: 38 s.
 
 ## Pending / follow-ups
 
-- **`T-001-07` (new backlog row): CI test step with coverage.** `.github/workflows/ci.yml`
-  arrives with `T-001-05` (PR #6, still open when this branch was cut), so its Test step
-  could not be changed here. After both PRs merge, the step becomes
-  `pnpm test --coverage` (not `-- --coverage`). If PR #6 merges before this PR, the change
-  can be folded into this branch instead and `T-001-07` closed with it.
-- `README.md` and `CLAUDE.md` section 12 are also edited by PR #6; whichever merges second
-  resolves a small conflict in the `pnpm test` / `pnpm arch` lines and the README status.
+- **`T-001-07` was folded into this PR.** It was split out while `T-001-05` (PR #6) was
+  open, because `.github/workflows/ci.yml` did not exist on this branch's base. Alex then
+  approved merging PR #6 (squash, `e41129f`); this branch merged `main`, resolved
+  conflicts in `README.md`, `CLAUDE.md` section 12, `BACKLOG.md`, `package.json` and the
+  lockfile, and changed the CI Test step. The row is `done` in the same PR.
 - Fakes for the remaining ports (`FakeLlmProvider`, `FakePiiDetector`, `InMemoryAuditLog`,
   `InMemoryCircuitState`, `InMemoryPolicyRepository`) arrive with their ports.
 
@@ -158,4 +158,4 @@ is not in this number. Both are well inside the 5-minute target. The CI-side num
 
 - Spec / plan / tasks: `specs/001-contracts-and-skeleton/{spec,plan,tasks}.md` (Phases 5 and 6), `research.md` R-02, R-09, `quickstart.md` section 7
 - ADRs: none added
-- Related task records: `docs/tasks/done/T-001-04-gateway-skeleton.md` (clock port, `health.test.ts`), `docs/tasks/done/T-001-03-contracts-package.md` (schemas the builders parse), `docs/tasks/done/T-001-02-monorepo-tooling.md` (catalog, turbo `test.outputs`); `T-001-05` record on PR #6
+- Related task records: `docs/tasks/done/T-001-04-gateway-skeleton.md` (clock port, `health.test.ts`), `docs/tasks/done/T-001-03-contracts-package.md` (schemas the builders parse), `docs/tasks/done/T-001-02-monorepo-tooling.md` (catalog, turbo `test.outputs`); `docs/tasks/done/T-001-05-architecture-and-ci.md`
