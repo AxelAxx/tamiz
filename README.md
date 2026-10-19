@@ -11,8 +11,9 @@ chains and circuit breakers, audits every decision without ever storing prompt c
 and proves it all with privacy-leak and routing evals that gate CI.
 
 > Status: feature `001-contracts-and-skeleton` in progress. Spec approved
-> (`specs/001-contracts-and-skeleton/`); the pnpm + Turborepo + Biome workspace is in
-> place (`T-001-02`). Next: contracts, gateway skeleton, architecture limits and CI.
+> (`specs/001-contracts-and-skeleton/`); the pnpm + Turborepo + Biome workspace, the
+> contracts package, the gateway skeleton and the architecture check + CI pipeline are in
+> place (`T-001-02` … `T-001-05`). Next: test utilities and the root Vitest run (`T-001-06`).
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
