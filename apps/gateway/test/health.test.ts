@@ -1,25 +1,17 @@
 import { HealthResponseSchema } from "@tamiz/contracts";
+import { createFakeClock } from "@tamiz/test-utils";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/presentation/app.js";
 import { noopLogger } from "./helpers/noop-logger.js";
 
 // Spec 001, US3 scenarios 1 and 2 (FR-017): GET /health matches the health contract and
-// is exercised in-process through app.request(), without a socket.
-
-function fixedClock(start: Date) {
-  let current = start;
-  return {
-    now: () => current,
-    advance: (ms: number) => {
-      current = new Date(current.getTime() + ms);
-    },
-  };
-}
+// is exercised in-process through app.request(), without a socket. Time comes from the
+// shared fake clock (US7, research R-09), which satisfies ClockPort structurally.
 
 describe("GET /health", () => {
   it("US3-1/US3-2: answers 200 with a body that validates against HealthResponseSchema", async () => {
     const startedAt = new Date("2026-01-01T00:00:00Z");
-    const clock = fixedClock(startedAt);
+    const clock = createFakeClock(startedAt);
     clock.advance(1234);
     const app = createApp({ clock, version: "9.9.9", startedAt, logger: noopLogger });
 
@@ -36,7 +28,7 @@ describe("GET /health", () => {
 
   it("reports zero uptime right after start and never a negative value", async () => {
     const startedAt = new Date("2026-01-01T00:00:00Z");
-    const clock = fixedClock(startedAt);
+    const clock = createFakeClock(startedAt);
     const app = createApp({ clock, version: "0.1.0", startedAt, logger: noopLogger });
 
     const atStart = HealthResponseSchema.parse(await (await app.request("/health")).json());
@@ -50,7 +42,7 @@ describe("GET /health", () => {
   it("US3-4: carries an x-request-id header", async () => {
     const startedAt = new Date("2026-01-01T00:00:00Z");
     const app = createApp({
-      clock: fixedClock(startedAt),
+      clock: createFakeClock(startedAt),
       version: "0.1.0",
       startedAt,
       logger: noopLogger,
@@ -62,7 +54,7 @@ describe("GET /health", () => {
   it("SC-007: answers in under 50 ms in-process", async () => {
     const startedAt = new Date("2026-01-01T00:00:00Z");
     const app = createApp({
-      clock: fixedClock(startedAt),
+      clock: createFakeClock(startedAt),
       version: "0.1.0",
       startedAt,
       logger: noopLogger,

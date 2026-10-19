@@ -1,3 +1,13 @@
-// @tamiz/test-utils — FakeClock and builders arrive in T-001-06.
-// This placeholder keeps the package buildable until then.
-export const TEST_UTILS_PACKAGE = "@tamiz/test-utils" as const;
+/**
+ * @tamiz/test-utils — in-memory fakes and builders so use cases are tested without
+ * network, database or the real clock (constitution VIII, spec FR-025).
+ */
+export {
+  type ChatCompletionRequestOverrides,
+  type ChatCompletionResponseOverrides,
+  chatCompletionRequest,
+  chatCompletionResponse,
+  type HealthResponseOverrides,
+  healthResponse,
+} from "./builders.js";
+export { createFakeClock, type FakeClock } from "./fake-clock.js";

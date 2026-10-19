@@ -10,10 +10,13 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: feature `001-contracts-and-skeleton` in progress. Spec approved
-> (`specs/001-contracts-and-skeleton/`); the pnpm + Turborepo + Biome workspace, the
-> contracts package, the gateway skeleton and the architecture check + CI pipeline are in
-> place (`T-001-02` … `T-001-05`). Next: test utilities and the root Vitest run (`T-001-06`).
+> Status: feature `001-contracts-and-skeleton` done: the pnpm + Turborepo + Biome
+> workspace, contracts (`packages/contracts`), the gateway skeleton with `GET /health`
+> (`apps/gateway`), the architecture check and CI pipeline, test utilities
+> (`packages/test-utils`) and one root test run with coverage (`T-001-02` … `T-001-07`).
+> Run the gates with the commands under "Developing"; the end-to-end walkthrough is
+> [`specs/001-contracts-and-skeleton/quickstart.md`](specs/001-contracts-and-skeleton/quickstart.md).
+> Next: feature `002-provider-routing`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
@@ -35,7 +38,8 @@ or `npm install -g pnpm@10`).
 pnpm install      # also installs the commit-message hook
 pnpm lint         # Biome
 pnpm typecheck    # tsc per package
-pnpm test         # Vitest per package
+pnpm test         # every package from the root (Vitest projects); add --coverage for the table
+pnpm test:packages  # per-package Vitest through Turborepo (cached)
 pnpm build        # tsc per package
 ```
 

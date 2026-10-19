@@ -135,8 +135,11 @@ Expected: `["ci"]`. A direct `git push origin main` is refused by GitHub.
 
 ```bash
 pnpm --filter @tamiz/test-utils test
-pnpm test -- --coverage
+pnpm test --coverage
 ```
+
+(pnpm 10 forwards a literal `--` to the script, and Vitest then ignores the flags after
+it, so the flag goes straight after `test`.)
 
 Expected: `fake-clock.test.ts` shows `now()` stable until `advance(1500)` moves it by
 exactly 1500 ms; the builders produce objects that pass the contracts; the root run
