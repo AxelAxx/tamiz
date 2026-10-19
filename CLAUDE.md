@@ -318,7 +318,7 @@ pnpm install                 # workspace install (also installs the husky hooks)
 pnpm lint                    # biome check . (whole repo, one run)
 pnpm format                  # biome format --write .
 pnpm typecheck               # tsc --noEmit per package (turbo)
-pnpm arch                    # dependency-cruiser                 (later: T-001-05)
+pnpm arch                    # dependency-cruiser over apps/gateway/src (root run, like lint)
 pnpm test                    # build deps (turbo), then one root Vitest run over every project
 pnpm test --coverage         # same, plus the v8 coverage table (text) and coverage/lcov.info
 pnpm test:packages           # vitest per package (turbo, cached)
@@ -328,7 +328,9 @@ docker compose up            # full local stack                   (later: OPS)
 ```
 
 Commit messages are checked by commitlint through the husky `commit-msg` hook; a
-non-conventional message is refused locally.
+non-conventional message is refused locally. CI (`.github/workflows/ci.yml`, one job `ci`)
+runs lint → typecheck → arch → test → build on every pull request and on `main`, plus
+commitlint over the PR range; `main` requires that check (`T-001-05`).
 
 Privacy service (`services/privacy`): `uv sync`, `uv run ruff check .`, `uv run mypy .`,
 `uv run pytest`, `uv run fastapi dev src/privacy/api/main.py`.
@@ -344,8 +346,8 @@ Git: `git log --oneline`, branches `T-FFF-NN-slug`, commits via Conventional Com
 
 Decided on 2026-10-18: this file and the whole repository are in English (ADR-0002);
 licence Apache-2.0 (ADR-0003, `LICENSE` + `NOTICE` at the root); public repository
-https://github.com/AxelAxx/tamiz under Alex's personal account (section 2; branch
-protection requiring CI arrives with `T-001-05`).
+https://github.com/AxelAxx/tamiz under Alex's personal account (section 2); `main` is
+protected since `T-001-05`: required check `ci`, pull requests only, admins included.
 
 Still open (ask Alex, do not assume):
 

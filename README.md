@@ -10,11 +10,11 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: feature `001-contracts-and-skeleton` complete once its last two PRs merge
-> (`T-001-05` architecture limits and CI, `T-001-06` test utilities): contracts (`packages/contracts`),
-> gateway skeleton with `GET /health` (`apps/gateway`), test utilities
-> (`packages/test-utils`) and one root test run with coverage. Run the gates with the
-> commands under "Developing"; the end-to-end walkthrough is
+> Status: feature `001-contracts-and-skeleton` done: the pnpm + Turborepo + Biome
+> workspace, contracts (`packages/contracts`), the gateway skeleton with `GET /health`
+> (`apps/gateway`), the architecture check and CI pipeline, test utilities
+> (`packages/test-utils`) and one root test run with coverage (`T-001-02` … `T-001-07`).
+> Run the gates with the commands under "Developing"; the end-to-end walkthrough is
 > [`specs/001-contracts-and-skeleton/quickstart.md`](specs/001-contracts-and-skeleton/quickstart.md).
 > Next: feature `002-provider-routing`.
 >
