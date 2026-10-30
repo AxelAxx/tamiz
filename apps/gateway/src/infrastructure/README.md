@@ -9,4 +9,8 @@ never `presentation/` or `main.ts` (rule `infrastructure-no-presentation`). Only
 reach the rest of the gateway through injection, not through imports.
 
 Current modules: `config/env.ts` (`EnvSchema`, `loadConfig`, `GatewayConfig`),
-`logging/logger.ts` (`createLogger` with redaction) and `clock/system-clock.ts`.
+`logging/logger.ts` (`createLogger` with redaction), `clock/system-clock.ts`, and
+`llm/`: `ai-sdk-provider.ts` (the one `LlmProviderPort` over AI SDK 6, error and finish
+reason mapping), one adapter per provider (`ollama.ts`, `mistral.ts`, `anthropic.ts`,
+`openai.ts`), `settings.ts` (explicit provider settings) and `provider-registry.ts`
+(`createProviderRegistry`).
