@@ -248,6 +248,7 @@ describe("decide with privacy", () => {
       taskType: "code",
       size: "short",
       sensitivity: "critical",
+      entityCounts: {},
       privacyAction: "block",
       reason: "action",
     });

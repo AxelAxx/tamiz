@@ -58,6 +58,9 @@ export const EnvSchema = z.object({
   TAMIZ_PRIVACY_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2_000),
   TAMIZ_PRIVACY_CACHE_MAX_ENTRIES: z.coerce.number().int().min(0).max(1_000_000).default(1_000),
   TAMIZ_PRIVACY_CACHE_TTL_MS: z.coerce.number().int().min(1_000).default(600_000),
+  // Spec 006: keys the audit hash of the messages; unset = an ephemeral key per process.
+  TAMIZ_AUDIT_HASH_KEY: optionalSetting(z.string().min(32)),
+  TAMIZ_AUDIT_MEMORY_ENTRIES: z.coerce.number().int().min(100).max(1_000_000).default(10_000),
 });
 
 type EnvKey = keyof z.infer<typeof EnvSchema>;
@@ -83,6 +86,8 @@ const EXPECTED_FORMAT: Readonly<Record<EnvKey, string>> = {
   TAMIZ_PRIVACY_TIMEOUT_MS: "an integer between 100 and 30000",
   TAMIZ_PRIVACY_CACHE_MAX_ENTRIES: "an integer between 0 and 1000000 (0 disables the cache)",
   TAMIZ_PRIVACY_CACHE_TTL_MS: "an integer of at least 1000",
+  TAMIZ_AUDIT_HASH_KEY: "a secret of at least 32 characters",
+  TAMIZ_AUDIT_MEMORY_ENTRIES: "an integer between 100 and 1000000",
 };
 
 export interface GatewayConfig {
@@ -101,6 +106,8 @@ export interface GatewayConfig {
   readonly redisUrl?: string;
   /** The privacy service and its detection cache (spec 005 FR-007 … FR-009). */
   readonly privacy: PrivacyServiceConfig;
+  /** The audit log (spec 006). Without a hash key, `main.ts` generates an ephemeral one. */
+  readonly audit: { readonly hashKey?: string; readonly memoryEntries: number };
 }
 
 export interface PrivacyServiceConfig {
@@ -170,6 +177,12 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
       },
       apiKeys: apiKeys.value,
       ...(values.REDIS_URL === undefined ? {} : { redisUrl: values.REDIS_URL }),
+      audit: Object.freeze({
+        ...(values.TAMIZ_AUDIT_HASH_KEY === undefined
+          ? {}
+          : { hashKey: values.TAMIZ_AUDIT_HASH_KEY }),
+        memoryEntries: values.TAMIZ_AUDIT_MEMORY_ENTRIES,
+      }),
       privacy: Object.freeze({
         url: values.TAMIZ_PRIVACY_URL,
         timeoutMs: values.TAMIZ_PRIVACY_TIMEOUT_MS,

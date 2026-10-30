@@ -1,9 +1,11 @@
+import { createHmac, randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import {
   createFakeClock,
   createInMemoryPolicyRepository,
   createScriptedPort,
 } from "@tamiz/test-utils";
+import { withAudit, withAuditStream } from "../../src/application/audit/with-audit.js";
 import type { CircuitStatePort } from "../../src/application/ports/circuit-state.port.js";
 import type {
   ProviderCompletion,
@@ -23,6 +25,10 @@ import type { ProviderError } from "../../src/domain/errors.js";
 import type { RoutingPolicy } from "../../src/domain/model/routing-policy.js";
 import { ok, type Result } from "../../src/domain/result.js";
 import { hashApiKey, verifyApiKey } from "../../src/infrastructure/auth/api-keys.js";
+import {
+  createInMemoryAuditLog,
+  type InMemoryAuditLog,
+} from "../../src/infrastructure/cache/in-memory-audit-log.js";
 import { createInMemoryCircuitState } from "../../src/infrastructure/cache/in-memory-circuit-state.js";
 import { loadPolicyFile } from "../../src/infrastructure/policy/file-policy-loader.js";
 import { createApp } from "../../src/presentation/app.js";
@@ -35,6 +41,9 @@ export const DEMO_KEY_HASH = hashApiKey(DEMO_KEY);
 export const AUTH = { authorization: `Bearer ${DEMO_KEY}` } as const;
 
 export const START = new Date("2026-05-06T07:08:09.000Z");
+
+/** Keys the audit hash in tests (spec 006 research R-03); not a secret. */
+export const TEST_AUDIT_KEY = "test-audit-hash-key-not-a-secret-000000";
 
 export type CompletionResult = Result<ProviderCompletion, ProviderError>;
 
@@ -68,6 +77,8 @@ export async function createTestApp(
     readonly events?: RoutingEventsPort;
     /** What the privacy service reports (spec 005); clean by default. */
     readonly inspect?: InspectSensitivity;
+    /** Receives the audit entries (spec 006); a fresh in-memory log by default. */
+    readonly audit?: InMemoryAuditLog;
   } = {},
 ) {
   const clock = createFakeClock(START);
@@ -99,8 +110,17 @@ export async function createTestApp(
     ...cleanPrivacyDeps(),
     ...(options.inspect === undefined ? {} : { inspect: options.inspect }),
   };
-  const route = routeInference(deps);
-  const stream = streamInference(deps);
+  const audit = options.audit ?? createInMemoryAuditLog();
+  const auditDeps = {
+    audit,
+    clock,
+    policies: deps.policies,
+    hash: (messages: ReadonlyArray<unknown>) =>
+      createHmac("sha256", TEST_AUDIT_KEY).update(JSON.stringify(messages)).digest("hex"),
+    newId: randomUUID,
+  };
+  const route = withAudit(routeInference(deps), auditDeps);
+  const stream = withAuditStream(streamInference(deps), auditDeps);
   const records = [{ clientId: "demo", keyHash: DEMO_KEY_HASH }];
   const app = createApp({
     clock,
@@ -115,5 +135,5 @@ export async function createTestApp(
   /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */
   const send = (path: string, init?: RequestInit) =>
     clock.drive(Promise.resolve(app.request(path, init)));
-  return { app, provider, clock, send };
+  return { app, provider, clock, send, audit };
 }

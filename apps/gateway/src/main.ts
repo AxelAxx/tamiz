@@ -9,8 +9,9 @@
  * repository, provider registry, circuit state and routing-events sink → `routeInference`
  * → app → `serve()` → one startup line with address, version and policy.
  */
-import { createHash } from "node:crypto";
+import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { serve } from "@hono/node-server";
+import { withAudit, withAuditStream } from "./application/audit/with-audit.js";
 import { inspectSensitivity } from "./application/use-cases/inspect-sensitivity.js";
 import {
   type RouteInferenceDeps,
@@ -22,6 +23,7 @@ import type { ConfigurationError } from "./domain/errors.js";
 import type { Milliseconds } from "./domain/model/units.js";
 import type { Result } from "./domain/result.js";
 import { verifyApiKey } from "./infrastructure/auth/api-keys.js";
+import { createInMemoryAuditLog } from "./infrastructure/cache/in-memory-audit-log.js";
 import { createInMemoryCircuitState } from "./infrastructure/cache/in-memory-circuit-state.js";
 import { createInMemoryDetectionCache } from "./infrastructure/cache/in-memory-detection-cache.js";
 import { createRedisCircuitState } from "./infrastructure/cache/redis-circuit-state.js";
@@ -88,8 +90,28 @@ const routing: RouteInferenceDeps = {
   inspect,
   anonymizationNotice,
 };
-const route = routeInference(routing);
-const stream = streamInference(routing);
+// Spec 006: one content-free audit entry per request. The messages are identified by an
+// HMAC keyed with TAMIZ_AUDIT_HASH_KEY, or an ephemeral key when it is unset.
+const auditHashKey = config.audit.hashKey ?? randomBytes(32).toString("hex");
+if (config.audit.hashKey === undefined) {
+  logger.warn(
+    {},
+    "audit hash key is ephemeral: set TAMIZ_AUDIT_HASH_KEY to correlate across restarts",
+  );
+}
+const auditLog = createInMemoryAuditLog(config.audit.memoryEntries);
+logger.info({ entries: config.audit.memoryEntries }, "audit log in memory (bounded)");
+const auditDeps = {
+  audit: auditLog,
+  clock: systemClock,
+  policies: routing.policies,
+  hash: (messages: ReadonlyArray<unknown>) =>
+    createHmac("sha256", auditHashKey).update(JSON.stringify(messages)).digest("hex"),
+  newId: randomUUID,
+  logger,
+};
+const route = withAudit(routeInference(routing), auditDeps);
+const stream = withAuditStream(streamInference(routing), auditDeps);
 const startedAt = systemClock.now();
 const app = createApp({
   clock: systemClock,

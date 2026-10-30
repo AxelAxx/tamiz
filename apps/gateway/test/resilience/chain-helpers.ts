@@ -47,6 +47,7 @@ export function decisionFor(
     taskType: "chat",
     size: "short",
     sensitivity: "unknown",
+    entityCounts: {},
     privacyAction: "allow",
     allowedResidencies,
   };

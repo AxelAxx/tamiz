@@ -2,6 +2,15 @@
  * @tamiz/contracts — Zod schemas and branded types, the single source of truth for every
  * Tamiz contract (constitution II). Types and OpenAPI derive from here, never by hand.
  */
+
+export {
+  AuditAbandonedSchema,
+  type AuditEntryDto,
+  AuditEntrySchema,
+  type AuditOutcomeDto,
+  AuditOutcomeSchema,
+  AuditTargetSchema,
+} from "./audit.js";
 export {
   type Milliseconds,
   MillisecondsSchema,

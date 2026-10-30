@@ -16,7 +16,7 @@ import {
   type RoutingRule,
   targetById,
 } from "./routing-policy.js";
-import { type Sensitivity, sensitivityOf } from "./sensitivity.js";
+import { type EntityKind, entityCounts, type Sensitivity, sensitivityOf } from "./sensitivity.js";
 import type { ClassifiedRequest, TaskSize, TaskType } from "./task-classifier.js";
 import type { Milliseconds, PolicyId, RuleId } from "./units.js";
 
@@ -41,6 +41,8 @@ export interface RoutingDecision {
   readonly taskType: TaskType;
   readonly size: TaskSize;
   readonly sensitivity: Sensitivity;
+  /** How many of each kind were detected (spec 006 audit); never values or positions. */
+  readonly entityCounts: Readonly<Partial<Record<EntityKind, number>>>;
   readonly privacyAction: RouteAction;
   /**
    * Where this request's data may be processed: the rule's (or default chain's) residency
@@ -59,6 +61,7 @@ export interface BlockDecision {
   readonly taskType: TaskType;
   readonly size: TaskSize;
   readonly sensitivity: Sensitivity;
+  readonly entityCounts: Readonly<Partial<Record<EntityKind, number>>>;
   readonly privacyAction: "block";
   readonly reason: BlockReason;
 }
@@ -105,6 +108,7 @@ export function decide(policy: RoutingPolicy, request: DecisionInput): Decision 
     taskType: request.taskType,
     size: request.size,
     sensitivity: sensitivityOf(request.inspection),
+    entityCounts: entityCounts(request.inspection),
   } as const;
   const outcome = applyPrivacy({
     chain: ruleChain,
