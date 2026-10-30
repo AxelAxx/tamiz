@@ -1,0 +1,4 @@
+{"type": "meta", "version": "1", "synthetic": true, "language": "es", "generator": "scripts/generate_corpus.py", "seed": 20261030, "created": "2026-10-30"}
+{"type": "case", "id": "c0001", "text": "Paciente: Jorge Navarro Gil. NIE Y1234567X. Cuenta ES91 2100 0418 4502 0005 1332.", "spans": [{"kind": "PERSON", "start": 10, "end": 27}, {"kind": "NIE", "start": 33, "end": 42}, {"kind": "IBAN", "start": 51, "end": 80}], "tags": ["clinic"]}
+{"type": "case", "id": "c0002", "text": "Pedido 12345678 enviado el 03/11/2026 al código postal 46001.", "spans": [], "tags": ["negative", "plain-number"]}
+{"type": "case", "id": "c0003", "text": "El DNI 12345678A no coincide con la letra de control.", "spans": [], "tags": ["negative", "dni-bad-letter"]}
