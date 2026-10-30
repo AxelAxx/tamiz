@@ -48,18 +48,18 @@ sequenceDiagram
     P->>P: Zod validation (packages/contracts)
     P->>U: InferenceRequest
     par in parallel
-        U->>U: ClassifyTask (type, size)
+        U->>U: load the active policy
     and
-        U->>S: InspectSensitivity (hash-cached)
-        S-->>U: entities + sensitivity level
+        U->>S: InspectSensitivity: POST /analyze (cached by SHA-256, positions only)
+        S-->>U: entities (kinds, offsets) + sensitivity level, or a failure (fail closed)
     end
-    U->>D: decide(request, sensitivity)
-    D-->>U: RoutingDecision (fallback chain, privacy action)
-    alt action = block
-        U-->>P: Result.err(Blocked)
-    else action = anonymize
-        U->>S: anonymize
-        S-->>U: text + in-memory map
+    U->>U: ClassifyTask (type, size) + inspection
+    U->>D: decide(policy, request)
+    D-->>U: route (chain filtered by the level's residencies) or block
+    alt block (or detector failed with onDetectorError: block)
+        U-->>P: Result.err(Blocked) → 451 / 503, no provider called
+    else anonymize
+        U->>U: <KIND_n> placeholders + versioned notice; mapping in a closure
     end
     U->>R: execute(chain)
     R->>L: call target 1
@@ -68,10 +68,10 @@ sequenceDiagram
     R->>L: call target 2
     L-->>R: response
     R-->>U: response (+ fallback event)
-    U->>U: de-anonymize with in-memory map
+    U->>U: restore placeholders (one pass; streams through a placeholder-safe buffer)
     U->>A: AuditEntry (no content) + span (GenAI attrs) + events
     U-->>P: Result.ok(response)
-    P-->>C: 200 + x-tamiz-route / x-tamiz-fallback
+    P-->>C: 200 + x-tamiz-route / x-tamiz-fallback / x-tamiz-sensitivity / x-tamiz-privacy
 ```
 
 What exists after feature 003: validation, classification, `decide` with the allowed
@@ -79,9 +79,12 @@ residencies, and the resilient execution (`application/resilience/execute-chain.
 residency guard → circuit breaker → retry → timeout → next target), for both completions
 and streams, with `x-tamiz-route` / `x-tamiz-rule` / `x-tamiz-fallback`. Every step is a
 `RoutingEvent` on the routing-events port, logged by default. Circuit state lives in
-memory or, with `REDIS_URL`, in Valkey. The privacy service exists since feature 004
-(below); the gateway calls it from feature 005. Still to come: the audit log and
-OpenTelemetry sinks (feature 006).
+memory or, with `REDIS_URL`, in Valkey. The privacy service exists since feature 004 (below).
+Since feature 005 the gateway calls it on every request (`application/use-cases/
+inspect-sensitivity.ts`), applies the policy's privacy action in `decide`, anonymizes
+and restores in `protect-messages.ts` / `restore-stream.ts`, and answers
+`POST /v1/simulate` with the same steps minus the provider call. Still to come: the
+audit log and OpenTelemetry sinks (feature 006).
 
 ## Gateway layers and allowed dependencies
 

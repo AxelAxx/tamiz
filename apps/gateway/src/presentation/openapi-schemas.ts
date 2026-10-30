@@ -14,6 +14,7 @@ import {
   ChatCompletionResponseSchema,
   ErrorEnvelopeSchema,
   HealthResponseSchema,
+  SimulateResponseSchema,
 } from "@tamiz/contracts";
 
 export const ChatCompletionRequestBody = ChatCompletionRequestSchema.meta({
@@ -27,3 +28,4 @@ export const ChatCompletionChunkBody = ChatCompletionChunkSchema.meta({
 });
 export const ErrorEnvelopeBody = ErrorEnvelopeSchema.meta({ id: "ErrorEnvelope" });
 export const HealthResponseBody = HealthResponseSchema.meta({ id: "HealthResponse" });
+export const SimulateResponseBody = SimulateResponseSchema.meta({ id: "SimulateResponse" });
