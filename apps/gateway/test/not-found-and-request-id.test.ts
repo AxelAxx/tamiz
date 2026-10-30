@@ -1,4 +1,5 @@
 import { ErrorEnvelopeSchema } from "@tamiz/contracts";
+import { createFakeClock } from "@tamiz/test-utils";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/presentation/app.js";
 import { NO_CHAT } from "./helpers/app.js";
@@ -8,7 +9,7 @@ import { noopLogger, recordingLogger } from "./helpers/noop-logger.js";
 // errors answer with an ErrorEnvelope; every response carries x-request-id.
 
 const startedAt = new Date("2026-01-01T00:00:00Z");
-const clock = { now: () => startedAt };
+const clock = createFakeClock(startedAt);
 
 /** The fields the app is expected to put on a request or error log line. */
 interface LogBindingsShape {
