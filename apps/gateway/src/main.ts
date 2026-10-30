@@ -19,6 +19,7 @@ import type { ConfigurationError } from "./domain/errors.js";
 import type { Result } from "./domain/result.js";
 import { verifyApiKey } from "./infrastructure/auth/api-keys.js";
 import { createInMemoryCircuitState } from "./infrastructure/cache/in-memory-circuit-state.js";
+import { createRedisCircuitState } from "./infrastructure/cache/redis-circuit-state.js";
 import { systemClock } from "./infrastructure/clock/system-clock.js";
 import { loadConfig } from "./infrastructure/config/env.js";
 import { checkProviderSettings } from "./infrastructure/config/provider-settings.js";
@@ -45,12 +46,19 @@ orExit(checkProviderSettings(policy, config));
 
 const logger = createLogger({ level: config.logLevel });
 
+// Spec 003 FR-029 … FR-031: shared circuit state when REDIS_URL is set (falling back to
+// memory while the store is unreachable); in-memory state for a single instance.
+const redisState =
+  config.redisUrl === undefined
+    ? undefined
+    : await createRedisCircuitState({ url: config.redisUrl, clock: systemClock, logger });
+const circuitState = redisState ?? createInMemoryCircuitState(systemClock);
+
 const routing: RouteInferenceDeps = {
   policies: createInMemoryPolicyRepository(policy),
   providers: createProviderRegistry(config.providers),
   clock: systemClock,
-  // One instance: in-memory circuit state. T-003-06 selects Redis/Valkey when configured.
-  circuitState: createInMemoryCircuitState(systemClock),
+  circuitState,
   events: createLogRoutingEvents(logger),
   random: Math.random,
 };
@@ -67,7 +75,7 @@ const app = createApp({
   authenticate: (key) => verifyApiKey(key, config.apiKeys),
 });
 
-serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
+const server = serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
   logger.info(
     {
       host: info.address,
@@ -80,3 +88,11 @@ serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => 
     "gateway listening",
   );
 });
+
+/** Closes the HTTP server and the circuit-state connection, then exits. */
+function shutdown(): void {
+  server.close();
+  void (redisState?.close() ?? Promise.resolve()).finally(() => process.exit(0));
+}
+process.once("SIGINT", shutdown);
+process.once("SIGTERM", shutdown);

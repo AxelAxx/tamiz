@@ -1,0 +1,18 @@
+# Local stack for Tamiz. Feature 003 (T-003-06) adds the key-value store that shares
+# circuit breaker state between gateway instances; the OPS task adds the gateway, the
+# privacy service, Postgres, Ollama and Jaeger.
+#
+#   docker compose up valkey
+#   REDIS_URL=redis://localhost:6379 pnpm --filter @tamiz/gateway dev
+
+services:
+  valkey:
+    image: valkey/valkey:8
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped

@@ -1,7 +1,8 @@
 /**
  * Environment configuration (spec FR-015, research R-11, data-model section 7; spec 002
  * research R-12 and data-model section 5 add the policy file and the provider settings,
- * research R-10 the required client API key hashes).
+ * research R-10 the required client API key hashes; spec 003 research R-11 the optional
+ * Redis/Valkey URL for shared circuit state).
  *
  * Values are read once at boot through {@link loadConfig}; the resulting object is frozen
  * and injected. Nothing else reads `process.env`. An invalid environment yields a
@@ -29,6 +30,7 @@ export const DEFAULT_POLICY_FILE = "policies/default.yaml";
 export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 const HttpUrlSchema = z.url({ protocol: /^https?$/ });
+const RedisUrlSchema = z.url({ protocol: /^rediss?$/ });
 
 /** An empty value counts as unset, so `MISTRAL_API_KEY=` leaves Mistral unconfigured. */
 function optionalSetting<T extends z.ZodType>(schema: T) {
@@ -50,6 +52,7 @@ export const EnvSchema = z.object({
   ANTHROPIC_BASE_URL: optionalSetting(HttpUrlSchema),
   OPENAI_API_KEY: optionalSetting(z.string()),
   OPENAI_BASE_URL: optionalSetting(HttpUrlSchema),
+  REDIS_URL: optionalSetting(RedisUrlSchema),
 });
 
 type EnvKey = keyof z.infer<typeof EnvSchema>;
@@ -70,6 +73,7 @@ const EXPECTED_FORMAT: Readonly<Record<EnvKey, string>> = {
   ANTHROPIC_BASE_URL: "an http(s) URL",
   OPENAI_API_KEY: "an OpenAI API key",
   OPENAI_BASE_URL: "an http(s) URL",
+  REDIS_URL: "a redis:// or rediss:// URL",
 };
 
 export interface GatewayConfig {
@@ -84,6 +88,8 @@ export interface GatewayConfig {
   readonly providers: ProviderSettings;
   /** Hashes of the client API keys; never the keys themselves (FR-030). */
   readonly apiKeys: ReadonlyArray<ApiKeyRecord>;
+  /** Shared circuit state (spec 003 FR-031); absent = in-memory, one instance. */
+  readonly redisUrl?: string;
 }
 
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -145,6 +151,7 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
         ...(openai !== undefined && { openai }),
       },
       apiKeys: apiKeys.value,
+      ...(values.REDIS_URL === undefined ? {} : { redisUrl: values.REDIS_URL }),
     }),
   );
 }
