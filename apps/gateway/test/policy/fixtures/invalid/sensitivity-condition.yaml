@@ -1,0 +1,8 @@
+# Invalid policy fixture: sensitivity-condition.
+id: bad
+version: 1
+targets:
+  - { id: ollama-llama, provider: ollama, model: llama3.1:8b, region: local, residency: local, pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 } }
+rules:
+  - { id: private, when: { sensitivity: [high] }, route: [ollama-llama] }
+default: { route: [ollama-llama] }

@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it } from "vitest";
 
 // Spec 001, US4 scenario 1 (FR-015) and FR-020: the real process refuses an invalid
 // environment with exit code 1 and a clear message, and serves /health with a valid one.
+// Spec 002 US2-1 and US2-3 (tasks.md T047): it also refuses an invalid policy file and a
+// policy whose providers are not configured, before binding a port.
 // This is the only test in the package that spawns a process and opens a port.
 
 const gatewayDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -17,6 +19,8 @@ interface StartupLine {
   readonly port?: unknown;
   readonly host?: unknown;
   readonly version?: unknown;
+  readonly policyId?: unknown;
+  readonly policyVersion?: unknown;
 }
 
 interface Exit {
@@ -25,10 +29,27 @@ interface Exit {
   readonly stderr: string;
 }
 
+/** Settings a developer may have exported; stripped so each test states its own. */
+const GATEWAY_SETTINGS =
+  /^(TAMIZ_.*|OLLAMA_BASE_URL|(MISTRAL|ANTHROPIC|OPENAI)_(API_KEY|BASE_URL))$/;
+
+function inheritedEnv(): Record<string, string | undefined> {
+  return Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !GATEWAY_SETTINGS.test(name)),
+  );
+}
+
+/** Test values, never real credentials: no provider is called during boot. */
+const ALL_PROVIDER_KEYS = {
+  MISTRAL_API_KEY: "test-mistral-key-SECRET",
+  ANTHROPIC_API_KEY: "test-anthropic-key-SECRET",
+  OPENAI_API_KEY: "test-openai-key-SECRET",
+} as const;
+
 function spawnGateway(env: Record<string, string>): ChildProcess {
   return spawn(process.execPath, ["--import", "tsx", "src/main.ts"], {
     cwd: gatewayDir,
-    env: { ...process.env, ...env },
+    env: { ...inheritedEnv(), ...env },
     stdio: ["ignore", "pipe", "pipe"],
   });
 }
@@ -124,7 +145,12 @@ describe("gateway process boot", () => {
     "FR-020: serves /health over HTTP and logs one startup line with a valid env",
     async () => {
       const port = await freePort();
-      child = spawnGateway({ PORT: String(port), HOST: "127.0.0.1", LOG_LEVEL: "info" });
+      child = spawnGateway({
+        PORT: String(port),
+        HOST: "127.0.0.1",
+        LOG_LEVEL: "info",
+        ...ALL_PROVIDER_KEYS,
+      });
       const output = collect(child);
 
       const response = await pollHealth(port, child, BOOT_TIMEOUT_MS - 3_000);
@@ -145,7 +171,47 @@ describe("gateway process boot", () => {
       expect(startupLine?.port).toBe(port);
       expect(startupLine?.host).toBe("127.0.0.1");
       expect(startupLine?.version).toBe(body.version);
+      expect(startupLine?.policyId).toBe("default");
+      expect(startupLine?.policyVersion).toBe(1);
+      expect(output.stdout()).not.toContain("SECRET");
     },
     BOOT_TIMEOUT_MS,
+  );
+
+  it(
+    "002 US2-1: exits with code 1 naming the path when the policy references an unknown target",
+    async () => {
+      child = spawnGateway({
+        TAMIZ_POLICY_FILE: "test/policy/fixtures/invalid/unknown-target.yaml",
+        ...ALL_PROVIDER_KEYS,
+      });
+      const exit = await waitForExit(child, collect(child));
+
+      expect(exit.code).toBe(1);
+      expect(exit.stderr).toContain("rules.0.route.0: expected the id of a declared target");
+      expect(exit.stderr).toContain('(target "nope")');
+      expect(exit.stderr).toContain("unknown-target.yaml");
+      expect(exit.stdout).not.toContain("gateway listening");
+    },
+    BOOT_TIMEOUT_MS,
+  );
+
+  it(
+    "002 US2-3: exits with code 1 naming the missing setting, without printing configured keys",
+    async () => {
+      const { MISTRAL_API_KEY: _unset, ...otherKeys } = ALL_PROVIDER_KEYS;
+      child = spawnGateway({ ...otherKeys });
+      const exit = await waitForExit(child, collect(child));
+
+      expect(exit.code).toBe(1);
+      expect(exit.stderr).toContain("target mistral-small: provider mistral needs MISTRAL_API_KEY");
+      expect(exit.stderr).not.toContain("SECRET");
+      expect(exit.stdout).not.toContain("gateway listening");
+    },
+    BOOT_TIMEOUT_MS,
+  );
+
+  it.todo(
+    "002 US5-4: exits with code 1 naming the entry position when TAMIZ_API_KEYS is malformed (T-002-06)",
   );
 });

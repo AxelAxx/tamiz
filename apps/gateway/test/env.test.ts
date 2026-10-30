@@ -23,6 +23,8 @@ describe("loadConfig", () => {
       logLevel: "info",
       nodeEnv: "development",
       version: packageJson.version,
+      policyFile: "policies/default.yaml",
+      providers: { ollama: { baseUrl: "http://localhost:11434/v1" } },
     });
   });
 

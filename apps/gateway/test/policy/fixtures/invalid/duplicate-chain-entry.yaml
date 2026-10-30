@@ -1,0 +1,8 @@
+# Invalid policy fixture: duplicate-chain-entry.
+id: bad
+version: 1
+targets:
+  - { id: ollama-llama, provider: ollama, model: llama3.1:8b, region: local, residency: local, pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 } }
+  - { id: mistral-small, provider: mistral, model: mistral-small-latest, region: eu-west, residency: eu, pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 } }
+rules: []
+default: { route: [ollama-llama, mistral-small, ollama-llama] }

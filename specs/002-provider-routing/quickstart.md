@@ -92,7 +92,7 @@ printf 'id: bad\nversion: 1\ntargets:\n  - {id: a, provider: ollama, model: m, r
 TAMIZ_POLICY_FILE=/tmp/bad.yaml pnpm --filter @tamiz/gateway start; echo "exit: $?"
 ```
 
-Expected: no port bound, stderr `rules.0.route.0: unknown target "nope"`, exit code 1.
+Expected: no port bound, stderr `rules.0.route.0: expected the id of a declared target (target "nope")`, exit code 1.
 Then, with the default policy and `MISTRAL_API_KEY` unset:
 
 ```bash
