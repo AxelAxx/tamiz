@@ -7,6 +7,10 @@
  * what a schema cannot: unique ids, the reserved rule id, chains that reference declared
  * targets without repeats, and the domain's unit rules. In-memory policies built in
  * tests go through the same function, so `decide` can rely on a validated policy.
+ *
+ * Feature 003 adds resilience settings (defaults filled here) and residency statements on
+ * rules and the default chain; a chain entry outside its own statement is rejected
+ * (spec 003 FR-012, FR-014, FR-020, research R-06, R-14).
  */
 import { type ErrorIssue, type ValidationError, validationError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
@@ -33,6 +37,23 @@ export const DEFAULT_POLICY_TIMEOUT_MS = 30_000;
 export const ORDER_BY = ["cost"] as const;
 export type OrderBy = (typeof ORDER_BY)[number];
 
+/** How a request's execution is bounded and retried (spec 003 FR-002, FR-004, FR-007). */
+export interface ResilienceSettings {
+  readonly requestDeadlineMs: Milliseconds;
+  /** Attempts per target, including the first (1 … 5). */
+  readonly maxAttempts: number;
+  readonly backoff: { readonly baseDelayMs: Milliseconds; readonly maxDelayMs: Milliseconds };
+  readonly circuitBreaker: { readonly failureThreshold: number; readonly cooldownMs: Milliseconds };
+}
+
+/** Used for every field the policy file omits (spec 003 Assumptions, research R-14). */
+export const DEFAULT_RESILIENCE: ResilienceSettings = {
+  requestDeadlineMs: 60_000 as Milliseconds,
+  maxAttempts: 2,
+  backoff: { baseDelayMs: 250 as Milliseconds, maxDelayMs: 2_000 as Milliseconds },
+  circuitBreaker: { failureThreshold: 5, cooldownMs: 30_000 as Milliseconds },
+};
+
 /** Each present field must contain the request's value; `{}` matches every request. */
 export interface RuleCondition {
   readonly taskType?: ReadonlyArray<TaskType>;
@@ -47,6 +68,8 @@ export interface RoutingRule {
   readonly orderBy?: OrderBy;
   /** Per-rule (per task type) timeout; wins over the target and policy timeouts. */
   readonly timeoutMs?: Milliseconds;
+  /** Where this rule's requests may be processed; absent = everywhere (spec 003 FR-012). */
+  readonly residency?: ReadonlyArray<Residency>;
 }
 
 export interface RoutingPolicy {
@@ -55,7 +78,11 @@ export interface RoutingPolicy {
   readonly defaultTimeoutMs: Milliseconds;
   readonly targets: ReadonlyArray<ModelTarget>;
   readonly rules: ReadonlyArray<RoutingRule>;
-  readonly default: { readonly route: ReadonlyArray<TargetId> };
+  readonly default: {
+    readonly route: ReadonlyArray<TargetId>;
+    readonly residency?: ReadonlyArray<Residency>;
+  };
+  readonly resilience: ResilienceSettings;
 }
 
 /** Unbranded input: the shape the policy schema produces, before domain validation. */
@@ -75,6 +102,15 @@ export interface RoutingRuleInput {
   readonly route: ReadonlyArray<string>;
   readonly orderBy?: OrderBy;
   readonly timeoutMs?: number;
+  readonly residency?: ReadonlyArray<Residency>;
+}
+
+/** Every field optional; `validatePolicy` fills `DEFAULT_RESILIENCE`. */
+export interface ResilienceSettingsInput {
+  readonly requestDeadlineMs?: number;
+  readonly maxAttempts?: number;
+  readonly backoff?: { readonly baseDelayMs?: number; readonly maxDelayMs?: number };
+  readonly circuitBreaker?: { readonly failureThreshold?: number; readonly cooldownMs?: number };
 }
 
 export interface RoutingPolicyInput {
@@ -83,7 +119,11 @@ export interface RoutingPolicyInput {
   readonly defaultTimeoutMs?: number;
   readonly targets: ReadonlyArray<ModelTargetInput>;
   readonly rules: ReadonlyArray<RoutingRuleInput>;
-  readonly default: { readonly route: ReadonlyArray<string> };
+  readonly default: {
+    readonly route: ReadonlyArray<string>;
+    readonly residency?: ReadonlyArray<Residency>;
+  };
+  readonly resilience?: ResilienceSettingsInput;
 }
 
 type Issues = ErrorIssue[];
@@ -140,23 +180,123 @@ function validateTarget(
   };
 }
 
+/** Declared target id → its residency. */
+type Declared = ReadonlyMap<string, Residency>;
+
 function validateChain(
   route: ReadonlyArray<string>,
   path: string,
-  declared: ReadonlySet<string>,
+  declared: Declared,
   issues: Issues,
+  residency?: ReadonlyArray<Residency>,
 ): ReadonlyArray<TargetId> {
   if (route.length === 0) addIssue(issues, path, "expected at least one target id");
   const seen = new Set<string>();
   route.forEach((id, index) => {
-    if (!declared.has(id)) {
+    const targetResidency = declared.get(id);
+    if (targetResidency === undefined) {
       addIssue(issues, `${path}.${index}`, "expected the id of a declared target");
     } else if (seen.has(id)) {
       addIssue(issues, `${path}.${index}`, "expected each target at most once in a chain");
+    } else if (residency !== undefined && !residency.includes(targetResidency)) {
+      // The residency is policy data, not request data, so naming it leaks nothing.
+      addIssue(
+        issues,
+        `${path}.${index}`,
+        `expected a target whose residency is in the rule's residency list (target residency "${targetResidency}")`,
+      );
     }
     seen.add(id);
   });
   return route.map((id) => id as TargetId);
+}
+
+function validateResidencyList(
+  list: ReadonlyArray<Residency> | undefined,
+  path: string,
+  issues: Issues,
+): ReadonlyArray<Residency> | undefined {
+  if (list === undefined) return undefined;
+  if (list.length === 0) addIssue(issues, path, "expected at least one residency");
+  list.forEach((residency, index) => {
+    if (list.indexOf(residency) !== index) {
+      addIssue(issues, `${path}.${index}`, "expected each residency at most once");
+    }
+  });
+  return [...list];
+}
+
+/** The value, or `fallback` when absent; records an issue when outside `[min, max]`. */
+function integerSetting(
+  value: number | undefined,
+  fallback: number,
+  path: string,
+  issues: Issues,
+  min: number,
+  max = Number.POSITIVE_INFINITY,
+): number {
+  if (value === undefined) return fallback;
+  if (!Number.isInteger(value) || value < min || value > max) {
+    const range = Number.isFinite(max)
+      ? `between ${min} and ${max}`
+      : `greater than or equal to ${min}`;
+    addIssue(issues, path, `expected an integer ${range}`);
+  }
+  return value;
+}
+
+function validateResilience(
+  input: ResilienceSettingsInput | undefined,
+  issues: Issues,
+): ResilienceSettings {
+  const d = DEFAULT_RESILIENCE;
+  const at = (name: string) => `resilience.${name}`;
+  const baseDelayMs = integerSetting(
+    input?.backoff?.baseDelayMs,
+    d.backoff.baseDelayMs,
+    at("backoff.baseDelayMs"),
+    issues,
+    1,
+  );
+  const maxDelayMs = integerSetting(
+    input?.backoff?.maxDelayMs,
+    d.backoff.maxDelayMs,
+    at("backoff.maxDelayMs"),
+    issues,
+    1,
+  );
+  if (maxDelayMs < baseDelayMs) {
+    addIssue(issues, at("backoff.maxDelayMs"), "expected at least baseDelayMs");
+  }
+  const breaker = input?.circuitBreaker;
+  // Branding is safe: the policy is only returned when no issue was recorded.
+  return {
+    requestDeadlineMs: integerSetting(
+      input?.requestDeadlineMs,
+      d.requestDeadlineMs,
+      at("requestDeadlineMs"),
+      issues,
+      1_000,
+    ) as Milliseconds,
+    maxAttempts: integerSetting(input?.maxAttempts, d.maxAttempts, at("maxAttempts"), issues, 1, 5),
+    backoff: { baseDelayMs: baseDelayMs as Milliseconds, maxDelayMs: maxDelayMs as Milliseconds },
+    circuitBreaker: {
+      failureThreshold: integerSetting(
+        breaker?.failureThreshold,
+        d.circuitBreaker.failureThreshold,
+        at("circuitBreaker.failureThreshold"),
+        issues,
+        1,
+      ),
+      cooldownMs: integerSetting(
+        breaker?.cooldownMs,
+        d.circuitBreaker.cooldownMs,
+        at("circuitBreaker.cooldownMs"),
+        issues,
+        1_000,
+      ) as Milliseconds,
+    },
+  };
 }
 
 function validateCondition(when: RuleCondition, path: string, issues: Issues): RuleCondition {
@@ -183,7 +323,7 @@ function validateRule(
   input: RoutingRuleInput,
   path: string,
   seen: Set<string>,
-  declared: ReadonlySet<string>,
+  declared: Declared,
   issues: Issues,
 ): RoutingRule {
   if (input.id === DEFAULT_RULE_ID) {
@@ -199,7 +339,8 @@ function validateRule(
   }
   seen.add(input.id);
   const when = validateCondition(input.when, `${path}.when`, issues);
-  const route = validateChain(input.route, `${path}.route`, declared, issues);
+  const residency = validateResidencyList(input.residency, `${path}.residency`, issues);
+  const route = validateChain(input.route, `${path}.route`, declared, issues, residency);
   const timeoutMs =
     input.timeoutMs === undefined
       ? undefined
@@ -210,6 +351,7 @@ function validateRule(
     route,
     ...(input.orderBy === undefined ? {} : { orderBy: input.orderBy }),
     ...(timeoutMs === undefined ? {} : { timeoutMs }),
+    ...(residency === undefined ? {} : { residency }),
   };
 }
 
@@ -232,11 +374,27 @@ export function validatePolicy(input: RoutingPolicyInput): Result<RoutingPolicy,
     validateTarget(target, `targets.${index}`, targetIds, issues),
   );
 
+  const declared: Declared = new Map(
+    input.targets.map((target) => [target.id, target.residency] as const),
+  );
+
   const ruleIds = new Set<string>();
   const rules = input.rules.map((rule, index) =>
-    validateRule(rule, `rules.${index}`, ruleIds, targetIds, issues),
+    validateRule(rule, `rules.${index}`, ruleIds, declared, issues),
   );
-  const defaultRoute = validateChain(input.default.route, "default.route", targetIds, issues);
+  const defaultResidency = validateResidencyList(
+    input.default.residency,
+    "default.residency",
+    issues,
+  );
+  const defaultRoute = validateChain(
+    input.default.route,
+    "default.route",
+    declared,
+    issues,
+    defaultResidency,
+  );
+  const resilience = validateResilience(input.resilience, issues);
 
   if (issues.length > 0 || defaultTimeoutMs === undefined) {
     return err(validationError("Invalid routing policy", issues));
@@ -247,7 +405,11 @@ export function validatePolicy(input: RoutingPolicyInput): Result<RoutingPolicy,
     defaultTimeoutMs,
     targets,
     rules,
-    default: { route: defaultRoute },
+    default: {
+      route: defaultRoute,
+      ...(defaultResidency === undefined ? {} : { residency: defaultResidency }),
+    },
+    resilience,
   });
 }
 

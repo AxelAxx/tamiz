@@ -36,10 +36,10 @@ describe("GET /openapi.json (US1-5)", () => {
     );
     const chat = doc.paths["/v1/chat/completions"]?.["post"];
     expect(Object.keys(chat?.responses["200"]?.headers ?? {})).toEqual(
-      expect.arrayContaining(["x-tamiz-route", "x-tamiz-rule", "x-request-id"]),
+      expect.arrayContaining(["x-tamiz-route", "x-tamiz-rule", "x-tamiz-fallback", "x-request-id"]),
     );
     expect(Object.keys(chat?.responses ?? {})).toEqual(
-      expect.arrayContaining(["200", "400", "401", "502", "504"]),
+      expect.arrayContaining(["200", "400", "401", "451", "502", "503", "504"]),
     );
     expect(chat?.security).toEqual([{ bearerAuth: [] }]);
     expect(doc.components.securitySchemes["bearerAuth"]).toEqual({

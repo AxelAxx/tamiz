@@ -22,10 +22,13 @@ import {
   targetIdUnchecked,
 } from "../../src/domain/model/units.js";
 import { err, ok, type Result } from "../../src/domain/result.js";
+import { createInMemoryCircuitState } from "../../src/infrastructure/cache/in-memory-circuit-state.js";
 import { examplePolicyInput, validPolicy } from "../domain/helpers/policies.js";
+import { recordingEvents } from "../resilience/helpers.js";
 
-// Spec 002 FR-012, US6-6 and the edge case "fallback chain beyond the first target"
-// (tasks.md T016). Fakes only: no network, no real clock. The policy is
+// Spec 002 FR-012, US6-6 (tasks.md T016) and spec 003 US1-5, FR-011 (tasks.md T026):
+// the use case runs the decided chain through `executeChain`. Fakes only: no network,
+// no real clock (failure paths are driven with `clock.drive`). The policy is the 002
 // `contracts/policy.example.yaml`.
 
 type CompletionResult = Result<ProviderCompletion, ProviderError>;
@@ -67,8 +70,16 @@ function setup(
     },
   };
   const policies = createInMemoryPolicyRepository(policy);
-  const route = routeInference({ policies, providers, clock });
-  return { route, clock, provider, resolved, policies, policy };
+  const events = recordingEvents();
+  const route = routeInference({
+    policies,
+    providers,
+    clock,
+    circuitState: createInMemoryCircuitState(clock),
+    events,
+    random: () => 0.5,
+  });
+  return { route, clock, provider, resolved, policies, policy, events };
 }
 
 describe("routeInference", () => {
@@ -216,32 +227,71 @@ describe("routeInference", () => {
       status: 503,
     });
 
-    it("returns RoutingFailure { decision, target, error } without throwing", async () => {
-      const { route } = setup(() => err(failure));
+    it("returns RoutingFailure { decision, failure } without throwing when every target fails", async () => {
+      const { route, clock } = setup(() => err(failure));
 
-      const result = await route(request("Fix this code:\n```ts\nconst x = 1\n```"));
+      const result = await clock.drive(route(request("Fix this code:\n```ts\nconst x = 1\n```")));
 
       expect(result.ok).toBe(false);
       if (result.ok) return;
-      expect(result.error.error).toBe(failure);
-      expect(result.error.target.id).toBe("anthropic-sonnet");
       expect(result.error.decision.ruleId).toBe("code-to-frontier");
-      // The full chain is returned for feature 003 to act on.
-      expect(result.error.decision.chain.map((target) => target.id)).toEqual([
+      expect(result.error.failure).toMatchObject({
+        kind: "exhausted",
+        error: failure,
+        abandoned: [
+          { targetId: "anthropic-sonnet", reason: "http_error" },
+          { targetId: "openai-mini", reason: "http_error" },
+        ],
+      });
+      expect(result.error.failure.target.id).toBe("mistral-small");
+    });
+
+    it("spec 003: walks the whole chain, with retries, instead of stopping at chain[0]", async () => {
+      const { route, clock, provider, resolved } = setup(() => err(failure));
+
+      await clock.drive(route(request("Fix this code:\n```ts\nconst x = 1\n```")));
+
+      expect(provider.calls.map((call) => call.target.id)).toEqual([
+        "anthropic-sonnet",
         "anthropic-sonnet",
         "openai-mini",
+        "openai-mini",
         "mistral-small",
+        "mistral-small",
+      ]);
+      expect(resolved).toEqual([
+        "anthropic",
+        "anthropic",
+        "openai",
+        "openai",
+        "mistral",
+        "mistral",
       ]);
     });
 
-    it("calls only chain[0]: the rest of the chain is not executed", async () => {
-      const { route, provider, resolved } = setup(() => err(failure));
+    it("US1-5: on fallback, target, usage, cost and model are the answering target's", async () => {
+      const { route, clock } = setup((input) =>
+        input.target.id === "anthropic-sonnet"
+          ? err(failure)
+          : ok({ ...COMPLETION, modelName: `${input.target.model}-served` }),
+      );
 
-      await route(request("Fix this code:\n```ts\nconst x = 1\n```"));
+      const result = await clock.drive(route(request("Fix this code:\n```ts\nconst x = 1\n```")));
 
-      expect(provider.calls).toHaveLength(1);
-      expect(provider.calls[0]?.target.id).toBe("anthropic-sonnet");
-      expect(resolved).toEqual(["anthropic"]);
+      expect(result.ok).toBe(true);
+      if (!result.ok) return;
+      expect(result.value.target.id).toBe("openai-mini");
+      expect(result.value.completion.modelName).toBe("gpt-4o-mini-served");
+      expect(result.value.abandoned).toEqual([
+        { targetId: "anthropic-sonnet", reason: "http_error" },
+      ]);
+      // openai-mini: 0.15 / 0.6 USD per million tokens.
+      expect(result.value.cost).toBeCloseTo((12 * 0.15 + 3 * 0.6) / 1e6, 12);
+      expect(result.value.usage).toEqual({
+        promptTokens: 12,
+        completionTokens: 3,
+        estimated: false,
+      });
     });
   });
 

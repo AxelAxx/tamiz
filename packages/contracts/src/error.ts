@@ -3,7 +3,8 @@
  * (spec FR-010, data-model section 5).
  *
  * `message` is human-readable and never carries a stack trace or prompt content.
- * Feature 002 adds `provider_timeout` (504, spec 002 FR-028).
+ * Feature 002 adds `provider_timeout` (504, spec 002 FR-028); feature 003 adds
+ * `provider_unavailable` (503, every circuit open, spec 003 FR-019).
  */
 import { z } from "zod";
 import { RequestIdSchema } from "./branded.js";
@@ -17,6 +18,7 @@ export const ErrorTypeSchema = z.enum([
   "policy_blocked",
   "internal",
   "provider_timeout",
+  "provider_unavailable",
 ]);
 
 export const ErrorEnvelopeSchema = z.strictObject({
@@ -40,4 +42,5 @@ export const errorTypeToHttpStatus: Readonly<Record<ErrorType, number>> = Object
   provider_error: 502,
   internal: 500,
   provider_timeout: 504,
+  provider_unavailable: 503,
 });

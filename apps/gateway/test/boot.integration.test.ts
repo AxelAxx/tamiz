@@ -8,7 +8,8 @@ import { afterEach, describe, expect, it } from "vitest";
 // Spec 001, US4 scenario 1 (FR-015) and FR-020: the real process refuses an invalid
 // environment with exit code 1 and a clear message, and serves /health with a valid one.
 // Spec 002 US2-1 and US2-3 (tasks.md T047): it also refuses an invalid policy file and a
-// policy whose providers are not configured, before binding a port.
+// policy whose providers are not configured, before binding a port. Spec 003 US2-3
+// (tasks.md T028): and a policy whose chain contradicts its own residency statement.
 // This is the only test in the package that spawns a process and opens a port.
 
 const gatewayDir = resolve(dirname(fileURLToPath(import.meta.url)), "..");
@@ -173,7 +174,7 @@ describe("gateway process boot", () => {
       expect(startupLine?.host).toBe("127.0.0.1");
       expect(startupLine?.version).toBe(body.version);
       expect(startupLine?.policyId).toBe("default");
-      expect(startupLine?.policyVersion).toBe(1);
+      expect(startupLine?.policyVersion).toBe(2);
       expect(output.stdout()).not.toContain("SECRET");
     },
     BOOT_TIMEOUT_MS,
@@ -192,6 +193,23 @@ describe("gateway process boot", () => {
       expect(exit.stderr).toContain("rules.0.route.0: expected the id of a declared target");
       expect(exit.stderr).toContain('(target "nope")');
       expect(exit.stderr).toContain("unknown-target.yaml");
+      expect(exit.stdout).not.toContain("gateway listening");
+    },
+    BOOT_TIMEOUT_MS,
+  );
+
+  it(
+    "003 US2-3: exits with code 1 when a rule's chain contradicts its residency statement",
+    async () => {
+      child = spawnGateway({
+        TAMIZ_POLICY_FILE: "test/policy/fixtures/invalid/residency-contradiction.yaml",
+        ...ALL_PROVIDER_KEYS,
+      });
+      const exit = await waitForExit(child, collect(child));
+
+      expect(exit.code).toBe(1);
+      expect(exit.stderr).toContain("rules.0.route.1");
+      expect(exit.stderr).toContain('target residency "us"');
       expect(exit.stdout).not.toContain("gateway listening");
     },
     BOOT_TIMEOUT_MS,

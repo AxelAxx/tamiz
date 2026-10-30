@@ -7,7 +7,7 @@
  * match falls back to the default chain. The chain is computed in full; only `chain[0]`
  * is executed in feature 002, feature 003 walks the rest.
  */
-import type { ModelTarget } from "./model-target.js";
+import { type ModelTarget, RESIDENCIES, type Residency } from "./model-target.js";
 import {
   DEFAULT_RULE_ID,
   type RoutingPolicy,
@@ -40,6 +40,11 @@ export interface RoutingDecision {
   readonly size: TaskSize;
   readonly sensitivity: Sensitivity;
   readonly privacyAction: PrivacyAction;
+  /**
+   * Where this request's data may be processed: the matched rule's or the default
+   * chain's residency list, or every residency (spec 003 FR-012). Feature 005 narrows it.
+   */
+  readonly allowedResidencies: ReadonlyArray<Residency>;
 }
 
 function includesIfPresent<T>(values: ReadonlyArray<T> | undefined, value: T): boolean {
@@ -84,5 +89,7 @@ export function decide(policy: RoutingPolicy, request: DecisionInput): RoutingDe
     size: request.size,
     sensitivity: request.sensitivity,
     privacyAction: "allow",
+    allowedResidencies:
+      (rule === undefined ? policy.default.residency : rule.residency) ?? RESIDENCIES,
   };
 }

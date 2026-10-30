@@ -3,10 +3,12 @@ import {
   configurationError,
   notFoundError,
   providerError,
+  providerUnavailableError,
+  residencyViolationError,
   unauthorizedError,
   validationError,
 } from "../src/domain/errors.js";
-import { targetIdUnchecked } from "../src/domain/model/units.js";
+import { millisecondsUnchecked, targetIdUnchecked } from "../src/domain/model/units.js";
 import {
   domainErrorToErrorType,
   fromZodIssues,
@@ -39,6 +41,33 @@ describe("domainErrorToErrorType", () => {
     });
 
     expect(domainErrorToErrorType(error)).toBe("provider_timeout");
+  });
+
+  it("spec 003: aborted (deadline) → provider_timeout; residency → policy_blocked; unavailable → provider_unavailable", () => {
+    expect(
+      domainErrorToErrorType(
+        providerError({
+          targetId: targetIdUnchecked("mistral-small"),
+          provider: "mistral",
+          cause: "aborted",
+          retryable: false,
+          message: "request deadline reached",
+        }),
+      ),
+    ).toBe("provider_timeout");
+    expect(
+      domainErrorToErrorType(
+        residencyViolationError({
+          ruleId: "default",
+          targetId: targetIdUnchecked("openai-mini"),
+          residency: "us",
+          allowed: ["eu"],
+        }),
+      ),
+    ).toBe("policy_blocked");
+    expect(domainErrorToErrorType(providerUnavailableError(millisecondsUnchecked(1_000)))).toBe(
+      "provider_unavailable",
+    );
   });
 
   it("keeps the feature 001 mappings", () => {

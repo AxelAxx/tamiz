@@ -10,6 +10,7 @@
  */
 import type { ProviderErrorCause } from "../../domain/errors.js";
 import type { CircuitState } from "../../domain/model/circuit.js";
+import type { FallbackReason } from "../../domain/model/fallback.js";
 import type { ProviderName, Residency } from "../../domain/model/model-target.js";
 import type { RequestId, TargetId } from "../../domain/model/units.js";
 
@@ -25,9 +26,6 @@ export const ROUTING_EVENT_TYPES = [
   "stream.failed",
 ] as const;
 export type RoutingEventType = (typeof ROUTING_EVENT_TYPES)[number];
-
-/** Why a target was left; `circuit_open` means it was skipped without a call. */
-export type AbandonReason = Exclude<ProviderErrorCause, "aborted"> | "circuit_open";
 
 interface RoutingEventBase {
   readonly requestId: RequestId;
@@ -54,7 +52,7 @@ export type RoutingEvent = RoutingEventBase &
         readonly waitMs: number;
         readonly reason: ProviderErrorCause;
       }
-    | { readonly type: "fallback"; readonly reason: AbandonReason }
+    | { readonly type: "fallback"; readonly reason: FallbackReason }
     | { readonly type: "target.skipped"; readonly reason: "circuit_open" }
     | { readonly type: "residency.blocked"; readonly allowed: ReadonlyArray<Residency> }
     | {

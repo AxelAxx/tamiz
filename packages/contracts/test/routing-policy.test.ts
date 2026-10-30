@@ -86,6 +86,27 @@ describe("RoutingPolicySchema (FR-019)", () => {
     expect(RoutingPolicySchema.safeParse(policy).success).toBe(true);
   });
 
+  it("spec 003: accepts a resilience section and residency statements, all optional", () => {
+    const policy = examplePolicy();
+    policy["resilience"] = {
+      requestDeadlineMs: 60_000,
+      maxAttempts: 2,
+      backoff: { baseDelayMs: 250, maxDelayMs: 2_000 },
+      circuitBreaker: { failureThreshold: 5, cooldownMs: 30_000 },
+    };
+    rule(policy, 0)["residency"] = ["local"];
+    policy["default"] = { route: ["mistral-small", "ollama-llama"], residency: ["eu", "local"] };
+
+    const result = RoutingPolicySchema.safeParse(policy);
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.resilience?.circuitBreaker?.cooldownMs).toBe(30_000);
+    expect(result.data.rules[0]?.residency).toEqual(["local"]);
+    expect(result.data.default.residency).toEqual(["eu", "local"]);
+    expect(RoutingPolicySchema.safeParse({ ...policy, resilience: {} }).success).toBe(true);
+  });
+
   const rejected: ReadonlyArray<readonly [string, Mutation, string]> = [
     ["an unknown provider", (p) => (target(p, 0)["provider"] = "azure"), "targets.0.provider"],
     [
@@ -118,6 +139,37 @@ describe("RoutingPolicySchema (FR-019)", () => {
     ["an upper-case target id", (p) => (target(p, 0)["id"] = "Ollama"), "targets.0.id"],
     ["an empty model name", (p) => (target(p, 0)["model"] = ""), "targets.0.model"],
     ["no targets", (p) => (p["targets"] = []), "targets"],
+    ["maxAttempts 0", (p) => (p["resilience"] = { maxAttempts: 0 }), "resilience.maxAttempts"],
+    ["maxAttempts 6", (p) => (p["resilience"] = { maxAttempts: 6 }), "resilience.maxAttempts"],
+    [
+      "requestDeadlineMs 999",
+      (p) => (p["resilience"] = { requestDeadlineMs: 999 }),
+      "resilience.requestDeadlineMs",
+    ],
+    [
+      "cooldownMs 999",
+      (p) => (p["resilience"] = { circuitBreaker: { cooldownMs: 999 } }),
+      "resilience.circuitBreaker.cooldownMs",
+    ],
+    [
+      "failureThreshold 0",
+      (p) => (p["resilience"] = { circuitBreaker: { failureThreshold: 0 } }),
+      "resilience.circuitBreaker.failureThreshold",
+    ],
+    [
+      "baseDelayMs 0",
+      (p) => (p["resilience"] = { backoff: { baseDelayMs: 0 } }),
+      "resilience.backoff.baseDelayMs",
+    ],
+    ["an unknown resilience key", (p) => (p["resilience"] = { jitter: "full" }), "resilience"],
+    ["an empty residency list", (p) => (rule(p, 0)["residency"] = []), "rules.0.residency"],
+    ["an unknown residency", (p) => (rule(p, 0)["residency"] = ["mars"]), "rules.0.residency.0"],
+    ["a repeated residency", (p) => (rule(p, 0)["residency"] = ["eu", "eu"]), "rules.0.residency"],
+    [
+      "an empty default residency",
+      (p) => (p["default"] = { route: ["ollama-llama"], residency: [] }),
+      "default.residency",
+    ],
   ];
 
   it.each(rejected)("rejects %s at its path", (_name, mutate, path) => {

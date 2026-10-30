@@ -5,15 +5,16 @@
  *
  * Boot order: validate the environment (including the API key hashes) → load and
  * validate the policy file → check that every provider the policy uses is configured
- * (each step exits 1 listing every issue, before any port is bound) → policy repository
- * → provider registry → `routeInference` → logger → app → `serve()` → one startup line
- * with address, version and policy.
+ * (each step exits 1 listing every issue, before any port is bound) → logger → policy
+ * repository, provider registry, circuit state and routing-events sink → `routeInference`
+ * → app → `serve()` → one startup line with address, version and policy.
  */
 import { serve } from "@hono/node-server";
 import { routeInference } from "./application/use-cases/route-inference.js";
 import type { ConfigurationError } from "./domain/errors.js";
 import type { Result } from "./domain/result.js";
 import { verifyApiKey } from "./infrastructure/auth/api-keys.js";
+import { createInMemoryCircuitState } from "./infrastructure/cache/in-memory-circuit-state.js";
 import { systemClock } from "./infrastructure/clock/system-clock.js";
 import { loadConfig } from "./infrastructure/config/env.js";
 import { checkProviderSettings } from "./infrastructure/config/provider-settings.js";
@@ -21,6 +22,7 @@ import { createProviderRegistry } from "./infrastructure/llm/provider-registry.j
 import { createLogger } from "./infrastructure/logging/logger.js";
 import { loadPolicyFile } from "./infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "./infrastructure/policy/in-memory-policy-repository.js";
+import { createLogRoutingEvents } from "./infrastructure/telemetry/log-routing-events.js";
 import { createApp } from "./presentation/app.js";
 
 /** Returns the value, or prints one `path: message` line per issue and exits 1. */
@@ -37,13 +39,17 @@ const config = orExit(loadConfig(process.env));
 const policy = orExit(await loadPolicyFile(config.policyFile));
 orExit(checkProviderSettings(policy, config));
 
+const logger = createLogger({ level: config.logLevel });
+
 const route = routeInference({
   policies: createInMemoryPolicyRepository(policy),
   providers: createProviderRegistry(config.providers),
   clock: systemClock,
+  // One instance: in-memory circuit state. T-003-06 selects Redis/Valkey when configured.
+  circuitState: createInMemoryCircuitState(systemClock),
+  events: createLogRoutingEvents(logger),
+  random: Math.random,
 });
-
-const logger = createLogger({ level: config.logLevel });
 const startedAt = systemClock.now();
 const app = createApp({
   clock: systemClock,

@@ -1,17 +1,34 @@
 /**
- * Contract DTO → domain input for the routing policy (spec 002 research R-01, R-02).
+ * Contract DTO → domain input for the routing policy (spec 002 research R-01, R-02; spec
+ * 003 adds `residency` and `resilience`, research R-14).
  *
  * The schema has already checked the shape; `validatePolicy` then applies the
- * cross-field rules and the brands. This mapper only drops the optional fields Zod
- * reports as `undefined`, which `exactOptionalPropertyTypes` keeps apart from absent.
+ * cross-field rules, fills the resilience defaults and applies the brands. This mapper
+ * only drops the optional fields Zod reports as `undefined`, which
+ * `exactOptionalPropertyTypes` keeps apart from absent.
  */
-import type { ModelTargetDto, RoutingPolicyDto, RoutingRuleDto } from "@tamiz/contracts";
+import type {
+  ModelTargetDto,
+  ResilienceSettingsDto,
+  RoutingPolicyDto,
+  RoutingRuleDto,
+} from "@tamiz/contracts";
 import type {
   ModelTargetInput,
+  ResilienceSettingsInput,
   RoutingPolicyInput,
   RoutingRuleInput,
   RuleCondition,
 } from "../../domain/model/routing-policy.js";
+
+/** Copies the defined fields only. */
+function defined<T extends Record<string, unknown>>(
+  value: T,
+): { [K in keyof T]?: Exclude<T[K], undefined> } {
+  return Object.fromEntries(Object.entries(value).filter(([, field]) => field !== undefined)) as {
+    [K in keyof T]?: Exclude<T[K], undefined>;
+  };
+}
 
 function toTargetInput(dto: ModelTargetDto): ModelTargetInput {
   const { timeoutMs, ...rest } = dto;
@@ -33,6 +50,16 @@ function toRuleInput(dto: RoutingRuleDto): RoutingRuleInput {
     route: dto.route,
     ...(dto.orderBy !== undefined && { orderBy: dto.orderBy }),
     ...(dto.timeoutMs !== undefined && { timeoutMs: dto.timeoutMs }),
+    ...(dto.residency !== undefined && { residency: dto.residency }),
+  };
+}
+
+function toResilienceInput(dto: ResilienceSettingsDto): ResilienceSettingsInput {
+  const { backoff, circuitBreaker, ...top } = dto;
+  return {
+    ...defined(top),
+    ...(backoff !== undefined && { backoff: defined(backoff) }),
+    ...(circuitBreaker !== undefined && { circuitBreaker: defined(circuitBreaker) }),
   };
 }
 
@@ -43,6 +70,10 @@ export function toDomainPolicyInput(dto: RoutingPolicyDto): RoutingPolicyInput {
     defaultTimeoutMs: dto.defaultTimeoutMs,
     targets: dto.targets.map(toTargetInput),
     rules: dto.rules.map(toRuleInput),
-    default: { route: dto.default.route },
+    default: {
+      route: dto.default.route,
+      ...(dto.default.residency !== undefined && { residency: dto.default.residency }),
+    },
+    ...(dto.resilience !== undefined && { resilience: toResilienceInput(dto.resilience) }),
   };
 }
