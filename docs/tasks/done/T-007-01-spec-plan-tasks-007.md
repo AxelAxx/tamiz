@@ -8,7 +8,7 @@
 | Branch / PR | `007-evals-gate` (Spec Kit naming), cut from `main` at 329e228 / PR opened after this commit |
 | Date | 2026-10-30 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | done as a draft; `spec.md` is `Draft` until Alex reviews it |
+| Status | done; spec reviewed and approved by Alex on 2026-10-30 without changes (`spec.md` flipped to `Approved` in the same PR) |
 
 ## What was done
 

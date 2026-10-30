@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft (awaiting Alex's review)
+**Status**: Approved (reviewed by Alex on 2026-10-30)
 
 **Input**: User description: "007-evals-gate: the eval runner in packages/evals (versioned synthetic JSONL datasets, scorer interface, thresholds, JSON + Markdown report, non-zero exit below threshold, `pnpm evals`), the PII-leak and detection evals (0 % leak for critical identifiers, < 2 % for names, recall ≥ 0.95 on structured identifiers), the routing eval over /v1/simulate (≥ 95 %), the quality (LLM-as-judge, no more than 5 % below the frontier route) and cost (reported vs all-frontier baseline) evals, and a CI `evals` job with local models that blocks a PR below threshold and publishes the results table in the README. Backlog T-007-02 … T-007-06."
 

@@ -94,7 +94,7 @@ Re-check after Phase 1: unchanged, PASS.
 
 ```text
 specs/007-evals-gate/
-├── spec.md              # Approved spec (after review)
+├── spec.md              # Approved spec
 ├── plan.md              # This file
 ├── research.md          # R-01 … R-12
 ├── data-model.md        # Dataset lines, observations, outcomes, report
