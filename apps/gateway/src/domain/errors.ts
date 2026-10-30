@@ -8,8 +8,8 @@
  *
  * Feature 002 adds `provider` and `unauthorized` (spec 002 FR-013, data-model 3.7).
  */
-import type { Milliseconds, TargetId } from "./model/brands.js";
-import type { ProviderName } from "./model/model-target.js";
+import type { Milliseconds, RuleId, TargetId } from "./model/brands.js";
+import type { ProviderName, Residency } from "./model/model-target.js";
 
 /** One offending field or setting: where it is and what was expected. Never the value. */
 export interface ErrorIssue {
@@ -74,12 +74,35 @@ export interface UnauthorizedError {
   readonly message: string;
 }
 
+/**
+ * The chain reached a target outside the decision's allowed residencies; execution
+ * stopped instead of degrading (spec 003 FR-013). Names policy data only.
+ */
+export interface ResidencyViolationError {
+  readonly kind: "residency_violation";
+  readonly ruleId: RuleId | "default";
+  readonly targetId: TargetId;
+  readonly residency: Residency;
+  readonly allowed: ReadonlyArray<Residency>;
+  readonly message: string;
+}
+
+/** Every target of the chain was skipped because its circuit is open (spec 003 FR-015). */
+export interface ProviderUnavailableError {
+  readonly kind: "provider_unavailable";
+  /** The shortest remaining cool-down, at least one second. */
+  readonly retryAfterMs: Milliseconds;
+  readonly message: string;
+}
+
 export type DomainError =
   | ValidationError
   | ConfigurationError
   | NotFoundError
   | ProviderError
-  | UnauthorizedError;
+  | UnauthorizedError
+  | ResidencyViolationError
+  | ProviderUnavailableError;
 
 export function validationError(
   message: string,
@@ -105,6 +128,24 @@ export function providerError(fields: Omit<ProviderError, "kind">): ProviderErro
 
 export function unauthorizedError(message: string): UnauthorizedError {
   return { kind: "unauthorized", message };
+}
+
+export function residencyViolationError(
+  fields: Omit<ResidencyViolationError, "kind" | "message">,
+): ResidencyViolationError {
+  return {
+    kind: "residency_violation",
+    ...fields,
+    message: `rule ${fields.ruleId} does not allow residency ${fields.residency} (target ${fields.targetId})`,
+  };
+}
+
+export function providerUnavailableError(retryAfterMs: Milliseconds): ProviderUnavailableError {
+  return {
+    kind: "provider_unavailable",
+    retryAfterMs,
+    message: "no target available: every circuit of the chain is open",
+  };
 }
 
 /**

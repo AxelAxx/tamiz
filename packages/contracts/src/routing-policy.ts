@@ -52,12 +52,37 @@ export const RuleConditionSchema = z.strictObject({
   requestedModel: z.array(z.string().min(1)).min(1).optional(),
 });
 
+/** Where a rule's (or the default chain's) data may be processed (spec 003 FR-012). */
+export const ResidencyListSchema = z
+  .array(ResidencySchema)
+  .min(1)
+  .refine((list) => new Set(list).size === list.length, "expected each residency at most once");
+
+/** Spec 003 FR-020, research R-14: every field optional; the gateway fills the defaults. */
+export const ResilienceSettingsSchema = z.strictObject({
+  requestDeadlineMs: z.int().min(1_000).optional(),
+  maxAttempts: z.int().min(1).max(5).optional(),
+  backoff: z
+    .strictObject({
+      baseDelayMs: z.int().min(1).optional(),
+      maxDelayMs: z.int().min(1).optional(),
+    })
+    .optional(),
+  circuitBreaker: z
+    .strictObject({
+      failureThreshold: z.int().min(1).optional(),
+      cooldownMs: z.int().min(1_000).optional(),
+    })
+    .optional(),
+});
+
 export const RoutingRuleSchema = z.strictObject({
   id: RuleIdSchema,
   when: RuleConditionSchema,
   route: z.array(TargetIdSchema).min(1),
   orderBy: z.literal("cost").optional(),
   timeoutMs: TimeoutMsSchema.optional(),
+  residency: ResidencyListSchema.optional(),
 });
 
 export const RoutingPolicySchema = z.strictObject({
@@ -66,7 +91,11 @@ export const RoutingPolicySchema = z.strictObject({
   defaultTimeoutMs: TimeoutMsSchema.default(30_000),
   targets: z.array(ModelTargetSchema).min(1),
   rules: z.array(RoutingRuleSchema),
-  default: z.strictObject({ route: z.array(TargetIdSchema).min(1) }),
+  default: z.strictObject({
+    route: z.array(TargetIdSchema).min(1),
+    residency: ResidencyListSchema.optional(),
+  }),
+  resilience: ResilienceSettingsSchema.optional(),
 });
 
 export type ProviderNameDto = z.infer<typeof ProviderNameSchema>;
@@ -76,5 +105,6 @@ export type TaskSizeDto = z.infer<typeof TaskSizeSchema>;
 export type ModelTargetDto = z.infer<typeof ModelTargetSchema>;
 export type RuleConditionDto = z.infer<typeof RuleConditionSchema>;
 export type RoutingRuleDto = z.infer<typeof RoutingRuleSchema>;
+export type ResilienceSettingsDto = z.infer<typeof ResilienceSettingsSchema>;
 /** The validated policy file; `defaultTimeoutMs` is always present after parsing. */
 export type RoutingPolicyDto = z.infer<typeof RoutingPolicySchema>;

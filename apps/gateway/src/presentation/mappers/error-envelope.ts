@@ -44,9 +44,16 @@ export function domainErrorToErrorType(error: DomainError): ErrorType {
     case "configuration":
       return "internal";
     case "provider":
-      return error.cause === "timeout" ? "provider_timeout" : "provider_error";
+      // `aborted` here means the request deadline cut the call short (spec 003 R-07).
+      return error.cause === "timeout" || error.cause === "aborted"
+        ? "provider_timeout"
+        : "provider_error";
     case "unauthorized":
       return "unauthorized";
+    case "residency_violation":
+      return "policy_blocked";
+    case "provider_unavailable":
+      return "provider_unavailable";
     default:
       return assertNever(error);
   }

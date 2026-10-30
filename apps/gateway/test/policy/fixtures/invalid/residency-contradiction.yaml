@@ -1,0 +1,10 @@
+# Invalid policy fixture: residency-contradiction (spec 003 US2-3). The rule allows only
+# the EU and local processing but lists a US target.
+id: bad
+version: 1
+targets:
+  - { id: mistral-small, provider: mistral, model: mistral-small-latest, region: eu-west, residency: eu, pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 } }
+  - { id: openai-mini, provider: openai, model: gpt-4o-mini, region: us-east, residency: us, pricing: { inputUsdPerMillion: 0.15, outputUsdPerMillion: 0.6 } }
+rules:
+  - { id: eu-only, when: {}, residency: [eu, local], route: [mistral-small, openai-mini] }
+default: { route: [mistral-small] }

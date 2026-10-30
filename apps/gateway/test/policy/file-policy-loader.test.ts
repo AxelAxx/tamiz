@@ -102,7 +102,7 @@ describe("loadPolicyFile (FR-020)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.id).toBe("default");
-    expect(result.value.version).toBe(1);
+    expect(result.value.version).toBe(2);
     expect(result.value.defaultTimeoutMs).toBe(30000);
     expect(new Set(result.value.targets.map((target) => target.provider))).toEqual(
       new Set(["ollama", "mistral", "anthropic", "openai"]),
@@ -112,6 +112,33 @@ describe("loadPolicyFile (FR-020)", () => {
     expect(sonnet?.timeoutMs).toBe(45000);
     const cheap = result.value.rules.find((rule) => rule.id === "cheap-short-tasks");
     expect(cheap).toMatchObject({ orderBy: "cost", timeoutMs: 20000 });
+    // Spec 003 R-06: residency statements; long documents never fall back to the US.
+    const longDocs = result.value.rules.find((rule) => rule.id === "long-documents-eu");
+    expect(longDocs).toMatchObject({
+      residency: ["eu", "local"],
+      route: ["mistral-small", "ollama-llama"],
+    });
+    expect(result.value.rules.find((rule) => rule.id === "pinned-local")?.residency).toEqual([
+      "local",
+    ]);
+    expect(result.value.resilience).toEqual({
+      requestDeadlineMs: 60000,
+      maxAttempts: 2,
+      backoff: { baseDelayMs: 250, maxDelayMs: 2000 },
+      circuitBreaker: { failureThreshold: 5, cooldownMs: 30000 },
+    });
+  });
+
+  it("spec 003 US2-3: rejects a rule whose chain contradicts its residency statement", async () => {
+    const lines = (await issuesOf(invalid("residency-contradiction"))).map(line);
+
+    expect(
+      lines.some((text) =>
+        text.startsWith(
+          'rules.0.route.1: expected a target whose residency is in the rule\'s residency list (target residency "us")',
+        ),
+      ),
+    ).toBe(true);
   });
 
   it("loads the shipped local-only policy", async () => {

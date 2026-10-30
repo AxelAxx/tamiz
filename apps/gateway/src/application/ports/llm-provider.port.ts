@@ -21,6 +21,8 @@ export interface ProviderCompletionInput {
   readonly temperature?: number;
   readonly maxTokens?: number;
   readonly timeoutMs: Milliseconds;
+  /** Ends the call early: request deadline or client disconnect (spec 003 research R-03). */
+  readonly signal?: AbortSignal;
 }
 
 /** Token counts as the provider reported them. */

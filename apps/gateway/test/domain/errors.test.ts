@@ -4,9 +4,15 @@ import {
   type DomainError,
   PROVIDER_ERROR_CAUSES,
   providerError,
+  providerUnavailableError,
+  residencyViolationError,
   unauthorizedError,
 } from "../../src/domain/errors.js";
-import { targetIdUnchecked } from "../../src/domain/model/units.js";
+import {
+  millisecondsUnchecked,
+  ruleIdUnchecked,
+  targetIdUnchecked,
+} from "../../src/domain/model/units.js";
 
 // Spec 002 FR-013 (tasks.md T017): `DomainError` gains `provider` and `unauthorized`.
 
@@ -22,6 +28,10 @@ function describeKind(error: DomainError): string {
       return `provider:${error.cause}`;
     case "unauthorized":
       return "unauthorized";
+    case "residency_violation":
+      return `residency_violation:${error.residency}`;
+    case "provider_unavailable":
+      return `provider_unavailable:${error.retryAfterMs}`;
     default:
       return assertNever(error);
   }
@@ -121,5 +131,34 @@ describe("DomainError union", () => {
       "provider:network",
       "unauthorized",
     ]);
+  });
+});
+
+describe("spec 003 error kinds (FR-013, FR-015, R-13)", () => {
+  it("residencyViolationError names the rule, the target and its residency, nothing else", () => {
+    const error = residencyViolationError({
+      ruleId: ruleIdUnchecked("long-documents-eu"),
+      targetId: targetIdUnchecked("openai-mini"),
+      residency: "us",
+      allowed: ["eu", "local"],
+    });
+
+    expect(error).toEqual({
+      kind: "residency_violation",
+      ruleId: "long-documents-eu",
+      targetId: "openai-mini",
+      residency: "us",
+      allowed: ["eu", "local"],
+      message: "rule long-documents-eu does not allow residency us (target openai-mini)",
+    });
+    expect(describeKind(error)).toBe("residency_violation:us");
+  });
+
+  it("providerUnavailableError carries the retry hint", () => {
+    const error = providerUnavailableError(millisecondsUnchecked(12_000));
+
+    expect(error.kind).toBe("provider_unavailable");
+    expect(error.retryAfterMs).toBe(12_000);
+    expect(describeKind(error)).toBe("provider_unavailable:12000");
   });
 });

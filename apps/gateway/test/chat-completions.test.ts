@@ -1,9 +1,26 @@
 import { ChatCompletionResponseSchema, ErrorEnvelopeSchema } from "@tamiz/contracts";
+import { createFakeClock } from "@tamiz/test-utils";
 import { describe, expect, it } from "vitest";
-import { providerError } from "../src/domain/errors.js";
-import { err } from "../src/domain/result.js";
+import type { ProviderCompletionInput } from "../src/application/ports/llm-provider.port.js";
+import { classifyTask } from "../src/application/use-cases/classify-task.js";
+import type { RouteInference } from "../src/application/use-cases/route-inference.js";
+import { providerError, residencyViolationError } from "../src/domain/errors.js";
+import { decide } from "../src/domain/model/routing-decision.js";
+import { millisecondsUnchecked, targetIdUnchecked } from "../src/domain/model/units.js";
+import { err, ok } from "../src/domain/result.js";
+import { createInMemoryCircuitState } from "../src/infrastructure/cache/in-memory-circuit-state.js";
 import { createLogger } from "../src/infrastructure/logging/logger.js";
-import { AUTH, createTestApp, DEMO_KEY, DEMO_KEY_HASH } from "./helpers/app.js";
+import { createLogRoutingEvents } from "../src/infrastructure/telemetry/log-routing-events.js";
+import { createApp } from "../src/presentation/app.js";
+import {
+  AUTH,
+  createTestApp,
+  DEMO_KEY,
+  DEMO_KEY_HASH,
+  defaultPolicy,
+  START,
+} from "./helpers/app.js";
+import { noopLogger } from "./helpers/noop-logger.js";
 
 /** The real pino logger writing to memory: what an operator would actually see. */
 function capturedLogger() {
@@ -201,9 +218,9 @@ describe("POST /v1/chat/completions", () => {
     ["rate_limited", 502, "provider_error"],
     ["timeout", 504, "provider_timeout"],
   ] as const)(
-    "US1-6: a provider %s maps to %i %s with the routing headers",
+    "US1-4, US1-6: every target failing with %s → %i %s, last target and the earlier ones in the headers",
     async (cause, status, type) => {
-      const { app } = await createTestApp({
+      const { send } = await createTestApp({
         script: (input) =>
           err(
             providerError({
@@ -216,16 +233,172 @@ describe("POST /v1/chat/completions", () => {
           ),
       });
 
-      const response = await app.request("/v1/chat/completions", post(VALID));
+      const response = await send("/v1/chat/completions", post(VALID));
 
       expect(response.status).toBe(status);
       const { error } = await envelope(response);
       expect(error.type).toBe(type);
       expect(JSON.stringify(error)).not.toMatch(/at .*\.ts/);
-      expect(response.headers.get("x-tamiz-route")).toBe("mistral-small");
+      // Default chain: mistral-small → openai-mini → ollama-llama.
+      expect(response.headers.get("x-tamiz-route")).toBe("ollama-llama");
       expect(response.headers.get("x-tamiz-rule")).toBe("default");
+      expect(response.headers.get("x-tamiz-fallback")).toBe(
+        `mistral-small:${cause},openai-mini:${cause}`,
+      );
     },
   );
+});
+
+describe("resilience on the endpoint (spec 003)", () => {
+  const failOn =
+    (ids: ReadonlyArray<string>, cause: "http_error" | "authentication" = "http_error") =>
+    (input: ProviderCompletionInput) =>
+      ids.includes(input.target.id)
+        ? err(
+            providerError({
+              targetId: input.target.id,
+              provider: input.target.provider,
+              cause,
+              retryable: cause === "http_error",
+              message: "provider failed",
+              ...(cause === "http_error" ? { status: 503 } : { status: 401 }),
+            }),
+          )
+        : ok({
+            text: "Hola.",
+            finishReason: "stop" as const,
+            usage: { promptTokens: 12, completionTokens: 3 },
+            modelName: `${input.target.model}-served`,
+          });
+
+  it("US1-1: a failing primary falls back; 200 with route and fallback headers", async () => {
+    const { send, provider } = await createTestApp({ script: failOn(["mistral-small"]) });
+
+    const response = await send("/v1/chat/completions", post(VALID));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.get("x-tamiz-route")).toBe("openai-mini");
+    expect(response.headers.get("x-tamiz-fallback")).toBe("mistral-small:http_error");
+    expect(provider.calls.map((call) => call.target.id)).toEqual([
+      "mistral-small",
+      "mistral-small",
+      "openai-mini",
+    ]);
+  });
+
+  it("US1-2: a rejected credential is not retried and is reported as authentication", async () => {
+    const { send, provider } = await createTestApp({
+      script: failOn(["mistral-small"], "authentication"),
+    });
+
+    const response = await send("/v1/chat/completions", post(VALID));
+
+    expect(response.headers.get("x-tamiz-fallback")).toBe("mistral-small:authentication");
+    expect(provider.calls.map((call) => call.target.id)).toEqual(["mistral-small", "openai-mini"]);
+  });
+
+  it("US1-3: no fallback, no x-tamiz-fallback header", async () => {
+    const { send } = await createTestApp();
+
+    const response = await send("/v1/chat/completions", post(VALID));
+
+    expect(response.status).toBe(200);
+    expect(response.headers.has("x-tamiz-fallback")).toBe(false);
+  });
+
+  it("US1-5: model and cost are the answering target's", async () => {
+    const { send } = await createTestApp({ script: failOn(["mistral-small"]) });
+
+    const body = ChatCompletionResponseSchema.parse(
+      await (await send("/v1/chat/completions", post(VALID))).json(),
+    );
+
+    expect(body.model).toBe("gpt-4o-mini-served");
+    // openai-mini: 0.15 / 0.6 USD per million tokens.
+    expect(body.usage.cost_usd).toBeCloseTo((12 * 0.15 + 3 * 0.6) / 1e6, 12);
+  });
+
+  it("US2-1: a residency violation → 451 policy_blocked with policy data only", async () => {
+    const policy = await defaultPolicy();
+    const blocked: RouteInference = async (request) => {
+      const decision = decide(policy, { ...classifyTask(request) });
+      const target = decision.chain[1];
+      if (target === undefined) throw new Error("the default chain has two targets");
+      return err({
+        decision,
+        failure: {
+          kind: "residency",
+          target,
+          error: residencyViolationError({
+            ruleId: decision.ruleId,
+            targetId: target.id,
+            residency: target.residency,
+            allowed: ["eu", "local"],
+          }),
+          abandoned: [{ targetId: decision.chain[0]?.id ?? target.id, reason: "timeout" }],
+        },
+      });
+    };
+    const app = createApp({
+      clock: createFakeClock(START),
+      version: "0.1.0",
+      startedAt: START,
+      logger: noopLogger,
+      routeInference: blocked,
+      authenticate: (key) => (key === DEMO_KEY ? "demo" : undefined),
+    });
+
+    const response = await app.request("/v1/chat/completions", post(VALID));
+
+    expect(response.status).toBe(451);
+    const { error } = await envelope(response);
+    expect(error.type).toBe("policy_blocked");
+    expect(error.message).toBe("rule default does not allow residency us (target openai-mini)");
+    expect(error.message).not.toContain("Hola");
+    expect(response.headers.get("x-tamiz-route")).toBe("openai-mini");
+    expect(response.headers.get("x-tamiz-fallback")).toBe("mistral-small:timeout");
+  });
+
+  it("US4-7: every circuit open → 503 provider_unavailable with retry-after in whole seconds", async () => {
+    const clock = createFakeClock(START);
+    const circuitState = createInMemoryCircuitState(clock);
+    for (const id of ["mistral-small", "openai-mini", "ollama-llama"]) {
+      await circuitState.open(targetIdUnchecked(id), millisecondsUnchecked(30_000));
+    }
+    const { send, provider, clock: appClock } = await createTestApp({ circuitState });
+    appClock.set(new Date(START.getTime() + 500));
+
+    const response = await send("/v1/chat/completions", post(VALID));
+
+    expect(response.status).toBe(503);
+    expect((await envelope(response)).error.type).toBe("provider_unavailable");
+    // 29.5 s left, rounded up.
+    expect(response.headers.get("retry-after")).toBe("30");
+    expect(response.headers.get("x-tamiz-route")).toBe("ollama-llama");
+    expect(response.headers.get("x-tamiz-fallback")).toBe(
+      "mistral-small:circuit_open,openai-mini:circuit_open",
+    );
+    expect(provider.calls).toHaveLength(0);
+  });
+
+  it("US5-3: the log output of a failing, falling-back request holds no message content", async () => {
+    const captured = capturedLogger();
+    const { send } = await createTestApp({
+      script: failOn(["mistral-small"]),
+      logger: captured.logger,
+      events: createLogRoutingEvents(captured.logger),
+    });
+
+    await send(
+      "/v1/chat/completions",
+      post({ ...VALID, messages: [{ role: "user", content: "PROMPT-MARKER confidential" }] }),
+    );
+
+    const output = captured.output();
+    expect(output).toContain('"event":"fallback"');
+    expect(output).not.toContain("PROMPT-MARKER");
+    expect(output).not.toContain(DEMO_KEY);
+  });
 });
 
 describe("API key authentication (US5)", () => {

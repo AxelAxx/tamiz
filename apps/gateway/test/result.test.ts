@@ -93,6 +93,10 @@ describe("DomainError", () => {
         return `provider:${error.cause}`;
       case "unauthorized":
         return "unauthorized";
+      case "residency_violation":
+        return `residency_violation:${error.targetId}`;
+      case "provider_unavailable":
+        return "provider_unavailable";
       default:
         return assertNever(error);
     }

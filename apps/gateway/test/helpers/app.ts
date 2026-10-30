@@ -4,16 +4,19 @@ import {
   createInMemoryPolicyRepository,
   createScriptedPort,
 } from "@tamiz/test-utils";
+import type { CircuitStatePort } from "../../src/application/ports/circuit-state.port.js";
 import type {
   ProviderCompletion,
   ProviderCompletionInput,
 } from "../../src/application/ports/llm-provider.port.js";
 import type { LoggerPort } from "../../src/application/ports/logger.port.js";
+import type { RoutingEventsPort } from "../../src/application/ports/routing-events.port.js";
 import { routeInference } from "../../src/application/use-cases/route-inference.js";
 import type { ProviderError } from "../../src/domain/errors.js";
 import type { RoutingPolicy } from "../../src/domain/model/routing-policy.js";
 import { ok, type Result } from "../../src/domain/result.js";
 import { hashApiKey, verifyApiKey } from "../../src/infrastructure/auth/api-keys.js";
+import { createInMemoryCircuitState } from "../../src/infrastructure/cache/in-memory-circuit-state.js";
 import { loadPolicyFile } from "../../src/infrastructure/policy/file-policy-loader.js";
 import { createApp } from "../../src/presentation/app.js";
 import { noopLogger } from "./noop-logger.js";
@@ -46,6 +49,9 @@ export async function createTestApp(
       input: ProviderCompletionInput,
     ) => CompletionResult | Promise<CompletionResult>;
     readonly logger?: LoggerPort;
+    readonly policy?: RoutingPolicy;
+    readonly circuitState?: CircuitStatePort;
+    readonly events?: RoutingEventsPort;
   } = {},
 ) {
   const clock = createFakeClock(START);
@@ -60,9 +66,12 @@ export async function createTestApp(
         })),
   );
   const route = routeInference({
-    policies: createInMemoryPolicyRepository(await defaultPolicy()),
+    policies: createInMemoryPolicyRepository(options.policy ?? (await defaultPolicy())),
     providers: { resolve: () => ({ complete: provider.fn }) },
     clock,
+    circuitState: options.circuitState ?? createInMemoryCircuitState(clock),
+    events: options.events ?? { emit: () => {} },
+    random: () => 0.5,
   });
   const records = [{ clientId: "demo", keyHash: DEMO_KEY_HASH }];
   const app = createApp({
@@ -73,5 +82,8 @@ export async function createTestApp(
     routeInference: route,
     authenticate: (key) => verifyApiKey(key, records),
   });
-  return { app, provider, clock };
+  /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */
+  const send = (path: string, init?: RequestInit) =>
+    clock.drive(Promise.resolve(app.request(path, init)));
+  return { app, provider, clock, send };
 }
