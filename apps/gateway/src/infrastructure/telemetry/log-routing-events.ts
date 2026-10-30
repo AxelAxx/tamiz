@@ -26,12 +26,16 @@ const FIELDS = [
   "allowed",
   "from",
   "to",
+  "level",
+  "counts",
+  "cached",
 ] as const;
 
 function isNotable(event: RoutingEvent): boolean {
   switch (event.type) {
     case "residency.blocked":
     case "stream.failed":
+    case "privacy.detector_failed":
       return true;
     case "circuit.changed":
       return event.to === "open";

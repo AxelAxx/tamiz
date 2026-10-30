@@ -53,6 +53,11 @@ export const EnvSchema = z.object({
   OPENAI_API_KEY: optionalSetting(z.string()),
   OPENAI_BASE_URL: optionalSetting(HttpUrlSchema),
   REDIS_URL: optionalSetting(RedisUrlSchema),
+  // Spec 005 FR-007 … FR-009: the privacy service is required (US3-5); the rest tunes it.
+  TAMIZ_PRIVACY_URL: HttpUrlSchema,
+  TAMIZ_PRIVACY_TIMEOUT_MS: z.coerce.number().int().min(100).max(30_000).default(2_000),
+  TAMIZ_PRIVACY_CACHE_MAX_ENTRIES: z.coerce.number().int().min(0).max(1_000_000).default(1_000),
+  TAMIZ_PRIVACY_CACHE_TTL_MS: z.coerce.number().int().min(1_000).default(600_000),
 });
 
 type EnvKey = keyof z.infer<typeof EnvSchema>;
@@ -74,6 +79,10 @@ const EXPECTED_FORMAT: Readonly<Record<EnvKey, string>> = {
   OPENAI_API_KEY: "an OpenAI API key",
   OPENAI_BASE_URL: "an http(s) URL",
   REDIS_URL: "a redis:// or rediss:// URL",
+  TAMIZ_PRIVACY_URL: "the privacy service's http(s) base URL, for example http://privacy:8001",
+  TAMIZ_PRIVACY_TIMEOUT_MS: "an integer between 100 and 30000",
+  TAMIZ_PRIVACY_CACHE_MAX_ENTRIES: "an integer between 0 and 1000000 (0 disables the cache)",
+  TAMIZ_PRIVACY_CACHE_TTL_MS: "an integer of at least 1000",
 };
 
 export interface GatewayConfig {
@@ -90,6 +99,15 @@ export interface GatewayConfig {
   readonly apiKeys: ReadonlyArray<ApiKeyRecord>;
   /** Shared circuit state (spec 003 FR-031); absent = in-memory, one instance. */
   readonly redisUrl?: string;
+  /** The privacy service and its detection cache (spec 005 FR-007 … FR-009). */
+  readonly privacy: PrivacyServiceConfig;
+}
+
+export interface PrivacyServiceConfig {
+  readonly url: string;
+  readonly timeoutMs: number;
+  readonly cacheMaxEntries: number;
+  readonly cacheTtlMs: number;
 }
 
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -152,6 +170,12 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
       },
       apiKeys: apiKeys.value,
       ...(values.REDIS_URL === undefined ? {} : { redisUrl: values.REDIS_URL }),
+      privacy: Object.freeze({
+        url: values.TAMIZ_PRIVACY_URL,
+        timeoutMs: values.TAMIZ_PRIVACY_TIMEOUT_MS,
+        cacheMaxEntries: values.TAMIZ_PRIVACY_CACHE_MAX_ENTRIES,
+        cacheTtlMs: values.TAMIZ_PRIVACY_CACHE_TTL_MS,
+      }),
     }),
   );
 }

@@ -50,6 +50,19 @@ export {
   HealthResponseSchema,
 } from "./health.js";
 export {
+  type PrivacyAnalyzeRequestDto,
+  PrivacyAnalyzeRequestSchema,
+  type PrivacyAnalyzeResponseDto,
+  PrivacyAnalyzeResponseSchema,
+  type PrivacyEntityKindDto,
+  PrivacyEntityKindSchema,
+  PrivacyErrorEnvelopeSchema,
+  type PrivacyFindingDto,
+  PrivacyFindingSchema,
+  type PrivacySensitivityDto,
+  PrivacySensitivitySchema,
+} from "./privacy-service.js";
+export {
   type ModelTargetDto,
   ModelTargetSchema,
   PricingSchema,

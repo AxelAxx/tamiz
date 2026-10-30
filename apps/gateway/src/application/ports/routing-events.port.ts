@@ -7,11 +7,19 @@
  * credentials or upstream bodies, so none can be emitted. `emit` is fire-and-forget: a
  * sink must never throw into the request. Feature 003 logs the events; feature 006 adds
  * trace, metric and audit sinks behind the same port.
+ *
+ * Feature 005 adds the privacy events (spec 005 FR-015). They carry levels, kinds and
+ * counts, never content, and have no target: they happen before one is chosen.
  */
 import type { ProviderErrorCause } from "../../domain/errors.js";
 import type { CircuitState } from "../../domain/model/circuit.js";
 import type { FallbackReason } from "../../domain/model/fallback.js";
 import type { ProviderName, Residency } from "../../domain/model/model-target.js";
+import type {
+  DetectorFailure,
+  EntityKind,
+  SensitivityLevel,
+} from "../../domain/model/sensitivity.js";
 import type { RequestId, TargetId } from "../../domain/model/units.js";
 
 export const ROUTING_EVENT_TYPES = [
@@ -24,6 +32,8 @@ export const ROUTING_EVENT_TYPES = [
   "residency.blocked",
   "circuit.changed",
   "stream.failed",
+  "privacy.inspected",
+  "privacy.detector_failed",
 ] as const;
 export type RoutingEventType = (typeof ROUTING_EVENT_TYPES)[number];
 
@@ -36,7 +46,20 @@ interface RoutingEventBase {
   readonly at: string;
 }
 
-export type RoutingEvent = RoutingEventBase &
+/** Steps of the privacy inspection (spec 005 FR-015): no target is involved yet. */
+export type PrivacyEvent = { readonly requestId: RequestId; readonly at: string } & (
+  | {
+      readonly type: "privacy.inspected";
+      readonly level: SensitivityLevel;
+      readonly counts: Readonly<Partial<Record<EntityKind, number>>>;
+      readonly cached: boolean;
+    }
+  | { readonly type: "privacy.detector_failed"; readonly reason: DetectorFailure }
+);
+
+export type RoutingEvent = PrivacyEvent | TargetEvent;
+
+export type TargetEvent = RoutingEventBase &
   (
     | { readonly type: "attempt.started"; readonly attempt: number }
     | { readonly type: "attempt.succeeded"; readonly attempt: number; readonly durationMs: number }

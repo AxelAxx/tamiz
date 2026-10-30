@@ -43,6 +43,8 @@ function inheritedEnv(): Record<string, string | undefined> {
 /** Test values, never real credentials: no provider is called during boot. */
 const ALL_PROVIDER_KEYS = {
   TAMIZ_API_KEYS: `demo:${"0".repeat(64)}`,
+  // Required since spec 005 (T-005-03); never called before the gateway inspects requests.
+  TAMIZ_PRIVACY_URL: "http://privacy.test:8001",
   MISTRAL_API_KEY: "test-mistral-key-SECRET",
   ANTHROPIC_API_KEY: "test-anthropic-key-SECRET",
   OPENAI_API_KEY: "test-openai-key-SECRET",

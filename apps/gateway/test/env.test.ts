@@ -5,7 +5,10 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/infrastructure/config/env.js";
 
 /** A valid `TAMIZ_API_KEYS` (required since spec 002 T-002-06); a test hash, not a secret. */
-const BASE = { TAMIZ_API_KEYS: `demo:${"0".repeat(64)}` } as const;
+const BASE = {
+  TAMIZ_API_KEYS: `demo:${"0".repeat(64)}`,
+  TAMIZ_PRIVACY_URL: "http://privacy.test:8001",
+} as const;
 
 // Spec 001, US4 scenarios 2 and 3 (FR-015): configuration is loaded through a schema and
 // an invalid environment yields a typed failure, never an exception.
@@ -29,6 +32,12 @@ describe("loadConfig", () => {
       policyFile: "policies/default.yaml",
       providers: { ollama: { baseUrl: "http://localhost:11434/v1" } },
       apiKeys: [{ clientId: "demo", keyHash: "0".repeat(64) }],
+      privacy: {
+        url: "http://privacy.test:8001",
+        timeoutMs: 2_000,
+        cacheMaxEntries: 1_000,
+        cacheTtlMs: 600_000,
+      },
     });
   });
 
