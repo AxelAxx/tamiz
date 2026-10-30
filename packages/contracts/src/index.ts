@@ -4,6 +4,14 @@
  */
 
 export {
+  AUDIT_PAGE_DEFAULT,
+  AUDIT_PAGE_MAX,
+  type AuditPageDto,
+  AuditPageSchema,
+  type AuditQueryDto,
+  AuditQuerySchema,
+} from "./admin.js";
+export {
   AuditAbandonedSchema,
   type AuditEntryDto,
   AuditEntrySchema,

@@ -352,6 +352,7 @@ describe("resilience on the endpoint (spec 003)", () => {
       routeInference: blocked,
       streamInference: () => Promise.reject(new Error("not streamed")),
       simulatePolicy: () => Promise.reject(new Error("not simulated")),
+      queryAuditLog: () => Promise.reject(new Error("not queried")),
       authenticate: (key) =>
         key === DEMO_KEY ? { clientId: "demo", role: "client" as const } : undefined,
     });

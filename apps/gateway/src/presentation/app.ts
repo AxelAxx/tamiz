@@ -13,12 +13,15 @@ import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import type { ClockPort } from "../application/ports/clock.port.js";
 import type { LoggerPort } from "../application/ports/logger.port.js";
+import type { QueryAuditLog } from "../application/use-cases/query-audit-log.js";
 import type { RouteInference } from "../application/use-cases/route-inference.js";
 import type { SimulatePolicy } from "../application/use-cases/simulate-policy.js";
 import type { StreamInference } from "../application/use-cases/stream-inference.js";
 import { fromZodIssues, httpStatusFor, toErrorEnvelope } from "./mappers/error-envelope.js";
+import { adminOnly } from "./middlewares/admin-only.js";
 import { type Authenticate, apiKeyAuth } from "./middlewares/api-key-auth.js";
 import { requestId } from "./middlewares/request-id.js";
+import { registerAdminAudit } from "./routes/admin/audit.js";
 import { type ChatEnv, ROUTE_HEADER, registerChatCompletions } from "./routes/chat-completions.js";
 import { registerHealth } from "./routes/health.js";
 import { registerSimulate } from "./routes/simulate.js";
@@ -32,6 +35,8 @@ export interface AppDeps {
   readonly streamInference: StreamInference;
   /** `POST /v1/simulate` (spec 005 FR-018). */
   readonly simulatePolicy: SimulatePolicy;
+  /** `GET /v1/admin/audit` (spec 006 FR-007). */
+  readonly queryAuditLog: QueryAuditLog;
   /** Maps a presented API key to its client id (hash + constant-time compare). */
   readonly authenticate: Authenticate;
 }
@@ -113,6 +118,7 @@ export function createApp(deps: AppDeps): GatewayApp {
     }),
   );
   app.use("/v1/*", apiKeyAuth(deps.authenticate));
+  app.use("/v1/admin/*", adminOnly());
   // The JSON validator skips bodies of another media type; refuse them explicitly.
   app.use("/v1/*", async (c, next) => {
     const contentType = c.req.header("content-type")?.toLowerCase() ?? "";
@@ -132,6 +138,7 @@ export function createApp(deps: AppDeps): GatewayApp {
   registerHealth(app, deps);
   registerChatCompletions(app, deps.routeInference, deps.streamInference);
   registerSimulate(app, deps.simulatePolicy);
+  registerAdminAudit(app, deps.queryAuditLog);
 
   app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
     type: "http",

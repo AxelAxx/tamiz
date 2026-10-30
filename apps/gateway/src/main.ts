@@ -13,6 +13,7 @@ import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { serve } from "@hono/node-server";
 import { withAudit, withAuditStream } from "./application/audit/with-audit.js";
 import { inspectSensitivity } from "./application/use-cases/inspect-sensitivity.js";
+import { queryAuditLog } from "./application/use-cases/query-audit-log.js";
 import {
   type RouteInferenceDeps,
   routeInference,
@@ -23,7 +24,10 @@ import type { ConfigurationError } from "./domain/errors.js";
 import type { Milliseconds } from "./domain/model/units.js";
 import type { Result } from "./domain/result.js";
 import { createAuthenticator } from "./infrastructure/auth/api-keys.js";
-import { createInMemoryAuditLog } from "./infrastructure/cache/in-memory-audit-log.js";
+import {
+  createInMemoryAuditLog,
+  type InMemoryAuditLog,
+} from "./infrastructure/cache/in-memory-audit-log.js";
 import { createInMemoryCircuitState } from "./infrastructure/cache/in-memory-circuit-state.js";
 import { createInMemoryDetectionCache } from "./infrastructure/cache/in-memory-detection-cache.js";
 import { createRedisCircuitState } from "./infrastructure/cache/redis-circuit-state.js";
@@ -34,7 +38,10 @@ import { createProviderRegistry } from "./infrastructure/llm/provider-registry.j
 import { createLogger } from "./infrastructure/logging/logger.js";
 import { createPostgresApiKeyRepository } from "./infrastructure/persistence/api-key-repository.js";
 import { createAsyncAuditWriter } from "./infrastructure/persistence/async-writer.js";
-import { createPostgresAuditStore } from "./infrastructure/persistence/audit-log-repository.js";
+import {
+  createPostgresAuditReader,
+  createPostgresAuditStore,
+} from "./infrastructure/persistence/audit-log-repository.js";
 import { connectDatabase, runMigrations } from "./infrastructure/persistence/db.js";
 import { loadPolicyFile } from "./infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "./infrastructure/policy/in-memory-policy-repository.js";
@@ -152,6 +159,11 @@ const app = createApp({
   routeInference: route,
   streamInference: stream,
   simulatePolicy: simulatePolicy(routing),
+  queryAuditLog: queryAuditLog(
+    database === undefined
+      ? (auditLog as InMemoryAuditLog)
+      : createPostgresAuditReader(database.db),
+  ),
   authenticate: createAuthenticator(
     config.apiKeys,
     database === undefined ? undefined : createPostgresApiKeyRepository(database.db),

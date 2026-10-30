@@ -5,6 +5,12 @@
  * for content, so nothing else can be stored. `insertBatch` writes many entries in one
  * statement (the async writer batches them, research R-02).
  */
+import { and, desc, eq, gte, lt, type SQL, sql } from "drizzle-orm";
+import type {
+  AuditFilters,
+  AuditPosition,
+  AuditReaderPort,
+} from "../../application/ports/audit-reader.port.js";
 import type {
   AuditBlockReason,
   AuditEntry,
@@ -119,6 +125,41 @@ export function createPostgresAuditStore(db: Database): AuditStore {
     async insertBatch(entries) {
       if (entries.length === 0) return;
       await db.insert(auditEntries).values(entries.map(toRow)).onConflictDoNothing();
+    },
+  };
+}
+
+function conditions(filters: AuditFilters, after: AuditPosition | undefined): SQL | undefined {
+  const parts: SQL[] = [];
+  if (filters.from !== undefined) parts.push(gte(auditEntries.createdAt, filters.from));
+  if (filters.to !== undefined) parts.push(lt(auditEntries.createdAt, filters.to));
+  if (filters.route !== undefined) parts.push(eq(auditEntries.targetId, filters.route));
+  if (filters.rule !== undefined) parts.push(eq(auditEntries.ruleId, filters.rule));
+  if (filters.sensitivity !== undefined)
+    parts.push(eq(auditEntries.sensitivity, filters.sensitivity));
+  if (filters.action !== undefined) parts.push(eq(auditEntries.privacyAction, filters.action));
+  if (filters.outcome !== undefined) parts.push(eq(auditEntries.outcome, filters.outcome));
+  // `?` is jsonb key existence, served by the GIN index on `entities`.
+  if (filters.entity !== undefined) parts.push(sql`${auditEntries.entities} ? ${filters.entity}`);
+  if (after !== undefined) {
+    parts.push(
+      sql`(${auditEntries.createdAt}, ${auditEntries.id}) < (${after.startedAt}::timestamptz, ${after.id}::uuid)`,
+    );
+  }
+  return parts.length === 0 ? undefined : and(...parts);
+}
+
+/** Keyset pages over `audit_entries` (spec 006 FR-007, research R-05). */
+export function createPostgresAuditReader(db: Database): AuditReaderPort {
+  return {
+    async page(filters, after, limit) {
+      const rows = await db
+        .select()
+        .from(auditEntries)
+        .where(conditions(filters, after))
+        .orderBy(desc(auditEntries.createdAt), desc(auditEntries.id))
+        .limit(limit);
+      return rows.map(fromRow);
     },
   };
 }
