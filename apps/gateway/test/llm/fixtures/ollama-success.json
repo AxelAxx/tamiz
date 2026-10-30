@@ -1,0 +1,15 @@
+{
+  "id": "chatcmpl-fixture-ollama",
+  "object": "chat.completion",
+  "created": 1793350800,
+  "model": "qwen2.5:7b",
+  "system_fingerprint": "fp_ollama",
+  "choices": [
+    {
+      "index": 0,
+      "message": { "role": "assistant", "content": "Hello from Ollama." },
+      "finish_reason": "stop"
+    }
+  ],
+  "usage": { "prompt_tokens": 12, "completion_tokens": 4, "total_tokens": 16 }
+}
