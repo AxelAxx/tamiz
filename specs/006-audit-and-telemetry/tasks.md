@@ -80,10 +80,10 @@ approved by Alex (`T-006-01`).
 
 ### Tests first
 
-- [ ] T012 [P] [US2] `gateway/test/persistence/migrations.test.ts` (Testcontainers
+- [x] T012 [P] [US2] `gateway/test/persistence/migrations.test.ts` (Testcontainers
   `postgres:17`, skipped with a reason without Docker): a migration from empty creates the
   tables and indexes, and a second run is a no-op (US2-1).
-- [ ] T013 [P] [US1] `gateway/test/persistence/async-writer.test.ts` (fake clock, fake
+- [x] T013 [P] [US1] `gateway/test/persistence/async-writer.test.ts` (fake clock, fake
   store):
   - batching;
   - one retry and then a drop;
@@ -91,7 +91,7 @@ approved by Alex (`T-006-01`).
   - every drop emits `audit.dropped`;
   - flush on shutdown;
   - a request is never delayed (US1-6).
-- [ ] T014 [P] `gateway/test/persistence/api-key-repository.test.ts` (Testcontainers) and
+- [x] T014 [P] `gateway/test/persistence/api-key-repository.test.ts` (Testcontainers) and
   `test/config/env-006.test.ts`:
   - lookup by hash;
   - a revoked key is refused;
@@ -101,14 +101,14 @@ approved by Alex (`T-006-01`).
 
 ### Implementation
 
-- [ ] T015 Install Drizzle and postgres.js; add `gateway/drizzle.config.ts`,
+- [x] T015 Install Drizzle and postgres.js; add `gateway/drizzle.config.ts`,
   `infrastructure/persistence/{db,schema,migrate}.ts`, the generated migration, and the
   scripts `db:generate`, `db:migrate` and `api-key:add`.
-- [ ] T016 `persistence/{audit-log-repository,async-writer,api-key-repository}.ts`; roles in
+- [x] T016 `persistence/{audit-log-repository,async-writer,api-key-repository}.ts`; roles in
   `auth/api-keys.ts`; `main.ts` chooses Postgres or in-memory.
-- [ ] T017 `docker-compose.yml` gains `postgres:17` (volume, healthcheck); document
+- [x] T017 `docker-compose.yml` gains `postgres:17` (volume, healthcheck); document
   `.env.example`.
-- [ ] T018 Gates (CI runs Testcontainers); record; backlog row.
+- [x] T018 Gates (CI runs Testcontainers); record; backlog row.
 
 ## Phase 3: `T-006-04` — Audit query API (US2)
 

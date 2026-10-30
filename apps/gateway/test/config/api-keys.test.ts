@@ -23,8 +23,8 @@ describe("parseApiKeys (FR-030)", () => {
     expect(result).toEqual({
       ok: true,
       value: [
-        { clientId: "acme", keyHash: HASH_A },
-        { clientId: "beta", keyHash: HASH_B },
+        { clientId: "acme", keyHash: HASH_A, role: "client" },
+        { clientId: "beta", keyHash: HASH_B, role: "client" },
       ],
     });
   });
