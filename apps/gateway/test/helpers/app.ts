@@ -17,6 +17,7 @@ import {
   type RouteInferenceDeps,
   routeInference,
 } from "../../src/application/use-cases/route-inference.js";
+import { simulatePolicy } from "../../src/application/use-cases/simulate-policy.js";
 import { streamInference } from "../../src/application/use-cases/stream-inference.js";
 import type { ProviderError } from "../../src/domain/errors.js";
 import type { RoutingPolicy } from "../../src/domain/model/routing-policy.js";
@@ -47,6 +48,7 @@ export async function defaultPolicy(): Promise<RoutingPolicy> {
 export const NO_CHAT = {
   routeInference: () => Promise.reject(new Error("routeInference must not be called")),
   streamInference: () => Promise.reject(new Error("streamInference must not be called")),
+  simulatePolicy: () => Promise.reject(new Error("simulatePolicy must not be called")),
   authenticate: () => undefined,
 } as const;
 
@@ -107,6 +109,7 @@ export async function createTestApp(
     logger: options.logger ?? noopLogger,
     routeInference: route,
     streamInference: stream,
+    simulatePolicy: simulatePolicy(deps),
     authenticate: (key) => verifyApiKey(key, records),
   });
   /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */

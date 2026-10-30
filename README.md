@@ -10,7 +10,7 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: features `001` … `004` done.
+> Status: features `001` … `005` done.
 >
 > - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
 >   gateway skeleton, architecture check, CI.
@@ -42,7 +42,23 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >   007 measures what reaches providers. Walkthrough:
 >   [`specs/004-privacy-service/quickstart.md`](specs/004-privacy-service/quickstart.md).
 >
-> Next: feature `005-privacy-aware-routing`.
+> - **005 privacy-aware routing**: every request is inspected by the privacy service
+>   before routing, and the policy's `privacy` section turns the sensitivity level into an
+>   action:
+>   - `allow`;
+>   - `anonymize`: `<KIND_n>` placeholders reach the provider, and the answer is restored
+>     in memory, also when streaming, even with placeholders split across chunks;
+>   - `restrict_to_local`;
+>   - `block` (`451`).
+>
+>   With the default policy, critical data (DNI, NIE, NSS, IBAN, card) never leaves the
+>   machine, and names, emails and phones leave only anonymized and only to EU or local
+>   targets. If the privacy service fails, the gateway fails closed. Responses say what
+>   happened (`x-tamiz-sensitivity`, `x-tamiz-privacy`), and `POST /v1/simulate` shows the
+>   decision without calling any model. Walkthrough:
+>   [`specs/005-privacy-aware-routing/quickstart.md`](specs/005-privacy-aware-routing/quickstart.md).
+>
+> Next: feature `006-audit-and-telemetry`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 

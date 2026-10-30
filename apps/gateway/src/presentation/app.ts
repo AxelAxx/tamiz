@@ -14,12 +14,14 @@ import { HTTPException } from "hono/http-exception";
 import type { ClockPort } from "../application/ports/clock.port.js";
 import type { LoggerPort } from "../application/ports/logger.port.js";
 import type { RouteInference } from "../application/use-cases/route-inference.js";
+import type { SimulatePolicy } from "../application/use-cases/simulate-policy.js";
 import type { StreamInference } from "../application/use-cases/stream-inference.js";
 import { fromZodIssues, httpStatusFor, toErrorEnvelope } from "./mappers/error-envelope.js";
 import { type Authenticate, apiKeyAuth } from "./middlewares/api-key-auth.js";
 import { requestId } from "./middlewares/request-id.js";
 import { type ChatEnv, ROUTE_HEADER, registerChatCompletions } from "./routes/chat-completions.js";
 import { registerHealth } from "./routes/health.js";
+import { registerSimulate } from "./routes/simulate.js";
 
 export interface AppDeps {
   readonly clock: ClockPort;
@@ -28,6 +30,8 @@ export interface AppDeps {
   readonly logger: LoggerPort;
   readonly routeInference: RouteInference;
   readonly streamInference: StreamInference;
+  /** `POST /v1/simulate` (spec 005 FR-018). */
+  readonly simulatePolicy: SimulatePolicy;
   /** Maps a presented API key to its client id (hash + constant-time compare). */
   readonly authenticate: Authenticate;
 }
@@ -127,6 +131,7 @@ export function createApp(deps: AppDeps): GatewayApp {
 
   registerHealth(app, deps);
   registerChatCompletions(app, deps.routeInference, deps.streamInference);
+  registerSimulate(app, deps.simulatePolicy);
 
   app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
     type: "http",

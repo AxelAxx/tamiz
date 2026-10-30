@@ -123,7 +123,7 @@ export function resolveUsage(
 
 /** Inspection, classification and decision, with the privacy events (spec 005 FR-015). */
 export async function decideWithPrivacy(
-  deps: RouteInferenceDeps,
+  deps: Pick<RouteInferenceDeps, "inspect" | "policies" | "events" | "clock">,
   request: InferenceRequest,
   signal?: AbortSignal,
 ): Promise<{

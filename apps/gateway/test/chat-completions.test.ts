@@ -351,6 +351,7 @@ describe("resilience on the endpoint (spec 003)", () => {
       logger: noopLogger,
       routeInference: blocked,
       streamInference: () => Promise.reject(new Error("not streamed")),
+      simulatePolicy: () => Promise.reject(new Error("not simulated")),
       authenticate: (key) => (key === DEMO_KEY ? "demo" : undefined),
     });
 

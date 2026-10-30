@@ -292,18 +292,18 @@ suites pass.
 
 ### Tests first
 
-- [ ] T044 [P] [US5] `contracts/test/simulate.test.ts`:
+- [x] T044 [P] [US5] `contracts/test/simulate.test.ts`:
   - `contracts/simulate.example.json` parses;
   - unknown fields are rejected;
   - `blockReason` appears only with `block`.
-- [ ] T045 [P] [US5] `gateway/test/application/simulate-policy.test.ts`. The use case has
+- [x] T045 [P] [US5] `gateway/test/application/simulate-policy.test.ts`. The use case has
   no provider port, by type. Cases:
   - DNI → `critical`, `restrict_to_local`, a local chain (US5-1);
   - `anonymize` → `providerMessages` with placeholders and the notice (US5-2);
   - the result has no value, and no audit or routing "attempt" event is emitted (US5-3);
   - a block → `decision: block`, an empty chain, `blockReason`;
   - a detector failure → `detector: timeout` and `sensitivity: unknown`.
-- [ ] T046 [P] [US5] `gateway/test/simulate.test.ts` (`app.request()`):
+- [x] T046 [P] [US5] `gateway/test/simulate.test.ts` (`app.request()`):
   - 401 without a key (US5-4);
   - 400 on an invalid body;
   - a 200 response shape matching the contract;
@@ -311,27 +311,27 @@ suites pass.
 
 ### Implementation
 
-- [ ] T047 `contracts/src/simulate.ts` (data-model §1.3), exported from the index.
-- [ ] T048 `gateway/src/application/use-cases/simulate-policy.ts`.
-- [ ] T049 `gateway/src/presentation/routes/simulate.ts`, registered in `app.ts`, with an
+- [x] T047 `contracts/src/simulate.ts` (data-model §1.3), exported from the index.
+- [x] T048 `gateway/src/application/use-cases/simulate-policy.ts`.
+- [x] T049 `gateway/src/presentation/routes/simulate.ts`, registered in `app.ts`, with an
   OpenAPI component.
 
 ### Verification
 
-- [ ] T050 Run the gates and `quickstart.md` §3, §7. Write
+- [x] T050 Run the gates and `quickstart.md` §3, §7. Write
   `docs/tasks/done/T-005-06-simulate-endpoint.md` and flip the backlog row.
 
 ---
 
 ## Phase 6: Polish and cross-cutting
 
-- [ ] T051 [P] `README.md` "Status": feature 005 done, the privacy headers, the
+- [x] T051 [P] `README.md` "Status": feature 005 done, the privacy headers, the
   simulator, a link to the quickstart.
-- [ ] T052 [P] `docs/architecture.md`: the request flow with inspection, actions and
+- [x] T052 [P] `docs/architecture.md`: the request flow with inspection, actions and
   restoration; the privacy events.
-- [ ] T053 [P] Update the gateway README (environment, behaviour table), `.env.example`,
+- [x] T053 [P] Update the gateway README (environment, behaviour table), `.env.example`,
   `policies/README.md` (the `privacy` section) and `CLAUDE.md` section 12.
-- [ ] T054 Run `quickstart.md` end to end and record the results in the last task record
+- [x] T054 Run `quickstart.md` end to end and record the results in the last task record
   of the feature.
 
 T051–T054 belong to the last PR of the feature (`T-005-05` or `T-005-06`, whichever

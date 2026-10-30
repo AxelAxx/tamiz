@@ -16,6 +16,7 @@ import {
   type RouteInferenceDeps,
   routeInference,
 } from "./application/use-cases/route-inference.js";
+import { simulatePolicy } from "./application/use-cases/simulate-policy.js";
 import { streamInference } from "./application/use-cases/stream-inference.js";
 import type { ConfigurationError } from "./domain/errors.js";
 import type { Milliseconds } from "./domain/model/units.js";
@@ -97,6 +98,7 @@ const app = createApp({
   logger,
   routeInference: route,
   streamInference: stream,
+  simulatePolicy: simulatePolicy(routing),
   authenticate: (key) => verifyApiKey(key, config.apiKeys),
 });
 

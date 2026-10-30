@@ -93,3 +93,9 @@ export {
   type TaskTypeDto,
   TaskTypeSchema,
 } from "./routing-policy.js";
+export {
+  SimulatedEntitySchema,
+  SimulatedTargetSchema,
+  type SimulateResponse,
+  SimulateResponseSchema,
+} from "./simulate.js";
