@@ -66,56 +66,56 @@ in CI.
 
 ### Setup
 
-- [ ] T001 Create `privacy/pyproject.toml` (uv, `requires-python = ">=3.12,<3.13"`,
+- [x] T001 Create `privacy/pyproject.toml` (uv, `requires-python = ">=3.12,<3.13"`,
   runtime deps FastAPI, Uvicorn, pydantic-settings; dev deps Ruff, mypy, pytest,
   pytest-cov, import-linter, hypothesis, httpx), `privacy/.python-version` (3.12),
   `privacy/uv.lock`; tool sections: Ruff (line length 100, rule sets `E F I B UP SIM
   RUF S PT`), mypy (`strict = true`, `disallow_any_explicit` for `privacy.*`), pytest
   (`testpaths = ["tests"]`, markers `nlp` and `metrics`, `--strict-markers`),
   import-linter contracts of research R-05
-- [ ] T002 Create the package tree `src/{domain,application,infrastructure,api}/__init__.py`,
+- [x] T002 Create the package tree `src/{domain,application,infrastructure,api}/__init__.py`,
   `src/py.typed`, `src/main.py` (empty composition root), `privacy/tests/__init__.py`
 
 ### Tests first
 
-- [ ] T003 [P] [US5] `privacy/tests/api/test_health.py`: ready → 200
+- [x] T003 [P] [US5] `privacy/tests/api/test_health.py`: ready → 200
   `{"status": "ok", "ready": true, "version": …}`; readiness returning false → 503
   `not_ready` envelope (US5-5)
-- [ ] T004 [P] [US5] `privacy/tests/api/test_logging.py`: one JSON line per request with
+- [x] T004 [P] [US5] `privacy/tests/api/test_logging.py`: one JSON line per request with
   only the allow-listed fields of research R-09; an unexpected `extra` field is dropped;
   `x-request-id` is used and echoed, or generated (US5-1, infrastructure part)
-- [ ] T005 [P] `privacy/tests/unit/test_settings.py`: defaults; invalid
+- [x] T005 [P] `privacy/tests/unit/test_settings.py`: defaults; invalid
   `PRIVACY_PORT` / `PRIVACY_DEFAULT_MIN_SCORE` → exit with the variable named and the
   value absent from the message
 
 ### Implementation
 
-- [ ] T006 `src/infrastructure/settings.py`: `Settings` of data-model §3 and
+- [x] T006 `src/infrastructure/settings.py`: `Settings` of data-model §3 and
   `load_settings()` that exits 1 on invalid values (variable names only)
-- [ ] T007 `src/api/logging.py`: JSON formatter with the allow-list, request-id
+- [x] T007 `src/api/logging.py`: JSON formatter with the allow-list, request-id
   middleware, one line per request; Uvicorn access log disabled
-- [ ] T008 `src/api/errors.py`: `ErrorEnvelope`, handlers for `HTTPException` and
+- [x] T008 `src/api/errors.py`: `ErrorEnvelope`, handlers for `HTTPException` and
   unexpected exceptions (500 `internal_error`, generic message, type logged, no message
   text)
-- [ ] T009 `src/api/app.py`: `create_app(readiness, settings) -> FastAPI` with
+- [x] T009 `src/api/app.py`: `create_app(readiness, settings) -> FastAPI` with
   `GET /health`; `src/main.py`: settings → app → `uvicorn.run` (`python -m privacy.main`)
-- [ ] T010 `privacy/tests/conftest.py`: `client` fixture over `create_app`, and the
+- [x] T010 `privacy/tests/conftest.py`: `client` fixture over `create_app`, and the
   `log_capture` fixture that records every log line and exposes
   `assert_absent(*strings)`
-- [ ] T011 [P] `privacy/Dockerfile` (multi-stage: `uv sync --frozen --no-dev` in the
+- [x] T011 [P] `privacy/Dockerfile` (multi-stage: `uv sync --frozen --no-dev` in the
   builder, `python:3.12-slim` runtime, user `privacy` uid 10001, `EXPOSE 8001`,
   `HEALTHCHECK` with `python -c` and `urllib`) and `privacy/.dockerignore`
-- [ ] T012 [P] `.github/workflows/ci.yml`: the Python steps of research R-06 (setup-uv
+- [x] T012 [P] `.github/workflows/ci.yml`: the Python steps of research R-06 (setup-uv
   pinned by SHA with cache on `services/privacy/uv.lock`, sync, ruff check, ruff format
   check, mypy, lint-imports, pytest with coverage, docker build), `timeout-minutes: 25`;
   `biome.json` ignores `services/privacy/**`; `.gitignore` adds
   `services/privacy/reports/`
-- [ ] T013 [P] `privacy/README.md`: purpose, layers, commands (`uv sync`, gates, run),
+- [x] T013 [P] `privacy/README.md`: purpose, layers, commands (`uv sync`, gates, run),
   link to the spec
 
 ### Verification
 
-- [ ] T014 Run the gates of `quickstart.md` §1–§2 locally and the full `pnpm` gates;
+- [x] T014 Run the gates of `quickstart.md` §1–§2 locally and the full `pnpm` gates;
   push, confirm the CI log shows every Python step and the Docker build; write
   `docs/tasks/done/T-004-02-privacy-skeleton.md`, flip the backlog row
 

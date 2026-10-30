@@ -1,0 +1,94 @@
+[project]
+name = "tamiz-privacy"
+version = "0.1.0"
+description = "Tamiz privacy service: personal-data detection and reversible anonymization for Spanish text."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.120",
+  "pydantic>=2.12",
+  "pydantic-settings>=2.11",
+  "uvicorn>=0.38",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28",
+  "hypothesis>=6.140",
+  "import-linter>=2.5",
+  "mypy>=1.18",
+  "pytest>=8.4",
+  "pytest-cov>=7.0",
+  "ruff>=0.14",
+]
+
+[build-system]
+requires = ["uv_build>=0.11,<0.12"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "privacy"
+
+# --- Ruff -------------------------------------------------------------------------------
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "S", "PT"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"] # pytest asserts
+
+# --- mypy (strict; constitution VII) ----------------------------------------------------
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src", "tests"]
+mypy_path = "src"
+explicit_package_bases = true
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = "privacy.*"
+disallow_any_explicit = true
+
+# --- pytest -----------------------------------------------------------------------------
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = ["--strict-markers", "-ra", "--import-mode=importlib"]
+markers = [
+  "nlp: loads the real spaCy model (slow, ~550 MB)",
+  "metrics: detection metrics over the synthetic corpus, with thresholds",
+]
+
+[tool.coverage.run]
+source = ["privacy"]
+branch = true
+
+# --- import-linter (constitution I; research R-05) --------------------------------------
+
+[tool.importlinter]
+root_package = "privacy"
+include_external_packages = true
+
+[[tool.importlinter.contracts]]
+name = "Layers: main > api | infrastructure > application > domain"
+type = "layers"
+layers = [
+  "privacy.main",
+  "privacy.api | privacy.infrastructure",
+  "privacy.application",
+  "privacy.domain",
+]
+
+[[tool.importlinter.contracts]]
+name = "Domain and application import no framework or library"
+type = "forbidden"
+source_modules = ["privacy.domain", "privacy.application"]
+forbidden_modules = ["fastapi", "pydantic", "pydantic_settings", "starlette", "uvicorn"]

@@ -24,6 +24,9 @@ blob-report/
 playwright/.cache/
 
 # --- Python / uv ---
+.coverage
+coverage.xml
+services/privacy/reports/
 __pycache__/
 *.py[cod]
 *.egg-info/
