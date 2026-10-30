@@ -1,0 +1,322 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "Tamiz privacy service",
+    "summary": "Personal-data detection and reversible anonymization for Spanish text.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Health",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/analyze": {
+      "post": {
+        "summary": "Analyze",
+        "description": "Personal data found in `text` (kinds, offsets, scores; never values) and its level.",
+        "operationId": "analyze_analyze_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnalyzeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnalyzeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body larger than 1 MiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AnalyzeRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Text to analyze. May be empty."
+          },
+          "language": {
+            "type": "string",
+            "const": "es",
+            "title": "Language",
+            "description": "Only Spanish in this version.",
+            "default": "es"
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Score",
+            "description": "Findings below are dropped. Default: the service's PRIVACY_DEFAULT_MIN_SCORE (0.5)."
+          },
+          "entities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EntityKind"
+                },
+                "type": "array",
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entities",
+            "description": "Kinds to report. Default: all."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnalyzeRequest"
+      },
+      "AnalyzeResponse": {
+        "properties": {
+          "findings": {
+            "items": {
+              "$ref": "#/components/schemas/FindingOut"
+            },
+            "type": "array",
+            "title": "Findings",
+            "description": "Sorted by start, non-overlapping."
+          },
+          "counts": {
+            "additionalProperties": {
+              "type": "integer"
+            },
+            "propertyNames": {
+              "$ref": "#/components/schemas/EntityKind"
+            },
+            "type": "object",
+            "title": "Counts",
+            "description": "Only kinds with at least one finding."
+          },
+          "sensitivity_level": {
+            "$ref": "#/components/schemas/SensitivityLevel"
+          }
+        },
+        "type": "object",
+        "required": [
+          "findings",
+          "counts",
+          "sensitivity_level"
+        ],
+        "title": "AnalyzeResponse"
+      },
+      "EntityKind": {
+        "type": "string",
+        "enum": [
+          "DNI",
+          "NIE",
+          "CIF",
+          "IBAN",
+          "NSS",
+          "PHONE",
+          "EMAIL",
+          "CREDIT_CARD",
+          "PERSON",
+          "LOCATION"
+        ],
+        "title": "EntityKind"
+      },
+      "ErrorBody": {
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ErrorType"
+          },
+          "message": {
+            "type": "string",
+            "title": "Message"
+          },
+          "field": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Field"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "type",
+          "message"
+        ],
+        "title": "ErrorBody"
+      },
+      "ErrorEnvelope": {
+        "properties": {
+          "error": {
+            "$ref": "#/components/schemas/ErrorBody"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "error"
+        ],
+        "title": "ErrorEnvelope"
+      },
+      "ErrorType": {
+        "type": "string",
+        "enum": [
+          "invalid_request",
+          "not_found",
+          "payload_too_large",
+          "not_ready",
+          "internal_error"
+        ]
+      },
+      "FindingOut": {
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/EntityKind"
+          },
+          "start": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Start",
+            "description": "Inclusive offset (Unicode code points)."
+          },
+          "end": {
+            "type": "integer",
+            "exclusiveMinimum": 0.0,
+            "title": "End",
+            "description": "Exclusive offset (Unicode code points)."
+          },
+          "score": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Score"
+          }
+        },
+        "type": "object",
+        "required": [
+          "kind",
+          "start",
+          "end",
+          "score"
+        ],
+        "title": "FindingOut"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "const": "ok",
+            "title": "Status"
+          },
+          "ready": {
+            "type": "boolean",
+            "title": "Ready"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "status",
+          "ready",
+          "version"
+        ],
+        "title": "HealthResponse"
+      },
+      "SensitivityLevel": {
+        "type": "string",
+        "enum": [
+          "none",
+          "low",
+          "high",
+          "critical"
+        ],
+        "title": "SensitivityLevel"
+      }
+    }
+  }
+}

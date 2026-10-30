@@ -6,9 +6,12 @@ readme = "README.md"
 license = "Apache-2.0"
 requires-python = ">=3.12,<3.13"
 dependencies = [
+  "es-core-news-lg",
   "fastapi>=0.120",
+  "presidio-analyzer>=2.2.366,<2.3",
   "pydantic>=2.12",
   "pydantic-settings>=2.11",
+  "spacy>=3.8.7,<3.9",
   "uvicorn>=0.38",
 ]
 
@@ -20,6 +23,7 @@ dev = [
   "mypy>=1.18",
   "pytest>=8.4",
   "pytest-cov>=7.0",
+  "python-stdnum>=2.1",
   "ruff>=0.14",
 ]
 
@@ -29,6 +33,9 @@ build-backend = "uv_build"
 
 [tool.uv.build-backend]
 module-name = "privacy"
+
+[tool.uv.sources]
+es-core-news-lg = { url = "https://github.com/explosion/spacy-models/releases/download/es_core_news_lg-3.8.0/es_core_news_lg-3.8.0-py3-none-any.whl" }
 
 # --- Ruff -------------------------------------------------------------------------------
 
@@ -47,7 +54,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "S", "PT"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "tests"]
+files = ["src", "tests", "scripts"]
 mypy_path = "src"
 explicit_package_bases = true
 plugins = ["pydantic.mypy"]
@@ -91,4 +98,12 @@ layers = [
 name = "Domain and application import no framework or library"
 type = "forbidden"
 source_modules = ["privacy.domain", "privacy.application"]
-forbidden_modules = ["fastapi", "pydantic", "pydantic_settings", "starlette", "uvicorn"]
+forbidden_modules = [
+  "fastapi",
+  "presidio_analyzer",
+  "pydantic",
+  "pydantic_settings",
+  "spacy",
+  "starlette",
+  "uvicorn",
+]

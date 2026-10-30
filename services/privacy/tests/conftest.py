@@ -8,6 +8,7 @@ from fastapi.testclient import TestClient
 
 from privacy.api.app import create_app
 from privacy.api.logging import JsonFormatter
+from tests.support.fakes import FakeAnalyzer
 from tests.support.logs import LogCapture
 
 
@@ -32,7 +33,7 @@ def log_capture() -> Iterator[LogCapture]:
 @pytest.fixture
 def make_client() -> Callable[..., TestClient]:
     def make(*, ready: bool = True) -> TestClient:
-        app = create_app(readiness=lambda: ready)
+        app = create_app(FakeAnalyzer(ready=ready))
         return TestClient(app, raise_server_exceptions=False)
 
     return make

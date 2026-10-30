@@ -66,6 +66,8 @@ def configure_logging(level: str) -> None:
     for name in ("uvicorn", "uvicorn.error", "uvicorn.access"):
         logging.getLogger(name).handlers.clear()
         logging.getLogger(name).propagate = True
+    # Presidio logs per-request decisions at INFO/DEBUG; keep only its warnings.
+    logging.getLogger("presidio-analyzer").setLevel(logging.WARNING)
 
 
 def _request_id(scope: Scope) -> str:

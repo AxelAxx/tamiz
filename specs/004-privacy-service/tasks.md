@@ -131,72 +131,72 @@ OpenAPI document. **Independent test**: `uv run pytest` (fake analyzer) and
 
 ### Tests first
 
-- [ ] T015 [P] [US1] `privacy/tests/unit/test_sensitivity.py`: `LEVEL_BY_KIND` is total
+- [x] T015 [P] [US1] `privacy/tests/unit/test_sensitivity.py`: `LEVEL_BY_KIND` is total
   over `EntityKind`; `level_of` gives `none` for no findings (US1-3), `critical` with a
   `DNI` finding (US1-2), `low` with only `LOCATION` or `CIF` (US1-4), `high` with
   person + email + phone (US1-1, domain part); `counts_of`
-- [ ] T016 [P] [US1] `privacy/tests/unit/test_overlap.py`: higher score wins; tie →
+- [x] T016 [P] [US1] `privacy/tests/unit/test_overlap.py`: higher score wins; tie →
   `SPECIFICITY` order; tie → longer span; hypothesis: output sorted, non-overlapping,
   subset of input, idempotent (spec edge cases)
-- [ ] T017 [P] [US1] `privacy/tests/unit/test_analyze_text.py` with a fake
+- [x] T017 [P] [US1] `privacy/tests/unit/test_analyze_text.py` with a fake
   `PiiAnalyzerPort`: `min_score` filter before the level (US1-5); `kinds` filter;
   empty text → no findings, `none`
-- [ ] T018 [P] [US1] `privacy/tests/api/test_analyze.py` with the fake analyzer:
+- [x] T018 [P] [US1] `privacy/tests/api/test_analyze.py` with the fake analyzer:
   response shape of `contracts/http.md`; `counts` only for present kinds; no substring
   of the request text of length ≥ 3 appears anywhere in the response body (US1-6);
   `none` for a text without data (US1-3); 20 concurrent requests with different texts
   get their own results
-- [ ] T019 [P] [US5] `privacy/tests/api/test_limits.py`: body of 1 MiB + 1 byte → 413
+- [x] T019 [P] [US5] `privacy/tests/api/test_limits.py`: body of 1 MiB + 1 byte → 413
   `payload_too_large`, with `content-length` and with a chunked body, analyzer never
   called; exactly 1 MiB accepted (US5-3)
-- [ ] T020 [P] [US5] `privacy/tests/api/test_errors.py`: non-JSON, missing `text`,
+- [x] T020 [P] [US5] `privacy/tests/api/test_errors.py`: non-JSON, missing `text`,
   `text` not a string, unknown field, `language: "en"`, `min_score: 2`, `entities: []`
   → 400 `invalid_request` with `field`; the offending value never appears in the body
   or the logs (US5-4)
-- [ ] T021 [P] [US6] `privacy/tests/api/test_openapi.py`: `app.openapi()` serialised
+- [x] T021 [P] [US6] `privacy/tests/api/test_openapi.py`: `app.openapi()` serialised
   equals `privacy/openapi.json` byte for byte (US6-1); `EntityKind` and
   `SensitivityLevel` are named components with closed `enum`s; request schemas have
   `additionalProperties: false` (US6-2)
-- [ ] T022 [P] [US1] `privacy/tests/nlp/test_analyze_nlp.py` (`@pytest.mark.nlp`, real
+- [x] T022 [P] [US1] `privacy/tests/nlp/test_analyze_nlp.py` (`@pytest.mark.nlp`, real
   engine): a Spanish sentence with a name and an email → `PERSON` and `EMAIL` with exact
   spans, level `high` (US1-1, phone added in T048); a location; an English sentence
   with an email still finds the email (edge case)
-- [ ] T023 [P] [US1] `privacy/tests/nlp/test_latency.py` (`nlp`): 20 warm-up and 100
+- [x] T023 [P] [US1] `privacy/tests/nlp/test_latency.py` (`nlp`): 20 warm-up and 100
   timed `/analyze` calls on a 2 000-character text, p95 < 200 ms, p95 printed (SC-004)
 
 ### Implementation
 
-- [ ] T024 `src/domain/entity_kind.py` and `src/domain/finding.py` (data-model §1.1,
+- [x] T024 `src/domain/entity_kind.py` and `src/domain/finding.py` (data-model §1.1,
   §1.2: `finding()` factory returns `None` for `start < 0`, `end <= start` or a score
   outside 0–1)
-- [ ] T025 `src/domain/sensitivity.py` (data-model §1.3)
-- [ ] T026 `src/domain/overlap.py` (data-model §1.4, research R-08)
-- [ ] T027 `src/application/ports.py` and `src/application/analyze_text.py`
+- [x] T025 `src/domain/sensitivity.py` (data-model §1.3)
+- [x] T026 `src/domain/overlap.py` (data-model §1.4, research R-08)
+- [x] T027 `src/application/ports.py` and `src/application/analyze_text.py`
   (data-model §2)
-- [ ] T028 Add the Spanish model as a locked wheel dependency (`[tool.uv.sources]`,
+- [x] T028 Add the Spanish model as a locked wheel dependency (`[tool.uv.sources]`,
   research R-03) and `presidio-analyzer`; mypy overrides for untyped modules
   (research R-04)
-- [ ] T029 `src/infrastructure/presidio_analyzer.py`: `build_engine(settings)` with the
+- [x] T029 `src/infrastructure/presidio_analyzer.py`: `build_engine(settings)` with the
   explicit registry of research R-02 (spaCy `PER`/`LOC` only, `EmailRecognizer`,
   `CreditCardRecognizer`), `PRESIDIO_TO_KIND`, `PresidioAnalyzer` implementing the port
-- [ ] T030 `src/api/schemas.py` (data-model §4; `extra="forbid"`; `min_score`
+- [x] T030 `src/api/schemas.py` (data-model §4; `extra="forbid"`; `min_score`
   `ge=0, le=1`; `entities` `min_length=1` when present)
-- [ ] T031 `src/api/limits.py`: 1 MiB limit on `content-length` and while streaming the
+- [x] T031 `src/api/limits.py`: 1 MiB limit on `content-length` and while streaming the
   body; `src/api/errors.py`: `RequestValidationError` handler → 400 with the dotted
   `loc`, message from the error type only, never `input`
-- [ ] T032 `POST /analyze` in `src/api/app.py` (`create_app(analyzer, settings)`;
+- [x] T032 `POST /analyze` in `src/api/app.py` (`create_app(analyzer, settings)`;
   readiness from `analyzer.is_ready`), request log fields `text_length`, `counts`,
   `level`; `src/main.py` builds the engine before serving (research R-11)
-- [ ] T033 `privacy/scripts/export_openapi.py` (writes `openapi.json` with two-space
+- [x] T033 `privacy/scripts/export_openapi.py` (writes `openapi.json` with two-space
   indentation and a trailing newline; `--check` exits 1 on drift); commit
   `privacy/openapi.json`
 
 ### Verification
 
-- [ ] T034 `quickstart.md` §1–§3 and §5 (`/health`, `/analyze`, the 400 example);
+- [x] T034 `quickstart.md` §1–§3 and §5 (`/health`, `/analyze`, the 400 example);
   confirm CI ran the `nlp` tests with the model from the uv cache and record the CI time
   of the Python steps
-- [ ] T035 Write `docs/tasks/done/T-004-03-analyzer-analyze-endpoint.md` (note: the
+- [x] T035 Write `docs/tasks/done/T-004-03-analyzer-analyze-endpoint.md` (note: the
   backlog row's "phone detected" assertion lands in `T-004-05` with the Spanish phone
   recognizer, T048), flip the backlog row
 
