@@ -191,11 +191,11 @@ approved by Alex (`T-006-01`).
 
 ## Phase 6: Polish
 
-- [ ] T034 [P] README status (006), the admin API section and the Jaeger screenshot
+- [x] T034 [P] README status (006), the admin API section and the Jaeger screenshot
   placeholder.
-- [ ] T035 [P] `docs/architecture.md` (audit and tracing in the request flow, tables);
+- [x] T035 [P] `docs/architecture.md` (audit and tracing in the request flow, tables);
   `CLAUDE.md` section 12 (`db:*`, `api-key:add`, `docker compose up postgres jaeger`).
-- [ ] T036 Run the quickstart and record it in the last task record of the feature.
+- [x] T036 Run the quickstart and record it in the last task record of the feature.
 
 ## Dependencies
 

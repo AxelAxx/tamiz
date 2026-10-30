@@ -10,7 +10,7 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: features `001` … `005` done.
+> Status: features `001` … `006` done.
 >
 > - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
 >   gateway skeleton, architecture check, CI.
@@ -58,7 +58,27 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >   decision without calling any model. Walkthrough:
 >   [`specs/005-privacy-aware-routing/quickstart.md`](specs/005-privacy-aware-routing/quickstart.md).
 >
-> Next: feature `006-audit-and-telemetry`.
+> - **006 audit and telemetry**: every request that reaches the routing decision leaves
+>   one audit entry: the decision, the entity kinds and counts, target, fallbacks, tokens,
+>   cost, the "everything to the frontier model" baseline cost, and latency. It never holds
+>   content; the messages are identified only by an HMAC. Entries go to PostgreSQL with
+>   migrations at boot and an asynchronous batched writer, or to a bounded in-memory log.
+>   Admin keys (`403` for client keys) open the admin API:
+>   - `GET /v1/admin/audit`: filtered, keyset-paginated entries;
+>   - `GET /v1/admin/cost`: actual vs baseline cost by day, route or model;
+>   - `GET /v1/admin/providers`: circuit state, error rate and latency p50/p95 per target.
+>
+>   Each request is also an OpenTelemetry trace: a `tamiz.request` span with the decision,
+>   one `chat {model}` span per provider attempt with the GenAI semantic-convention
+>   attributes, and routing, circuit and privacy steps as span events. Spans are exported
+>   over OTLP when `OTEL_EXPORTER_OTLP_ENDPOINT` is set (`docker compose up jaeger`). A
+>   capture test searches logs, events, audit entries and spans for the test texts and
+>   finds none. Walkthrough:
+>   [`specs/006-audit-and-telemetry/quickstart.md`](specs/006-audit-and-telemetry/quickstart.md).
+>
+>   <!-- Jaeger screenshot: added with T-OPS-01 / T-DOC-01, once the full stack runs. -->
+>
+> Next: feature `007-evals-gate`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
@@ -90,7 +110,10 @@ Commits follow Conventional Commits and are checked by commitlint on `commit-msg
 To run the gateway locally, copy `.env.example` (every variable is documented there),
 generate a key with `pnpm --filter @tamiz/gateway generate-api-key <client>`, and start
 it with `pnpm --filter @tamiz/gateway dev`. `docker compose up valkey` plus
-`REDIS_URL=redis://localhost:6379` shares circuit breaker state between instances.
+`REDIS_URL=redis://localhost:6379` shares circuit breaker state between instances;
+`docker compose up postgres` with `DATABASE_URL` keeps the audit log, and
+`docker compose up jaeger` with `OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318` shows
+the traces (UI on http://localhost:16686).
 
 ## Planned quick start
 
