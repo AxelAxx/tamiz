@@ -32,6 +32,8 @@ function describeKind(error: DomainError): string {
       return `residency_violation:${error.residency}`;
     case "provider_unavailable":
       return `provider_unavailable:${error.retryAfterMs}`;
+    case "privacy_blocked":
+      return `privacy_blocked:${error.reason}`;
     default:
       return assertNever(error);
   }

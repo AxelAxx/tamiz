@@ -3,8 +3,15 @@
 id: bad
 version: 1
 targets:
+  - { id: ollama-llama, provider: ollama, model: llama3.1:8b, region: local, residency: local, pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 } }
   - { id: mistral-small, provider: mistral, model: mistral-small-latest, region: eu-west, residency: eu, pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 } }
   - { id: openai-mini, provider: openai, model: gpt-4o-mini, region: us-east, residency: us, pricing: { inputUsdPerMillion: 0.15, outputUsdPerMillion: 0.6 } }
 rules:
   - { id: eu-only, when: {}, residency: [eu, local], route: [mistral-small, openai-mini] }
 default: { route: [mistral-small] }
+
+# Spec 005 FR-002: every policy declares what happens per sensitivity level.
+privacy:
+  onDetectorError: restrict_to_local
+  localRoute: [ollama-llama]
+  levels: { none: { action: allow }, low: { action: allow }, high: { action: allow }, critical: { action: restrict_to_local } }

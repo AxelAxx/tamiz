@@ -84,9 +84,13 @@ export const chatCompletionsRoute = createRoute({
     },
     400: errorResponse("The body fails the contract, is not JSON, or exceeds 1 MiB"),
     401: errorResponse("Missing or invalid API key"),
-    451: errorResponse("A target outside the allowed residencies would have been used"),
+    451: errorResponse(
+      "Refused by policy: a target outside the allowed residencies, or the privacy action blocks",
+    ),
     502: errorResponse("Every target of the chain failed"),
-    503: errorResponse("Every target was skipped because its circuit is open; see `retry-after`"),
+    503: errorResponse(
+      "Every circuit is open (see `retry-after`), or the privacy service failed and the policy blocks",
+    ),
     504: errorResponse("A target timed out last, or the request deadline was reached"),
   },
 });
@@ -104,7 +108,14 @@ function setRoutingHeaders(
   if (abandoned.length > 0) c.header(FALLBACK_HEADER, formatFallbackHeader(abandoned));
 }
 
-function failed(c: Context<ChatEnv>, requestId: string, { decision, failure }: RoutingFailure) {
+function failed(c: Context<ChatEnv>, requestId: string, routing: RoutingFailure) {
+  if (routing.failure.kind === "blocked") {
+    c.header(RULE_HEADER, routing.decision.ruleId);
+    const error = routing.failure.error;
+    const status = httpStatusFor(domainErrorToErrorType(error)) as 451 | 503;
+    return c.json(domainErrorToEnvelope(error, requestId), status);
+  }
+  const { decision, failure } = routing as Extract<RoutingFailure, { decision: RoutingDecision }>;
   setRoutingHeaders(c, decision, failure.target.id, failure.abandoned);
   if (failure.kind === "unavailable") {
     c.header("retry-after", String(Math.ceil(failure.error.retryAfterMs / 1000)));

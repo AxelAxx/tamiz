@@ -1,8 +1,42 @@
+import type { PrivacySettingsInput } from "../../../src/domain/model/privacy-policy.js";
+import {
+  type Decision,
+  type DecisionInput,
+  decide,
+  type RoutingDecision,
+} from "../../../src/domain/model/routing-decision.js";
 import type {
   RoutingPolicy,
   RoutingPolicyInput,
 } from "../../../src/domain/model/routing-policy.js";
 import { validatePolicy } from "../../../src/domain/model/routing-policy.js";
+
+/**
+ * A privacy section that keeps the 002/003 behaviour for uninspected (`none`) requests:
+ * every level but `critical` routes as the rules say (spec 005 T009).
+ */
+export const PERMISSIVE_PRIVACY: PrivacySettingsInput = {
+  onDetectorError: "restrict_to_local",
+  localRoute: ["ollama-llama"],
+  levels: {
+    none: { action: "allow" },
+    low: { action: "allow" },
+    high: { action: "allow" },
+    critical: { action: "restrict_to_local" },
+  },
+};
+
+/** The decision, which the test expects to route; fails the test on a block. */
+export function routeOf(decision: Decision): RoutingDecision {
+  if (decision.kind !== "route") {
+    throw new Error(`expected a route decision, got block (${decision.reason})`);
+  }
+  return decision;
+}
+
+export function decideRoute(policy: RoutingPolicy, input: DecisionInput): RoutingDecision {
+  return routeOf(decide(policy, input));
+}
 
 /**
  * The policy of `specs/002-provider-routing/contracts/policy.example.yaml` as a plain
@@ -73,6 +107,7 @@ export function examplePolicyInput(): RoutingPolicyInput {
       },
     ],
     default: { route: ["mistral-small", "openai-mini", "ollama-llama"] },
+    privacy: PERMISSIVE_PRIVACY,
   };
 }
 

@@ -4,10 +4,10 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { classifyTask } from "../../src/application/use-cases/classify-task.js";
 import { MESSAGE_ROLES } from "../../src/domain/model/inference-request.js";
-import { decide } from "../../src/domain/model/routing-decision.js";
 import { TASK_SIZES, TASK_TYPES } from "../../src/domain/model/task-classifier.js";
 import { clientIdUnchecked, requestIdUnchecked } from "../../src/domain/model/units.js";
 import { loadPolicyFile } from "../../src/infrastructure/policy/file-policy-loader.js";
+import { decideRoute } from "../domain/helpers/policies.js";
 
 // Spec 002 US8, FR-036 … FR-038, SC-001 (tasks.md T072): the routing gate. Classifier and
 // `decide` only, over the shipped default policy: no adapter, no MSW, no network. At
@@ -77,7 +77,7 @@ describe("routing gate (US8-1, US8-2, US8-4, FR-037)", () => {
         requestedModel: c.model ?? "tamiz-auto",
         messages: c.messages,
       });
-      const decision = decide(policy, classified);
+      const decision = decideRoute(policy, classified);
       return {
         id: c.id,
         expectedRoute: c.expected.route,

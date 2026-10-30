@@ -1,0 +1,13 @@
+# Invalid policy fixture: missing-privacy (spec 005 US6-1).
+id: bad
+version: 3
+targets:
+  - id: ollama-llama
+    provider: ollama
+    model: llama3.1:8b
+    region: local
+    residency: local
+    pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+rules: []
+default:
+  route: [ollama-llama]

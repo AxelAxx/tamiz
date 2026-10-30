@@ -24,6 +24,7 @@ import { createCircuitBreaker } from "../resilience/circuit-breaker.js";
 import { executeChain } from "../resilience/execute-chain.js";
 import { classifyTask } from "./classify-task.js";
 import {
+  blocked,
   effectiveTimeoutMs,
   type RouteInferenceDeps,
   type RoutingFailure,
@@ -137,6 +138,7 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
     const classified = classifyTask(request);
     const policy = await deps.policies.getActive();
     const decision = decide(policy, classified);
+    if (decision.kind === "block") return err(blocked(decision));
 
     const served = await execute(
       {

@@ -1,6 +1,6 @@
 /**
  * Contract DTO → domain input for the routing policy (spec 002 research R-01, R-02; spec
- * 003 adds `residency` and `resilience`, research R-14).
+ * 003 adds `residency` and `resilience`, research R-14; spec 005 adds `privacy`).
  *
  * The schema has already checked the shape; `validatePolicy` then applies the
  * cross-field rules, fills the resilience defaults and applies the brands. This mapper
@@ -9,10 +9,15 @@
  */
 import type {
   ModelTargetDto,
+  PrivacySectionDto,
   ResilienceSettingsDto,
   RoutingPolicyDto,
   RoutingRuleDto,
 } from "@tamiz/contracts";
+import type {
+  PrivacyLevelSettings,
+  PrivacySettingsInput,
+} from "../../domain/model/privacy-policy.js";
 import type {
   ModelTargetInput,
   ResilienceSettingsInput,
@@ -63,6 +68,23 @@ function toResilienceInput(dto: ResilienceSettingsDto): ResilienceSettingsInput 
   };
 }
 
+function toPrivacyLevel(dto: PrivacySectionDto["levels"]["none"]): PrivacyLevelSettings {
+  return { action: dto.action, ...(dto.residency !== undefined && { residency: dto.residency }) };
+}
+
+function toPrivacyInput(dto: PrivacySectionDto): PrivacySettingsInput {
+  return {
+    onDetectorError: dto.onDetectorError,
+    localRoute: dto.localRoute,
+    levels: {
+      none: toPrivacyLevel(dto.levels.none),
+      low: toPrivacyLevel(dto.levels.low),
+      high: toPrivacyLevel(dto.levels.high),
+      critical: toPrivacyLevel(dto.levels.critical),
+    },
+  };
+}
+
 export function toDomainPolicyInput(dto: RoutingPolicyDto): RoutingPolicyInput {
   return {
     id: dto.id,
@@ -75,5 +97,6 @@ export function toDomainPolicyInput(dto: RoutingPolicyDto): RoutingPolicyInput {
       ...(dto.default.residency !== undefined && { residency: dto.default.residency }),
     },
     ...(dto.resilience !== undefined && { resilience: toResilienceInput(dto.resilience) }),
+    privacy: toPrivacyInput(dto.privacy),
   };
 }

@@ -54,6 +54,8 @@ export function domainErrorToErrorType(error: DomainError): ErrorType {
       return "policy_blocked";
     case "provider_unavailable":
       return "provider_unavailable";
+    case "privacy_blocked":
+      return error.reason === "detector_unavailable" ? "privacy_unavailable" : "policy_blocked";
     default:
       return assertNever(error);
   }

@@ -6,6 +6,9 @@
  * (unique ids, chains that name declared targets, the reserved rule id `default`) belong
  * to the gateway domain's `validatePolicy`. The closed lists mirror the domain's tuples
  * (research R-03).
+ *
+ * Feature 005 adds the required `privacy` section (spec 005 FR-002): an action per
+ * sensitivity level, the local route, and what a failed inspection does.
  */
 import { z } from "zod";
 import { PolicyIdSchema, UsdSchema } from "./branded.js";
@@ -76,6 +79,27 @@ export const ResilienceSettingsSchema = z.strictObject({
     .optional(),
 });
 
+export const SensitivityLevelSchema = z.enum(["none", "low", "high", "critical"]);
+export const PrivacyActionSchema = z.enum(["allow", "anonymize", "restrict_to_local", "block"]);
+
+/** What happens to requests of one sensitivity level (spec 005 FR-002, research R-11). */
+export const PrivacyLevelSchema = z.strictObject({
+  action: PrivacyActionSchema,
+  residency: ResidencyListSchema.optional(),
+});
+
+export const PrivacySectionSchema = z.strictObject({
+  /** A failed inspection never allows: the gateway fails closed. */
+  onDetectorError: z.enum(["restrict_to_local", "block"]),
+  localRoute: z.array(TargetIdSchema).min(1),
+  levels: z.strictObject({
+    none: PrivacyLevelSchema,
+    low: PrivacyLevelSchema,
+    high: PrivacyLevelSchema,
+    critical: PrivacyLevelSchema,
+  }),
+});
+
 export const RoutingRuleSchema = z.strictObject({
   id: RuleIdSchema,
   when: RuleConditionSchema,
@@ -96,6 +120,7 @@ export const RoutingPolicySchema = z.strictObject({
     residency: ResidencyListSchema.optional(),
   }),
   resilience: ResilienceSettingsSchema.optional(),
+  privacy: PrivacySectionSchema,
 });
 
 export type ProviderNameDto = z.infer<typeof ProviderNameSchema>;
@@ -106,5 +131,8 @@ export type ModelTargetDto = z.infer<typeof ModelTargetSchema>;
 export type RuleConditionDto = z.infer<typeof RuleConditionSchema>;
 export type RoutingRuleDto = z.infer<typeof RoutingRuleSchema>;
 export type ResilienceSettingsDto = z.infer<typeof ResilienceSettingsSchema>;
+export type SensitivityLevelDto = z.infer<typeof SensitivityLevelSchema>;
+export type PrivacyActionDto = z.infer<typeof PrivacyActionSchema>;
+export type PrivacySectionDto = z.infer<typeof PrivacySectionSchema>;
 /** The validated policy file; `defaultTimeoutMs` is always present after parsing. */
 export type RoutingPolicyDto = z.infer<typeof RoutingPolicySchema>;

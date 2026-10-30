@@ -174,7 +174,7 @@ describe("gateway process boot", () => {
       expect(startupLine?.host).toBe("127.0.0.1");
       expect(startupLine?.version).toBe(body.version);
       expect(startupLine?.policyId).toBe("default");
-      expect(startupLine?.policyVersion).toBe(2);
+      expect(startupLine?.policyVersion).toBe(3);
       expect(output.stdout()).not.toContain("SECRET");
     },
     BOOT_TIMEOUT_MS,
