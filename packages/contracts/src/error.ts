@@ -6,6 +6,7 @@
  * Feature 002 adds `provider_timeout` (504, spec 002 FR-028); feature 003 adds
  * `provider_unavailable` (503, every circuit open, spec 003 FR-019).
  * `privacy_unavailable` (503, inspection failed and the policy blocks, spec 005 FR-014).
+ * `forbidden` (403, a client key on an admin endpoint, spec 006 FR-008).
  */
 import { z } from "zod";
 import { RequestIdSchema } from "./branded.js";
@@ -21,6 +22,7 @@ export const ErrorTypeSchema = z.enum([
   "provider_timeout",
   "provider_unavailable",
   "privacy_unavailable",
+  "forbidden",
 ]);
 
 export const ErrorEnvelopeSchema = z.strictObject({
@@ -46,4 +48,5 @@ export const errorTypeToHttpStatus: Readonly<Record<ErrorType, number>> = Object
   provider_timeout: 504,
   provider_unavailable: 503,
   privacy_unavailable: 503,
+  forbidden: 403,
 });

@@ -32,6 +32,7 @@ describe("loadConfig", () => {
       policyFile: "policies/default.yaml",
       providers: { ollama: { baseUrl: "http://localhost:11434/v1" } },
       apiKeys: [{ clientId: "demo", keyHash: "0".repeat(64) }],
+      audit: { memoryEntries: 10_000 },
       privacy: {
         url: "http://privacy.test:8001",
         timeoutMs: 2_000,

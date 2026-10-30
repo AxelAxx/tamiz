@@ -39,42 +39,42 @@ approved by Alex (`T-006-01`).
 
 ### Tests first
 
-- [ ] T001 [P] `contracts/test/audit.test.ts`:
+- [x] T001 [P] `contracts/test/audit.test.ts`:
   - `contracts/audit-entry.example.json` parses;
   - no unknown field is accepted;
   - the hash is 64 hexadecimal characters.
-- [ ] T002 [P] `gateway/test/domain/baseline.test.ts`:
+- [x] T002 [P] `gateway/test/domain/baseline.test.ts`:
   - the most expensive target, with ties broken by order;
   - `undefined` when the policy has no prices;
   - the cost arithmetic.
-- [ ] T003 [P] [US1] `gateway/test/domain/audit-entry.test.ts`: `auditEntry` covers every
+- [x] T003 [P] [US1] `gateway/test/domain/audit-entry.test.ts`: `auditEntry` covers every
   outcome, with counts but never offsets, a baseline per entry, and latency from the clock
   (US1-1, US1-5).
-- [ ] T004 [P] [US1] `gateway/test/audit/with-audit.test.ts`, run through `createTestApp`
+- [x] T004 [P] [US1] `gateway/test/audit/with-audit.test.ts`, run through `createTestApp`
   with the in-memory log. Exactly one entry for each of:
   - answered (US1-1);
   - a streamed finish, mid-stream error or client cancel (US1-2);
   - a privacy block, a residency block or a detector `block` (US1-3);
   - an exhausted chain (US1-4);
   - nothing for 400/401 or `/v1/simulate`.
-- [ ] T005 [P] [US2] `gateway/test/cache/in-memory-audit-log.test.ts`:
+- [x] T005 [P] [US2] `gateway/test/cache/in-memory-audit-log.test.ts`:
   - ring-buffer bound;
   - query ordering and cursor;
   - filters, cost and window in process.
-- [ ] T006 [P] [US1] `gateway/test/privacy/no-leak.test.ts` (extended):
+- [x] T006 [P] [US1] `gateway/test/privacy/no-leak.test.ts` (extended):
   - the serialized audit entries contain no test value;
   - `requestHash` equals the HMAC with the configured key.
 
 ### Implementation
 
-- [ ] T007 `contracts/src/audit.ts` (data-model §1.1), plus `forbidden` in `error.ts`.
-- [ ] T008 `gateway/src/domain/model/{audit-entry,baseline}.ts`.
-- [ ] T009 `gateway/src/application/ports/audit-log.port.ts`;
+- [x] T007 `contracts/src/audit.ts` (data-model §1.1), plus `forbidden` in `error.ts`.
+- [x] T008 `gateway/src/domain/model/{audit-entry,baseline}.ts`.
+- [x] T009 `gateway/src/application/ports/audit-log.port.ts`;
   `application/audit/with-audit.ts` (research R-01); the `audit.dropped` event;
   use-case results expose what the entry needs.
-- [ ] T010 `gateway/src/infrastructure/cache/in-memory-audit-log.ts`; `main.ts` wiring, with
+- [x] T010 `gateway/src/infrastructure/cache/in-memory-audit-log.ts`; `main.ts` wiring, with
   the HMAC key (ephemeral, logged, in memory-only mode).
-- [ ] T011 Gates; record `docs/tasks/done/T-006-02-audit-entry.md`; backlog row.
+- [x] T011 Gates; record `docs/tasks/done/T-006-02-audit-entry.md`; backlog row.
 
 ## Phase 2: `T-006-03` — PostgreSQL, migrations, async writer, API keys (US2, US1-6)
 

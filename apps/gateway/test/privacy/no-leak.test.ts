@@ -6,7 +6,7 @@ import { createLogRoutingEvents } from "../../src/infrastructure/telemetry/log-r
 import { AUTH, createTestApp, defaultPolicy } from "../helpers/app.js";
 import { inspectAs } from "../helpers/privacy.js";
 
-// Spec 005 US2-5, SC-006, FR-013 (tasks.md T029): run the privacy scenarios with the real
+// Spec 005 US2-5, SC-006, FR-013 (tasks.md T029); spec 006 FR-015 (audit entries): run the privacy scenarios with the real
 // logger and the log sink of the routing events, and search everything the gateway
 // writes or answers outside the response body for the test values and the mapping.
 
@@ -56,7 +56,7 @@ describe("no request content outside the request (SC-006)", () => {
                 levels: { ...base.privacy.levels, critical: { action: critical } },
               },
             };
-      const { send } = await createTestApp({
+      const { send, audit } = await createTestApp({
         logger,
         events,
         policy,
@@ -85,6 +85,12 @@ describe("no request content outside the request (SC-006)", () => {
         expect(headers).not.toContain(value);
       }
       expect(written).not.toMatch(/<PERSON_1>|<EMAIL_1>/);
+      // Spec 006 FR-003, FR-015: the audit entry has no content either.
+      await new Promise((resolve) => setTimeout(resolve, 0));
+      const entries = JSON.stringify(audit.entries());
+      expect(audit.size()).toBe(1);
+      for (const value of VALUES) expect(entries).not.toContain(value);
+      expect(entries).not.toMatch(/<PERSON_1>|<EMAIL_1>|Respuesta/);
     },
   );
 });

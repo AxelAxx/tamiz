@@ -19,6 +19,7 @@ const errorTypes = [
   "provider_timeout",
   "provider_unavailable",
   "privacy_unavailable",
+  "forbidden",
 ] as const;
 
 describe("ErrorEnvelopeSchema (spec US2-7, FR-010)", () => {
@@ -101,6 +102,7 @@ describe("errorTypeToHttpStatus (data-model section 5)", () => {
       provider_timeout: 504,
       provider_unavailable: 503,
       privacy_unavailable: 503,
+      forbidden: 403,
     });
   });
 

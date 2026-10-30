@@ -48,6 +48,16 @@ export type Inspection =
     }
   | { readonly status: "failed"; readonly reason: DetectorFailure };
 
+/** How many of each kind were found; empty when inspection failed. Never values or positions. */
+export function entityCounts(
+  inspection: Inspection,
+): Readonly<Partial<Record<EntityKind, number>>> {
+  const counts: Partial<Record<EntityKind, number>> = {};
+  if (inspection.status !== "ok") return counts;
+  for (const entity of inspection.entities) counts[entity.kind] = (counts[entity.kind] ?? 0) + 1;
+  return counts;
+}
+
 export function sensitivityOf(inspection: Inspection): Sensitivity {
   return inspection.status === "ok" ? inspection.level : "unknown";
 }
