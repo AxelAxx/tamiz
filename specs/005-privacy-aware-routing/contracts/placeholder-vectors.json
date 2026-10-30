@@ -1,0 +1,251 @@
+{
+  "description": "Shared placeholder test vectors: services/privacy (Python, reference) and apps/gateway (TypeScript port) must both produce `expected` from `text` and `findings`. Offsets are valid in both languages because the texts contain no characters outside the Basic Multilingual Plane. Generated from services/privacy/src/privacy/domain/placeholders.py; regenerate there if the rule changes.",
+  "vectors": [
+    {
+      "name": "numbering per kind",
+      "text": "Ana Ruiz y Pedro Gil, DNI 12345678Z, escriben a ana@example.com.",
+      "findings": [
+        {
+          "kind": "PERSON",
+          "start": 0,
+          "end": 8
+        },
+        {
+          "kind": "PERSON",
+          "start": 11,
+          "end": 20
+        },
+        {
+          "kind": "DNI",
+          "start": 26,
+          "end": 35
+        },
+        {
+          "kind": "EMAIL",
+          "start": 48,
+          "end": 63
+        }
+      ],
+      "expected": {
+        "text": "<PERSON_1> y <PERSON_2>, DNI <DNI_1>, escriben a <EMAIL_1>.",
+        "mapping": [
+          {
+            "placeholder": "<PERSON_1>",
+            "kind": "PERSON",
+            "value": "Ana Ruiz"
+          },
+          {
+            "placeholder": "<PERSON_2>",
+            "kind": "PERSON",
+            "value": "Pedro Gil"
+          },
+          {
+            "placeholder": "<DNI_1>",
+            "kind": "DNI",
+            "value": "12345678Z"
+          },
+          {
+            "placeholder": "<EMAIL_1>",
+            "kind": "EMAIL",
+            "value": "ana@example.com"
+          }
+        ]
+      }
+    },
+    {
+      "name": "same value shares a placeholder",
+      "text": "Lucía llamó. Lucía volvió. Dile a Lucía que sí.",
+      "findings": [
+        {
+          "kind": "PERSON",
+          "start": 0,
+          "end": 5
+        },
+        {
+          "kind": "PERSON",
+          "start": 13,
+          "end": 18
+        },
+        {
+          "kind": "PERSON",
+          "start": 34,
+          "end": 39
+        }
+      ],
+      "expected": {
+        "text": "<PERSON_1> llamó. <PERSON_1> volvió. Dile a <PERSON_1> que sí.",
+        "mapping": [
+          {
+            "placeholder": "<PERSON_1>",
+            "kind": "PERSON",
+            "value": "Lucía"
+          }
+        ]
+      }
+    },
+    {
+      "name": "same value, two kinds",
+      "text": "Valencia es mi apellido y Valencia mi ciudad.",
+      "findings": [
+        {
+          "kind": "PERSON",
+          "start": 0,
+          "end": 8
+        },
+        {
+          "kind": "LOCATION",
+          "start": 26,
+          "end": 34
+        }
+      ],
+      "expected": {
+        "text": "<PERSON_1> es mi apellido y <LOCATION_1> mi ciudad.",
+        "mapping": [
+          {
+            "placeholder": "<PERSON_1>",
+            "kind": "PERSON",
+            "value": "Valencia"
+          },
+          {
+            "placeholder": "<LOCATION_1>",
+            "kind": "LOCATION",
+            "value": "Valencia"
+          }
+        ]
+      }
+    },
+    {
+      "name": "skips existing placeholders",
+      "text": "Plantilla <DNI_1> y <DNI_3>; real 12345678Z; nombre <PERSON_2> y Ana.",
+      "findings": [
+        {
+          "kind": "DNI",
+          "start": 34,
+          "end": 43
+        },
+        {
+          "kind": "PERSON",
+          "start": 65,
+          "end": 68
+        }
+      ],
+      "expected": {
+        "text": "Plantilla <DNI_1> y <DNI_3>; real <DNI_4>; nombre <PERSON_2> y <PERSON_3>.",
+        "mapping": [
+          {
+            "placeholder": "<DNI_4>",
+            "kind": "DNI",
+            "value": "12345678Z"
+          },
+          {
+            "placeholder": "<PERSON_3>",
+            "kind": "PERSON",
+            "value": "Ana"
+          }
+        ]
+      }
+    },
+    {
+      "name": "whole text",
+      "text": "12345678Z",
+      "findings": [
+        {
+          "kind": "DNI",
+          "start": 0,
+          "end": 9
+        }
+      ],
+      "expected": {
+        "text": "<DNI_1>",
+        "mapping": [
+          {
+            "placeholder": "<DNI_1>",
+            "kind": "DNI",
+            "value": "12345678Z"
+          }
+        ]
+      }
+    },
+    {
+      "name": "no findings",
+      "text": "Sin datos personales.",
+      "findings": [],
+      "expected": {
+        "text": "Sin datos personales.",
+        "mapping": []
+      }
+    },
+    {
+      "name": "joined messages",
+      "text": "Ana\n\nAna Ruiz, móvil 612 345 678",
+      "findings": [
+        {
+          "kind": "PERSON",
+          "start": 0,
+          "end": 3
+        },
+        {
+          "kind": "PERSON",
+          "start": 5,
+          "end": 13
+        },
+        {
+          "kind": "PHONE",
+          "start": 21,
+          "end": 32
+        }
+      ],
+      "expected": {
+        "text": "<PERSON_1>\n\n<PERSON_2>, móvil <PHONE_1>",
+        "mapping": [
+          {
+            "placeholder": "<PERSON_1>",
+            "kind": "PERSON",
+            "value": "Ana"
+          },
+          {
+            "placeholder": "<PERSON_2>",
+            "kind": "PERSON",
+            "value": "Ana Ruiz"
+          },
+          {
+            "placeholder": "<PHONE_1>",
+            "kind": "PHONE",
+            "value": "612 345 678"
+          }
+        ]
+      }
+    },
+    {
+      "name": "same account written two ways",
+      "text": "IBAN ES91 2100 0418 4502 0005 1332 y ES9121000418450200051332",
+      "findings": [
+        {
+          "kind": "IBAN",
+          "start": 5,
+          "end": 34
+        },
+        {
+          "kind": "IBAN",
+          "start": 37,
+          "end": 61
+        }
+      ],
+      "expected": {
+        "text": "IBAN <IBAN_1> y <IBAN_2>",
+        "mapping": [
+          {
+            "placeholder": "<IBAN_1>",
+            "kind": "IBAN",
+            "value": "ES91 2100 0418 4502 0005 1332"
+          },
+          {
+            "placeholder": "<IBAN_2>",
+            "kind": "IBAN",
+            "value": "ES9121000418450200051332"
+          }
+        ]
+      }
+    }
+  ]
+}

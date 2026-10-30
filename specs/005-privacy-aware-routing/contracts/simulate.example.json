@@ -1,0 +1,68 @@
+{
+  "request": {
+    "model": "auto",
+    "messages": [
+      {
+        "role": "system",
+        "content": "Eres un asistente jurídico."
+      },
+      {
+        "role": "user",
+        "content": "Resume el informe de Lucía Fernández Ruiz (lucia.fernandez@example.com) para el comité."
+      }
+    ]
+  },
+  "response": {
+    "sensitivity": "high",
+    "detector": "ok",
+    "entities": [
+      {
+        "messageIndex": 1,
+        "kind": "PERSON",
+        "start": 21,
+        "end": 41,
+        "score": 0.85
+      },
+      {
+        "messageIndex": 1,
+        "kind": "EMAIL",
+        "start": 43,
+        "end": 70,
+        "score": 1.0
+      }
+    ],
+    "ruleId": "cheap-short-tasks",
+    "decision": "route",
+    "privacyAction": "anonymize",
+    "chain": [
+      {
+        "id": "ollama-llama",
+        "provider": "ollama",
+        "model": "llama3.1:8b",
+        "residency": "local"
+      },
+      {
+        "id": "mistral-small",
+        "provider": "mistral",
+        "model": "mistral-small-latest",
+        "residency": "eu"
+      }
+    ],
+    "allowedResidencies": ["local", "eu"],
+    "providerMessages": [
+      {
+        "role": "system",
+        "content": "<contents of apps/gateway/prompts/anonymization-notice.v1.md>"
+      },
+      {
+        "role": "system",
+        "content": "Eres un asistente jurídico."
+      },
+      {
+        "role": "user",
+        "content": "Resume el informe de <PERSON_1> (<EMAIL_1>) para el comité."
+      }
+    ],
+    "notice": "v1"
+  }
+}

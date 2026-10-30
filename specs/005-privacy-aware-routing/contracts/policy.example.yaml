@@ -1,0 +1,81 @@
+# Default routing policy after feature 005 (design-time projection; becomes
+# apps/gateway/policies/default.yaml in T-005-02). Feature 003 added the resilience
+# section, the residency statements and version 2; feature 005 adds the privacy section
+# and version 3.
+# Prices are illustrative USD per million tokens at the time of writing: data, not code.
+
+id: default
+version: 3
+defaultTimeoutMs: 30000
+
+resilience:
+  requestDeadlineMs: 60000
+  maxAttempts: 2
+  backoff: { baseDelayMs: 250, maxDelayMs: 2000 }
+  circuitBreaker: { failureThreshold: 5, cooldownMs: 30000 }
+
+# What may happen to a request, by the highest sensitivity found in its messages
+# (spec 005 FR-002, research R-11). Critical data never leaves the machine; names, phones
+# and emails go out only anonymized and only to EU or local targets.
+privacy:
+  onDetectorError: restrict_to_local   # fail closed; `block` also accepted, `allow` is not
+  localRoute: [ollama-llama]
+  levels:
+    none:     { action: allow }
+    low:      { action: allow }
+    high:     { action: anonymize, residency: [local, eu] }
+    critical: { action: restrict_to_local }
+
+targets:
+  - id: ollama-llama
+    provider: ollama
+    model: llama3.1:8b
+    region: local
+    residency: local
+    pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+    timeoutMs: 60000
+  - id: mistral-small
+    provider: mistral
+    model: mistral-small-latest
+    region: eu-west
+    residency: eu
+    pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 }
+  - id: openai-mini
+    provider: openai
+    model: gpt-4o-mini
+    region: us-east
+    residency: us
+    pricing: { inputUsdPerMillion: 0.15, outputUsdPerMillion: 0.6 }
+  - id: anthropic-sonnet
+    provider: anthropic
+    model: claude-sonnet-4-5
+    region: us-east
+    residency: us
+    pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15 }
+    timeoutMs: 45000
+
+rules:
+  # Local only, explicitly: a fallback may never leave the machine.
+  - id: pinned-local
+    when: { requestedModel: [tamiz-local] }
+    residency: [local]
+    route: [ollama-llama]
+
+  - id: code-to-frontier
+    when: { taskType: [code] }
+    route: [anthropic-sonnet, openai-mini, mistral-small]
+
+  # Long documents stay in the EU, falling back to the local model, never to the US.
+  - id: long-documents-eu
+    when: { taskType: [summarize, extract], size: [long] }
+    residency: [eu, local]
+    route: [mistral-small, ollama-llama]
+
+  - id: cheap-short-tasks
+    when: { taskType: [classify, translate, extract, summarize], size: [short, medium] }
+    route: [openai-mini, mistral-small, ollama-llama]
+    orderBy: cost
+    timeoutMs: 20000
+
+default:
+  route: [mistral-small, openai-mini, ollama-llama]
