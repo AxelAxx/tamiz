@@ -1,0 +1,5 @@
+# Invalid policy fixture: not-yaml.
+id: bad
+version: 1
+targets: [ { id: x
+rules: : :

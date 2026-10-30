@@ -42,6 +42,15 @@ Configuration is read once from the environment by `loadConfig` and injected:
 | `LOG_LEVEL` | `info` | `fatal` `error` `warn` `info` `debug` `trace` |
 | `NODE_ENV` | `development` | `development` `test` `production` |
 | `APP_VERSION` | package version | non-empty string (for container builds) |
+| `TAMIZ_POLICY_FILE` | `policies/default.yaml` | path to a YAML or JSON routing policy (see `policies/README.md`) |
+| `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | http(s) URL of Ollama's OpenAI-compatible endpoint |
+| `MISTRAL_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | unset | required when a policy target uses that provider; empty counts as unset |
+| `MISTRAL_BASE_URL` / `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` | provider default | http(s) URL override (proxies); ignored without the key |
+
+At boot the gateway also loads the policy file and checks that every provider it uses is
+configured. Any problem prints one `path: message` line per issue to stderr (never a
+secret) and exits 1 before binding a port. The shipped `default.yaml` needs the three
+API keys; `TAMIZ_POLICY_FILE=policies/local-only.yaml` needs none.
 
 The logger is pino with one JSON object per line, `service: "tamiz-gateway"`, ISO
 timestamps, and redaction of `prompt`, `messages` and `authorization` at the top level,
@@ -63,6 +72,7 @@ root (or `pnpm --filter @tamiz/contracts build`) before `dev` or a direct `vites
 
 Tests live in `test/`: `result.test.ts`, `env.test.ts`, `logger.test.ts`, `health.test.ts`
 and `not-found-and-request-id.test.ts` run in-process (`app.request()`, no sockets);
-`boot.integration.test.ts` is the only one that spawns the real process (invalid env exits
-1; valid env serves `/health`); `root-manifest.test.ts` guards the root manifest fields of
+`boot.integration.test.ts` is the only one that spawns the real process (invalid env,
+invalid policy or missing provider key exits 1; valid env serves `/health`);
+`root-manifest.test.ts` guards the root manifest fields of
 spec 001 (US1-5).

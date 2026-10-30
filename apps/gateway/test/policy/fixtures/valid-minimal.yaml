@@ -1,0 +1,13 @@
+# One Ollama target and no rules: the smallest valid policy.
+id: minimal
+version: 3
+targets:
+  - id: ollama-llama
+    provider: ollama
+    model: llama3.1:8b
+    region: local
+    residency: local
+    pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+rules: []
+default:
+  route: [ollama-llama]
