@@ -9,6 +9,7 @@
  * trace, metric and audit sinks behind the same port.
  */
 import type { ProviderErrorCause } from "../../domain/errors.js";
+import type { CircuitState } from "../../domain/model/circuit.js";
 import type { ProviderName, Residency } from "../../domain/model/model-target.js";
 import type { RequestId, TargetId } from "../../domain/model/units.js";
 
@@ -27,9 +28,6 @@ export type RoutingEventType = (typeof ROUTING_EVENT_TYPES)[number];
 
 /** Why a target was left; `circuit_open` means it was skipped without a call. */
 export type AbandonReason = Exclude<ProviderErrorCause, "aborted"> | "circuit_open";
-
-/** The circuit states of spec 003 FR-006 (the domain module arrives with `T-003-03`). */
-export type CircuitStateName = "closed" | "open" | "half_open";
 
 interface RoutingEventBase {
   readonly requestId: RequestId;
@@ -61,8 +59,8 @@ export type RoutingEvent = RoutingEventBase &
     | { readonly type: "residency.blocked"; readonly allowed: ReadonlyArray<Residency> }
     | {
         readonly type: "circuit.changed";
-        readonly from: CircuitStateName;
-        readonly to: CircuitStateName;
+        readonly from: CircuitState;
+        readonly to: CircuitState;
       }
     | { readonly type: "stream.failed"; readonly reason: ProviderErrorCause }
   );
