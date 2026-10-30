@@ -2,7 +2,10 @@
  * Maps failures to the `ErrorEnvelope` contract (spec FR-019, data-model section 5).
  *
  * The message is always a short, safe sentence: no stack traces, no prompt content.
- * `requestId` is only attached when it satisfies the `RequestId` contract.
+ * `requestId` is only attached when it satisfies the `RequestId` contract. Spec 002
+ * FR-027: a provider timeout is `provider_timeout` (504), any other provider failure
+ * `provider_error` (502); validation issues become one message of paths and expected
+ * formats, never the offending values.
  */
 import {
   type ErrorEnvelope,
@@ -40,10 +43,8 @@ export function domainErrorToErrorType(error: DomainError): ErrorType {
       return "not_found";
     case "configuration":
       return "internal";
-    // T-002-06 (tasks.md T058) maps `cause === "timeout"` to `provider_timeout` (504)
-    // once the contract gains that type.
     case "provider":
-      return "provider_error";
+      return error.cause === "timeout" ? "provider_timeout" : "provider_error";
     case "unauthorized":
       return "unauthorized";
     default:
@@ -53,4 +54,20 @@ export function domainErrorToErrorType(error: DomainError): ErrorType {
 
 export function domainErrorToEnvelope(error: DomainError, requestId?: string): ErrorEnvelope {
   return toErrorEnvelope(domainErrorToErrorType(error), error.message, requestId);
+}
+
+/** A Zod-style issue: where and what was expected. Zod's own messages carry no input values. */
+export interface IssueLike {
+  readonly path: ReadonlyArray<PropertyKey>;
+  readonly message: string;
+}
+
+/** One `path: message` clause per issue, joined with `; `; the root is called `body`. */
+export function fromZodIssues(issues: ReadonlyArray<IssueLike>): string {
+  return issues
+    .map((issue) => {
+      const path = issue.path.map(String).join(".");
+      return `${path === "" ? "body" : path}: ${issue.message}`;
+    })
+    .join("; ");
 }

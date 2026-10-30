@@ -10,7 +10,8 @@ reach the rest of the gateway through injection, not through imports.
 
 Current modules: `config/env.ts` (`EnvSchema`, `loadConfig`, `GatewayConfig` with the
 policy file and the provider settings), `config/provider-settings.ts`
-(`checkProviderSettings`), `policy/` (`file-policy-loader.ts`, `policy-mapper.ts`,
+(`checkProviderSettings`), `auth/api-keys.ts` (`parseApiKeys`, `hashApiKey`,
+`verifyApiKey`, `generateApiKey`), `policy/` (`file-policy-loader.ts`, `policy-mapper.ts`,
 `in-memory-policy-repository.ts`),
 `logging/logger.ts` (`createLogger` with redaction), `clock/system-clock.ts`, and
 `llm/`: `ai-sdk-provider.ts` (the one `LlmProviderPort` over AI SDK 6, error and finish

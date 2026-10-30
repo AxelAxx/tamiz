@@ -1,6 +1,7 @@
 import { ErrorEnvelopeSchema } from "@tamiz/contracts";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/presentation/app.js";
+import { NO_CHAT } from "./helpers/app.js";
 import { noopLogger, recordingLogger } from "./helpers/noop-logger.js";
 
 // Spec 001, US3 scenarios 3 and 4 and FR-018 / FR-019: unknown routes and unhandled
@@ -21,7 +22,7 @@ interface LogBindingsShape {
 }
 
 function buildApp(logger = noopLogger) {
-  return createApp({ clock, version: "0.1.0", startedAt, logger });
+  return createApp({ clock, version: "0.1.0", startedAt, logger, ...NO_CHAT });
 }
 
 describe("unknown routes", () => {
