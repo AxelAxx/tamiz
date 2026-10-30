@@ -1,0 +1,72 @@
+# Default routing policy for Tamiz after feature 003 (review projection; shipped by
+# T-003-04 as apps/gateway/policies/default.yaml). Differences from feature 002:
+# - an optional `resilience` section (the values below are the defaults, written out);
+# - `residency` statements on `pinned-local` and `long-documents-eu`;
+# - `long-documents-eu` no longer lists `openai-mini` (a US target cannot serve a rule
+#   that only allows the EU and local; that would now be a boot error).
+# The first target of every rule is unchanged, so the routing dataset v1 still applies.
+# Prices are illustrative USD per million tokens at the time of writing: data, not code.
+
+id: default
+version: 2
+defaultTimeoutMs: 30000
+
+resilience:
+  requestDeadlineMs: 60000
+  maxAttempts: 2
+  backoff: { baseDelayMs: 250, maxDelayMs: 2000 }
+  circuitBreaker: { failureThreshold: 5, cooldownMs: 30000 }
+
+targets:
+  - id: ollama-llama
+    provider: ollama
+    model: llama3.1:8b
+    region: local
+    residency: local
+    pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+    timeoutMs: 60000
+  - id: mistral-small
+    provider: mistral
+    model: mistral-small-latest
+    region: eu-west
+    residency: eu
+    pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 }
+  - id: openai-mini
+    provider: openai
+    model: gpt-4o-mini
+    region: us-east
+    residency: us
+    pricing: { inputUsdPerMillion: 0.15, outputUsdPerMillion: 0.6 }
+  - id: anthropic-sonnet
+    provider: anthropic
+    model: claude-sonnet-4-5
+    region: us-east
+    residency: us
+    pricing: { inputUsdPerMillion: 3, outputUsdPerMillion: 15 }
+    timeoutMs: 45000
+
+rules:
+  # Local only, explicitly: a fallback may never leave the machine.
+  - id: pinned-local
+    when: { requestedModel: [tamiz-local] }
+    residency: [local]
+    route: [ollama-llama]
+
+  - id: code-to-frontier
+    when: { taskType: [code] }
+    route: [anthropic-sonnet, openai-mini, mistral-small]
+
+  # Long documents stay in the EU, falling back to the local model, never to the US.
+  - id: long-documents-eu
+    when: { taskType: [summarize, extract], size: [long] }
+    residency: [eu, local]
+    route: [mistral-small, ollama-llama]
+
+  - id: cheap-short-tasks
+    when: { taskType: [classify, translate, extract, summarize], size: [short, medium] }
+    route: [openai-mini, mistral-small, ollama-llama]
+    orderBy: cost
+    timeoutMs: 20000
+
+default:
+  route: [mistral-small, openai-mini, ollama-llama]
