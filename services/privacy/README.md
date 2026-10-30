@@ -22,9 +22,19 @@ Done so far:
 
 - `T-004-04`: DNI, NIE and CIF, validated by their check characters.
 - `T-004-05`: IBAN, social security number (NSS) and Spanish phone numbers.
+- `T-004-06`: `POST /anonymize`.
+  - Every reported finding becomes `<KIND_n>`, numbered per kind in order of first
+    appearance, with one placeholder per distinct value.
+  - Numbering skips placeholder-shaped strings already in the text.
+  - The response carries the mapping and the analysis of the original text.
+  - Nothing is stored or logged; a test with a Python audit hook proves that no file is
+    written and no connection is opened.
 
-Still to come: `/anonymize` in `T-004-06`, and the synthetic corpus with detection
-metrics in `T-004-07`.
+Still to come: the synthetic corpus with detection metrics in `T-004-07`.
+
+Restoring is the caller's job (the gateway, `T-005-04`). Replace, in one pass, every
+`<KIND_n>` that appears in the mapping by its `value`;
+[`tests/support/restore.py`](tests/support/restore.py) is the reference implementation.
 
 ## Recognizers
 

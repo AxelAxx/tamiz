@@ -33,10 +33,12 @@ def test_us6_2_request_objects_reject_unknown_fields() -> None:
     schemas = json.loads(rendered())["components"]["schemas"]
 
     assert schemas["AnalyzeRequest"]["additionalProperties"] is False
+    assert schemas["AnonymizeRequest"]["additionalProperties"] is False
 
 
 def test_endpoints_are_documented() -> None:
     paths = json.loads(rendered())["paths"]
 
-    assert set(paths) >= {"/analyze", "/health"}
-    assert set(paths["/analyze"]["post"]["responses"]) == {"200", "400", "413", "503"}
+    assert set(paths) == {"/analyze", "/anonymize", "/health"}
+    for endpoint in ("/analyze", "/anonymize"):
+        assert set(paths[endpoint]["post"]["responses"]) == {"200", "400", "413", "503"}

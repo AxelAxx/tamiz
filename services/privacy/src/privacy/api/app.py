@@ -10,10 +10,23 @@ from starlette.concurrency import run_in_threadpool
 from privacy.api.errors import error_response, install_error_handlers
 from privacy.api.limits import BodyLimitMiddleware
 from privacy.api.logging import RequestLogMiddleware
-from privacy.api.mappers import log_fields, to_analyze_response, to_command
+from privacy.api.mappers import (
+    log_fields,
+    to_analyze_response,
+    to_anonymize_response,
+    to_command,
+)
 from privacy.api.openapi import install_openapi
-from privacy.api.schemas import AnalyzeRequest, AnalyzeResponse, ErrorEnvelope, HealthResponse
+from privacy.api.schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    AnonymizeRequest,
+    AnonymizeResponse,
+    ErrorEnvelope,
+    HealthResponse,
+)
 from privacy.application.analyze_text import DEFAULT_MIN_SCORE, analyze_text
+from privacy.application.anonymize_text import anonymize_text
 from privacy.application.ports import PiiAnalyzerPort
 
 SERVICE_VERSION: Final = version("tamiz-privacy")
@@ -56,5 +69,24 @@ def create_app(analyzer: PiiAnalyzerPort, default_min_score: float = DEFAULT_MIN
         result = await run_in_threadpool(analyze_text, analyzer, command)
         request.state.log_fields.update(log_fields(body.text, result))
         return to_analyze_response(result)
+
+    @app.post(
+        "/anonymize",
+        response_model=AnonymizeResponse,
+        responses={400: _INVALID, 413: _TOO_LARGE, 503: _NOT_READY},
+    )
+    async def anonymize(
+        request: Request, body: AnonymizeRequest
+    ) -> AnonymizeResponse | JSONResponse:
+        """`text` with each finding replaced by `<KIND_n>`, and the mapping to restore it.
+
+        The mapping exists only in this response: the service stores and logs nothing of it.
+        """
+        if not analyzer.is_ready():
+            return not_ready(request)
+        command = to_command(body, default_min_score)
+        result = await run_in_threadpool(anonymize_text, analyzer, command)
+        request.state.log_fields.update(log_fields(body.text, result.analysis))
+        return to_anonymize_response(result)
 
     return app
