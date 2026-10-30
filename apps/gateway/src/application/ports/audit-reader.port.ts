@@ -8,6 +8,7 @@
 import type { AuditEntry, AuditOutcome } from "../../domain/model/audit-entry.js";
 import type { PrivacyAction } from "../../domain/model/privacy-policy.js";
 import type { EntityKind, Sensitivity } from "../../domain/model/sensitivity.js";
+import type { CostAggregates, CostGroup, TargetWindow } from "../audit/aggregates.js";
 
 export interface AuditFilters {
   /** Inclusive, on `startedAt` (ISO). */
@@ -35,6 +36,10 @@ export interface AuditReaderPort {
     after: AuditPosition | undefined,
     limit: number,
   ): Promise<ReadonlyArray<AuditEntry>>;
+  /** Cost of the served requests in `[from, to)`, grouped (spec 006 FR-012). */
+  cost(range: { from: string; to: string }, groupBy: CostGroup): Promise<CostAggregates>;
+  /** Attempts per target since `since` (spec 006 FR-013). */
+  window(since: string): Promise<ReadonlyArray<TargetWindow>>;
 }
 
 /** Newest first; ties broken by id (descending). */

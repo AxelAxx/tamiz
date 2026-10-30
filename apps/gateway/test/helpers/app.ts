@@ -14,7 +14,9 @@ import type {
 } from "../../src/application/ports/llm-provider.port.js";
 import type { LoggerPort } from "../../src/application/ports/logger.port.js";
 import type { RoutingEventsPort } from "../../src/application/ports/routing-events.port.js";
+import { costReport } from "../../src/application/use-cases/cost-report.js";
 import type { InspectSensitivity } from "../../src/application/use-cases/inspect-sensitivity.js";
+import { providerHealth } from "../../src/application/use-cases/provider-health.js";
 import { queryAuditLog } from "../../src/application/use-cases/query-audit-log.js";
 import {
   type RouteInferenceDeps,
@@ -64,6 +66,8 @@ export const NO_CHAT = {
   streamInference: () => Promise.reject(new Error("streamInference must not be called")),
   simulatePolicy: () => Promise.reject(new Error("simulatePolicy must not be called")),
   queryAuditLog: () => Promise.reject(new Error("queryAuditLog must not be called")),
+  costReport: () => Promise.reject(new Error("costReport must not be called")),
+  providerHealth: () => Promise.reject(new Error("providerHealth must not be called")),
   authenticate: () => undefined,
 } as const;
 
@@ -140,6 +144,13 @@ export async function createTestApp(
     streamInference: stream,
     simulatePolicy: simulatePolicy(deps),
     queryAuditLog: queryAuditLog(audit),
+    costReport: costReport({ reader: audit, policies: deps.policies }),
+    providerHealth: providerHealth({
+      reader: audit,
+      policies: deps.policies,
+      circuitState: deps.circuitState,
+      clock,
+    }),
     authenticate: (key) => verifyPrincipal(key, records),
   });
   /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */

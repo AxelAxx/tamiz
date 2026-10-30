@@ -4,6 +4,7 @@
  * which is retention, not loss: the gateway announces at start that the audit log is
  * in memory. Feature 006's admin API reads it the same way it reads PostgreSQL.
  */
+import { aggregateCost, targetWindows } from "../../application/audit/aggregates.js";
 import type { AuditLogPort } from "../../application/ports/audit-log.port.js";
 import {
   type AuditReaderPort,
@@ -32,6 +33,17 @@ export function createInMemoryAuditLog(maxEntries = 10_000): InMemoryAuditLog {
         .filter((entry) => matchesFilters(entry, filters, after))
         .sort(compareNewestFirst)
         .slice(0, limit);
+    },
+    async cost(range, groupBy) {
+      return aggregateCost(
+        buffer.filter((entry) => matchesFilters(entry, range, undefined)),
+        groupBy,
+      );
+    },
+    async window(since) {
+      return targetWindows(
+        buffer.filter((entry) => matchesFilters(entry, { from: since }, undefined)),
+      );
     },
   };
 }

@@ -353,6 +353,8 @@ describe("resilience on the endpoint (spec 003)", () => {
       streamInference: () => Promise.reject(new Error("not streamed")),
       simulatePolicy: () => Promise.reject(new Error("not simulated")),
       queryAuditLog: () => Promise.reject(new Error("not queried")),
+      costReport: () => Promise.reject(new Error("not reported")),
+      providerHealth: () => Promise.reject(new Error("not reported")),
       authenticate: (key) =>
         key === DEMO_KEY ? { clientId: "demo", role: "client" as const } : undefined,
     });
