@@ -45,6 +45,24 @@ class AnalyzeResponse(BaseModel):
     sensitivity_level: SensitivityLevel
 
 
+class AnonymizeRequest(AnalyzeRequest):
+    """Same fields as `AnalyzeRequest`; a separate component so the two can evolve apart."""
+
+
+class PlaceholderOut(BaseModel):
+    placeholder: str = Field(description="`<KIND_n>`, as it appears in the anonymized text.")
+    kind: EntityKind
+    value: str = Field(description="The original text. Returned to the caller, stored nowhere.")
+
+
+class AnonymizeResponse(BaseModel):
+    text: str = Field(description="The request text with every reported finding replaced.")
+    mapping: list[PlaceholderOut] = Field(description="In order of first appearance.")
+    analysis: AnalyzeResponse = Field(
+        description="Findings and level of the original text (offsets into the request text)."
+    )
+
+
 class HealthResponse(BaseModel):
     model_config = ConfigDict(extra="forbid")
 

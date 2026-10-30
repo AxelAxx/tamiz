@@ -92,6 +92,65 @@
           }
         }
       }
+    },
+    "/anonymize": {
+      "post": {
+        "summary": "Anonymize",
+        "description": "`text` with each finding replaced by `<KIND_n>`, and the mapping to restore it.\n\nThe mapping exists only in this response: the service stores and logs nothing of it.",
+        "operationId": "anonymize_anonymize_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AnonymizeRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AnonymizeResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Body larger than 1 MiB",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Not ready",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorEnvelope"
+                }
+              }
+            }
+          }
+        }
+      }
     }
   },
   "components": {
@@ -180,6 +239,87 @@
           "sensitivity_level"
         ],
         "title": "AnalyzeResponse"
+      },
+      "AnonymizeRequest": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "Text to analyze. May be empty."
+          },
+          "language": {
+            "type": "string",
+            "const": "es",
+            "title": "Language",
+            "description": "Only Spanish in this version.",
+            "default": "es"
+          },
+          "min_score": {
+            "anyOf": [
+              {
+                "type": "number",
+                "maximum": 1.0,
+                "minimum": 0.0
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Score",
+            "description": "Findings below are dropped. Default: the service's PRIVACY_DEFAULT_MIN_SCORE (0.5)."
+          },
+          "entities": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/EntityKind"
+                },
+                "type": "array",
+                "minItems": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Entities",
+            "description": "Kinds to report. Default: all."
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "text"
+        ],
+        "title": "AnonymizeRequest",
+        "description": "Same fields as `AnalyzeRequest`; a separate component so the two can evolve apart."
+      },
+      "AnonymizeResponse": {
+        "properties": {
+          "text": {
+            "type": "string",
+            "title": "Text",
+            "description": "The request text with every reported finding replaced."
+          },
+          "mapping": {
+            "items": {
+              "$ref": "#/components/schemas/PlaceholderOut"
+            },
+            "type": "array",
+            "title": "Mapping",
+            "description": "In order of first appearance."
+          },
+          "analysis": {
+            "$ref": "#/components/schemas/AnalyzeResponse",
+            "description": "Findings and level of the original text (offsets into the request text)."
+          }
+        },
+        "type": "object",
+        "required": [
+          "text",
+          "mapping",
+          "analysis"
+        ],
+        "title": "AnonymizeResponse"
       },
       "EntityKind": {
         "type": "string",
@@ -306,6 +446,30 @@
           "version"
         ],
         "title": "HealthResponse"
+      },
+      "PlaceholderOut": {
+        "properties": {
+          "placeholder": {
+            "type": "string",
+            "title": "Placeholder",
+            "description": "`<KIND_n>`, as it appears in the anonymized text."
+          },
+          "kind": {
+            "$ref": "#/components/schemas/EntityKind"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value",
+            "description": "The original text. Returned to the caller, stored nowhere."
+          }
+        },
+        "type": "object",
+        "required": [
+          "placeholder",
+          "kind",
+          "value"
+        ],
+        "title": "PlaceholderOut"
       },
       "SensitivityLevel": {
         "type": "string",

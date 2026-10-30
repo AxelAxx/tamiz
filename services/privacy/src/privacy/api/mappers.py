@@ -1,7 +1,14 @@
 """Between the HTTP contract and the use cases."""
 
-from privacy.api.schemas import AnalyzeRequest, AnalyzeResponse, FindingOut
+from privacy.api.schemas import (
+    AnalyzeRequest,
+    AnalyzeResponse,
+    AnonymizeResponse,
+    FindingOut,
+    PlaceholderOut,
+)
 from privacy.application.analyze_text import ALL_KINDS, AnalysisResult, AnalyzeCommand
+from privacy.application.anonymize_text import AnonymizationResult
 
 
 def to_command(body: AnalyzeRequest, default_min_score: float) -> AnalyzeCommand:
@@ -20,6 +27,17 @@ def to_analyze_response(result: AnalysisResult) -> AnalyzeResponse:
         ],
         counts=dict(result.counts),
         sensitivity_level=result.level,
+    )
+
+
+def to_anonymize_response(result: AnonymizationResult) -> AnonymizeResponse:
+    return AnonymizeResponse(
+        text=result.text,
+        mapping=[
+            PlaceholderOut(placeholder=e.placeholder, kind=e.kind, value=e.value)
+            for e in result.mapping
+        ],
+        analysis=to_analyze_response(result.analysis),
     )
 
 

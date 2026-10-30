@@ -291,38 +291,38 @@ test passes.
 
 ### Tests first
 
-- [ ] T054 [P] [US3] `privacy/tests/unit/test_placeholders.py`: two names, a DNI and an
+- [x] T054 [P] [US3] `privacy/tests/unit/test_placeholders.py`: two names, a DNI and an
   email → `<PERSON_1>`, `<PERSON_2>`, `<DNI_1>`, `<EMAIL_1>`, no original value left
   (US3-1); a name three times → one placeholder (US3-2); no findings → same text, empty
   mapping (US3-4); input already containing `<DNI_1>` and `<DNI_3>` → new DNI is
   `<DNI_4>` (US3-6); hypothesis over random texts and non-overlapping findings: restore
   equals original (US3-3)
-- [ ] T055 [P] [US3] `privacy/tests/unit/test_anonymize_text.py` with the fake analyzer:
+- [x] T055 [P] [US3] `privacy/tests/unit/test_anonymize_text.py` with the fake analyzer:
   the result carries the analysis of the original text (US3-7)
-- [ ] T056 [P] [US3] `privacy/tests/api/test_anonymize.py`: response shape of
+- [x] T056 [P] [US3] `privacy/tests/api/test_anonymize.py`: response shape of
   `contracts/http.md` against `contracts/anonymize.example.json` through the fake
   analyzer; restore with the test helper equals the request text (US3-3); no mapped
   value appears in `text` (US3-1); `analysis` present (US3-7); log capture contains no
   value and no placeholder mapping
-- [ ] T057 [P] [US3] `privacy/tests/api/test_no_writes.py`: with a `sys.addaudithook`
+- [x] T057 [P] [US3] `privacy/tests/api/test_no_writes.py`: with a `sys.addaudithook`
   recorder active, run `/analyze` and `/anonymize` (real app, fake analyzer) and assert
   no `open` event in a write mode, no `sqlite3.connect` and no socket connect (US3-5,
   US5-2)
-- [ ] T058 [P] [US3] `privacy/tests/nlp/test_anonymize_nlp.py`: the contracts example
+- [x] T058 [P] [US3] `privacy/tests/nlp/test_anonymize_nlp.py`: the contracts example
   text end to end with the real engine; restore exact
 
 ### Implementation
 
-- [ ] T059 `src/domain/placeholders.py` (data-model §1.5, research R-07)
-- [ ] T060 `src/application/anonymize_text.py`
-- [ ] T061 `privacy/tests/helpers/restore.py`: `restore(text, mapping)` (documents the
+- [x] T059 `src/domain/placeholders.py` (data-model §1.5, research R-07)
+- [x] T060 `src/application/anonymize_text.py`
+- [x] T061 `privacy/tests/helpers/restore.py`: `restore(text, mapping)` (documents the
   gateway's future restore, `T-005-04`)
-- [ ] T062 `POST /anonymize` in `src/api/app.py` and its schemas; re-export
+- [x] T062 `POST /anonymize` in `src/api/app.py` and its schemas; re-export
   `privacy/openapi.json`
 
 ### Verification
 
-- [ ] T063 `quickstart.md` §5 anonymize call; gates green; write
+- [x] T063 `quickstart.md` §5 anonymize call; gates green; write
   `docs/tasks/done/T-004-06-reversible-anonymization.md`, flip the backlog row
 
 ---
