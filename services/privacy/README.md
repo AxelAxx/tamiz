@@ -20,8 +20,25 @@ Done so far:
   resolution, the 1 MiB body limit, 400 validation errors and the exported contract
   [`openapi.json`](openapi.json).
 
-Still to come: the Spanish identifiers (DNI, NIE, CIF) in `T-004-04`; IBAN, phone and NSS
-in `T-004-05`; and `/anonymize` in `T-004-06`.
+- `T-004-04`: DNI, NIE and CIF, validated by their check characters.
+
+Still to come: IBAN, phone and NSS in `T-004-05`, and `/anonymize` in `T-004-06`.
+
+## Recognizers
+
+| Kind | Source | Accepted only when |
+|---|---|---|
+| `PERSON`, `LOCATION` | spaCy `es_core_news_lg` (via Presidio) | the model tags `PER` / `LOC` (score 0.85) |
+| `EMAIL` | Presidio `EmailRecognizer` | the address and its domain are well formed |
+| `CREDIT_CARD` | Presidio `CreditCardRecognizer` | Luhn passes |
+| `DNI` | own (`recognizers/identity.py`) | the letter is `TRWAGMYFPDXBNJZSQVHLCKE[number mod 23]` |
+| `NIE` | own | X/Y/Z → 0/1/2, then the DNI rule |
+| `CIF` | own | the control digit or letter matches; A, B, E, H need a digit; P, Q, R, S, N, W need a letter |
+
+Own recognizers accept upper or lower case and the usual separators (`12.345.678-Z`,
+`X-1234567-L`, `B-12345674`). Validated candidates score 1.0; invalid ones are dropped.
+The check-character rules live in `domain/checksums.py`, and the tests use `python-stdnum`
+as an oracle.
 
 ## Layers
 

@@ -1,7 +1,6 @@
 """/analyze with the real Spanish model (spec 004 US1-1, FR-008; edge case: English text).
 
-The phone part of US1-1 lands with the Spanish phone recognizer (T-004-05, task T048), and
-the DNI and CIF levels of US1-2 and US1-4 with the identity recognizers (T-004-04, T038).
+The phone part of US1-1 lands with the Spanish phone recognizer (T-004-05, task T048).
 """
 
 import pytest
@@ -54,6 +53,36 @@ def test_a_card_number_failing_luhn_is_not_reported(nlp_client: TestClient) -> N
     body = nlp_client.post("/analyze", json={"text": text}).json()
 
     assert "CREDIT_CARD" not in body["counts"]
+
+
+def test_us1_2_a_valid_dni_makes_the_text_critical(nlp_client: TestClient) -> None:
+    text = "La paciente Lucía Fernández, con DNI 12345678Z, pide cita."
+
+    body = nlp_client.post("/analyze", json={"text": text}).json()
+
+    assert kinds_and_values(text, body) == [
+        ("PERSON", "Lucía Fernández"),
+        ("DNI", "12345678Z"),
+    ]
+    assert body["sensitivity_level"] == "critical"
+
+
+def test_us1_4_a_cif_alone_is_low(nlp_client: TestClient) -> None:
+    text = "Factura emitida con CIF B12345674 el mes pasado."
+
+    body = nlp_client.post("/analyze", json={"text": text}).json()
+
+    assert kinds_and_values(text, body) == [("CIF", "B12345674")]
+    assert body["sensitivity_level"] == "low"
+
+
+def test_a_nie_and_a_wrong_dni_together(nlp_client: TestClient) -> None:
+    text = "Titular con NIE Y1234567X; el DNI 12345678A del formulario es erróneo."
+
+    body = nlp_client.post("/analyze", json={"text": text}).json()
+
+    assert kinds_and_values(text, body) == [("NIE", "Y1234567X")]
+    assert body["sensitivity_level"] == "critical"
 
 
 def test_no_personal_data_is_none(nlp_client: TestClient) -> None:
