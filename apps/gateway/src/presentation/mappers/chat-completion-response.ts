@@ -1,7 +1,7 @@
 /**
  * Routed completion → chat completion response DTO (spec 002 FR-024, FR-025, research
- * R-15). The body is validated against the contract before it is sent. Usage the
- * provider omitted is reported as zeros until `T-002-07` estimates it.
+ * R-15, FR-035). The body is validated against the contract before it is sent;
+ * `usage` always carries `cost_usd` and whether the counts were `estimated`.
  */
 import { type ChatCompletionResponse, ChatCompletionResponseSchema } from "@tamiz/contracts";
 import type { RoutedCompletion } from "../../application/use-cases/route-inference.js";
@@ -10,8 +10,7 @@ export function toChatCompletionResponse(
   routed: RoutedCompletion,
   requestId: string,
 ): ChatCompletionResponse {
-  const promptTokens = routed.usage?.promptTokens ?? 0;
-  const completionTokens = routed.usage?.completionTokens ?? 0;
+  const { promptTokens, completionTokens, estimated } = routed.usage;
   return ChatCompletionResponseSchema.parse({
     id: `chatcmpl-${requestId}`,
     object: "chat.completion",
@@ -28,6 +27,8 @@ export function toChatCompletionResponse(
       prompt_tokens: promptTokens,
       completion_tokens: completionTokens,
       total_tokens: promptTokens + completionTokens,
+      cost_usd: routed.cost,
+      estimated,
     },
   });
 }

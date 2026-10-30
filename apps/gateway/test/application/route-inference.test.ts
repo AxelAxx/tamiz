@@ -87,18 +87,44 @@ describe("routeInference", () => {
     expect(target.id).toBe("mistral-small");
     expect(target).toBe(decision.chain[0]);
     expect(completion).toEqual({ ...COMPLETION, modelName: "mistral-small-latest" });
-    expect(result.value.usage).toEqual(COMPLETION.usage);
+    // FR-034: reported usage is used as is, and priced with the target (FR-033).
+    expect(result.value.usage).toEqual({ promptTokens: 12, completionTokens: 3, estimated: false });
+    const { inputUsdPerMillion, outputUsdPerMillion } = target.pricing;
+    expect(result.value.cost).toBeCloseTo(
+      (12 * inputUsdPerMillion + 3 * outputUsdPerMillion) / 1e6,
+      12,
+    );
     // Read after the provider call: the clock moved inside the call.
     expect(createdAt.toISOString()).toBe("2026-05-06T07:08:09.250Z");
     expect(provider.calls).toHaveLength(1);
   });
 
-  it("leaves usage absent when the provider reports none", async () => {
-    const { route } = setup(() => ok({ text: "ok", finishReason: "stop", modelName: "m" }));
+  it("US7-4: estimates usage from the messages and the text when the provider reports none", async () => {
+    const { route } = setup(() =>
+      ok({ text: "Una respuesta de treinta y dos c.", finishReason: "stop", modelName: "m" }),
+    );
+    const system = "Eres conciso.";
+    const user = "Hola, ¿qué tal estás hoy?";
 
-    const result = await route(request("Hola"));
+    const result = await route({
+      ...request(user),
+      messages: [
+        { role: "system", content: system },
+        { role: "user", content: user },
+      ],
+    });
 
-    expect(result.ok && "usage" in result.value).toBe(false);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    // The classifier's estimator: one token per four characters, over all messages.
+    const promptTokens = Math.ceil((system.length + user.length) / 4);
+    const completionTokens = Math.ceil("Una respuesta de treinta y dos c.".length / 4);
+    expect(result.value.usage).toEqual({ promptTokens, completionTokens, estimated: true });
+    const { inputUsdPerMillion, outputUsdPerMillion } = result.value.target.pricing;
+    expect(result.value.cost).toBeCloseTo(
+      (promptTokens * inputUsdPerMillion + completionTokens * outputUsdPerMillion) / 1e6,
+      12,
+    );
   });
 
   it("decides with exactly what classifyTask produced (FR-011, FR-012)", async () => {

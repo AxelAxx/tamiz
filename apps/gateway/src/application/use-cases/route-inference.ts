@@ -4,15 +4,18 @@
  * In order: classify → active policy → `decide` → `chain[0]` → effective timeout →
  * provider call → `createdAt` from the clock. Only `chain[0]` is called in feature 002;
  * the full chain stays in the decision for feature 003. A provider failure comes back
- * as a `RoutingFailure`, never as a throw. `T-002-07` adds the cost step and turns
- * `usage` into reported-or-estimated usage.
+ * as a `RoutingFailure`, never as a throw. Usage is the provider's when it reports one,
+ * otherwise estimated with the classifier's estimator, and it is priced with the
+ * target's pricing (spec 002 FR-033, FR-034).
  */
 import type { ProviderError } from "../../domain/errors.js";
-import type { InferenceRequest } from "../../domain/model/inference-request.js";
+import { computeCost, type Usage } from "../../domain/model/cost.js";
+import type { InferenceRequest, Message } from "../../domain/model/inference-request.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
 import { decide, type RoutingDecision } from "../../domain/model/routing-decision.js";
 import type { RoutingPolicy } from "../../domain/model/routing-policy.js";
-import type { Milliseconds } from "../../domain/model/units.js";
+import { estimateTokens } from "../../domain/model/task-classifier.js";
+import type { Milliseconds, Usd } from "../../domain/model/units.js";
 import { err, ok, type Result } from "../../domain/result.js";
 import type { ClockPort } from "../ports/clock.port.js";
 import type { ProviderCompletion } from "../ports/llm-provider.port.js";
@@ -30,8 +33,9 @@ export interface RoutedCompletion {
   readonly decision: RoutingDecision;
   readonly target: ModelTarget;
   readonly completion: ProviderCompletion;
-  /** The provider's reported usage, when it sent one. */
-  readonly usage?: ProviderCompletion["usage"];
+  /** Reported by the provider, or estimated when it sent none (`estimated: true`). */
+  readonly usage: Usage;
+  readonly cost: Usd;
   readonly createdAt: Date;
 }
 
@@ -52,6 +56,19 @@ export function effectiveTimeoutMs(
   policy: RoutingPolicy,
 ): Milliseconds {
   return decision.ruleTimeoutMs ?? target.timeoutMs ?? policy.defaultTimeoutMs;
+}
+
+/** FR-034: the provider's counts, or the classifier's estimate over the exchanged text. */
+export function resolveUsage(
+  completion: ProviderCompletion,
+  messages: ReadonlyArray<Message>,
+): Usage {
+  if (completion.usage !== undefined) return { ...completion.usage, estimated: false };
+  return {
+    promptTokens: estimateTokens(messages.map((message) => message.content).join("")),
+    completionTokens: estimateTokens(completion.text),
+    estimated: true,
+  };
 }
 
 export function routeInference(deps: RouteInferenceDeps): RouteInference {
@@ -77,11 +94,13 @@ export function routeInference(deps: RouteInferenceDeps): RouteInference {
     }
 
     const completion = result.value;
+    const usage = resolveUsage(completion, request.messages);
     return ok({
       decision,
       target,
       completion,
-      ...(completion.usage === undefined ? {} : { usage: completion.usage }),
+      usage,
+      cost: computeCost(usage, target.pricing),
       createdAt: deps.clock.now(),
     });
   };

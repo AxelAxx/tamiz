@@ -11,5 +11,5 @@ feature 002, `model/`: `brands.ts` (the brand types, import-free so `errors.ts` 
 them), `units.ts` (their validating constructors, re-exporting the types),
 `inference-request.ts`, `model-target.ts`, `sensitivity.ts`,
 `task-classifier.ts` (rule-based `classify`, the bilingual cue table `CUES`),
-`routing-policy.ts` (`validatePolicy`, `targetById`) and `routing-decision.ts` (the pure,
-total `decide`).
+`routing-policy.ts` (`validatePolicy`, `targetById`), `routing-decision.ts` (the pure,
+total `decide`) and `cost.ts` (`Usage`, `computeCost`).

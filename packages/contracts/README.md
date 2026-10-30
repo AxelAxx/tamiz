@@ -10,7 +10,7 @@ sections 1–5):
 | Module | Exports |
 |---|---|
 | `src/branded.ts` | `RequestIdSchema`, `PolicyIdSchema`, `UsdSchema`, `MillisecondsSchema`; types `RequestId`, `PolicyId`, `Usd`, `Milliseconds`; constructors `requestId`, `policyId`, `usd`, `milliseconds` (parse and throw) and `safeRequestId`, `safePolicyId`, `safeUsd`, `safeMilliseconds` (return a Zod safe-parse result) |
-| `src/chat-completion.ts` | OpenAI-compatible non-streaming subset: `ChatMessageSchema`, `ChatCompletionRequestSchema` (`stream` accepts only `false` until feature 003), `ChatCompletionChoiceSchema`, `ChatCompletionUsageSchema`, `ChatCompletionResponseSchema` and their types |
+| `src/chat-completion.ts` | OpenAI-compatible non-streaming subset: `ChatMessageSchema`, `ChatCompletionRequestSchema` (`stream` accepts only `false` until feature 003), `ChatCompletionChoiceSchema`, `ChatCompletionUsageSchema` (spec 002 adds the optional `cost_usd` and `estimated`), `ChatCompletionResponseSchema` and their types |
 | `src/health.ts` | `HealthCheckSchema`, `HealthResponseSchema` (`checks` required when `status` is `degraded`) and their types |
 | `src/error.ts` | `ErrorTypeSchema` (seven closed values), `ErrorEnvelopeSchema`, `errorTypeToHttpStatus` and their types |
 | `src/routing-policy.ts` (feature 002, `T-002-05`) | `RoutingPolicySchema` (the policy file's shape; cross-field rules live in the gateway domain), `ModelTargetSchema`, `RoutingRuleSchema`, `RuleConditionSchema`, `PricingSchema`, `TargetIdSchema`, `RuleIdSchema`, the closed lists `ProviderNameSchema`, `ResidencySchema`, `TaskTypeSchema`, `TaskSizeSchema`, and their `*Dto` types |
