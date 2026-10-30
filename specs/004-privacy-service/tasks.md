@@ -335,51 +335,51 @@ makes it fail.
 
 ### Tests first
 
-- [ ] T064 [P] [US4] `privacy/tests/metrics/test_corpus_format.py`: first line is the
+- [x] T064 [P] [US4] `privacy/tests/metrics/test_corpus_format.py`: first line is the
   meta record with `synthetic: true` and a version; every case validates (data-model
   §5); sizes of research R-14; every positive structured span passes its domain check,
   every `negative`-tagged identifier fails it; `generate_corpus.py --check` reproduces
   the file (US4-3)
-- [ ] T065 [P] [US4] `privacy/tests/metrics/test_detection_metrics.py` (`metrics`):
+- [x] T065 [P] [US4] `privacy/tests/metrics/test_detection_metrics.py` (`metrics`):
   full pipeline over the corpus; writes `privacy/reports/detection-metrics.json`
   (data-model §6); asserts SC-001 for each structured kind and `PERSON` recall ≥ 0.80,
   reports `LOCATION` (US4-1, US4-4); anonymize → restore exact on every case and no
   reported value left in anonymized text (SC-003)
-- [ ] T066 [P] [US4] `privacy/tests/unit/test_metrics_scoring.py`: the scorer's matching
+- [x] T066 [P] [US4] `privacy/tests/unit/test_metrics_scoring.py`: the scorer's matching
   rules (exact spans for structured kinds, overlap for `PERSON`/`LOCATION`) on
   hand-made predictions; a threshold failure message names the kind, the metric and the
   value (US4-2)
-- [ ] T067 [P] [US5] `privacy/tests/conftest.py`: session-wide autouse log capture that
+- [x] T067 [P] [US5] `privacy/tests/conftest.py`: session-wide autouse log capture that
   fails the session if any corpus case text, or any value of a span, appears in any
   captured log record (US5-1, SC-005)
 
 ### Implementation
 
-- [ ] T068 `privacy/scripts/generate_corpus.py` (Faker `es_ES`, seed 20261030, own
+- [x] T068 `privacy/scripts/generate_corpus.py` (Faker `es_ES`, seed 20261030, own
   identifier generators, templates per domain, hard negatives; `--check`); Faker as a
   dev dependency
-- [ ] T069 Generate and commit `privacy/tests/corpus/pii-es.v1.jsonl`
-- [ ] T070 `privacy/tests/metrics/scoring.py`: per-kind counts, precision, recall,
+- [x] T069 Generate and commit `privacy/tests/corpus/pii-es.v1.jsonl`
+- [x] T070 `privacy/tests/metrics/scoring.py`: per-kind counts, precision, recall,
   thresholds table, report writer
-- [ ] T071 `.github/workflows/ci.yml`: upload `services/privacy/reports/` as an artifact
+- [x] T071 `.github/workflows/ci.yml`: upload `services/privacy/reports/` as an artifact
   (also on failure)
 
 ### Verification
 
-- [ ] T072 `quickstart.md` §4 including the deliberate break; record the metrics table
+- [x] T072 `quickstart.md` §4 including the deliberate break; record the metrics table
   in `docs/tasks/done/T-004-07-corpus-and-metrics.md`, flip the backlog row
 
 ---
 
 ## Phase 7: Polish and cross-cutting
 
-- [ ] T073 [P] `README.md` "Status": feature 004 done, the detection metrics table,
+- [x] T073 [P] `README.md` "Status": feature 004 done, the detection metrics table,
   link to `specs/004-privacy-service/quickstart.md`
-- [ ] T074 [P] `docs/architecture.md` (privacy service layers and endpoints) and
+- [x] T074 [P] `docs/architecture.md` (privacy service layers and endpoints) and
   `CLAUDE.md` section 12 (privacy commands, `-m nlp`, `-m metrics`)
-- [ ] T075 [P] `docker-compose.yml`: `privacy` service built from `services/privacy`,
+- [x] T075 [P] `docker-compose.yml`: `privacy` service built from `services/privacy`,
   healthcheck, internal network only (no published port by default)
-- [ ] T076 Run `quickstart.md` end to end (including §6 Docker in CI or on a machine with
+- [x] T076 Run `quickstart.md` end to end (including §6 Docker in CI or on a machine with
   Docker) and record the results in the last task record of the feature
 
 Tasks T073–T076 belong to the last PR of the feature (`T-004-06` or `T-004-07`,
