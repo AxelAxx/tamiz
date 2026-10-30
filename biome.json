@@ -15,7 +15,8 @@
       "!**/.turbo",
       "!.specify",
       "!.claude",
-      "!pnpm-lock.yaml"
+      "!pnpm-lock.yaml",
+      "!services/privacy"
     ]
   },
   "formatter": {

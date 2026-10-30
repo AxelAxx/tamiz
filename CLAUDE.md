@@ -338,8 +338,10 @@ non-conventional message is refused locally. CI (`.github/workflows/ci.yml`, one
 runs lint → typecheck → arch → test → build on every pull request and on `main`, plus
 commitlint over the PR range; `main` requires that check (`T-001-05`).
 
-Privacy service (`services/privacy`): `uv sync`, `uv run ruff check .`, `uv run mypy .`,
-`uv run pytest`, `uv run fastapi dev src/privacy/api/main.py`.
+Privacy service (`services/privacy`, since `T-004-02`): `uv sync`, `uv run ruff check .`,
+`uv run ruff format --check .`, `uv run mypy` (files from `pyproject.toml`), `uv run lint-imports`,
+`uv run pytest`, `uv run python -m privacy.main`; the same steps run in the `ci` job after
+`pnpm build`, plus `docker build services/privacy`. Biome ignores `services/privacy`.
 
 Spec Kit: `uvx --from git+https://github.com/github/spec-kit.git specify check` to verify
 the installation; skills are invoked from Claude Code as `/speckit-*`.
