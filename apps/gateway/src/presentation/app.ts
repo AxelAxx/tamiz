@@ -13,6 +13,8 @@ import { bodyLimit } from "hono/body-limit";
 import { HTTPException } from "hono/http-exception";
 import type { ClockPort } from "../application/ports/clock.port.js";
 import type { LoggerPort } from "../application/ports/logger.port.js";
+import type { CostReportUseCase } from "../application/use-cases/cost-report.js";
+import type { ProviderHealthUseCase } from "../application/use-cases/provider-health.js";
 import type { QueryAuditLog } from "../application/use-cases/query-audit-log.js";
 import type { RouteInference } from "../application/use-cases/route-inference.js";
 import type { SimulatePolicy } from "../application/use-cases/simulate-policy.js";
@@ -22,6 +24,8 @@ import { adminOnly } from "./middlewares/admin-only.js";
 import { type Authenticate, apiKeyAuth } from "./middlewares/api-key-auth.js";
 import { requestId } from "./middlewares/request-id.js";
 import { registerAdminAudit } from "./routes/admin/audit.js";
+import { registerAdminCost } from "./routes/admin/cost.js";
+import { registerAdminProviders } from "./routes/admin/providers.js";
 import { type ChatEnv, ROUTE_HEADER, registerChatCompletions } from "./routes/chat-completions.js";
 import { registerHealth } from "./routes/health.js";
 import { registerSimulate } from "./routes/simulate.js";
@@ -37,6 +41,10 @@ export interface AppDeps {
   readonly simulatePolicy: SimulatePolicy;
   /** `GET /v1/admin/audit` (spec 006 FR-007). */
   readonly queryAuditLog: QueryAuditLog;
+  /** `GET /v1/admin/cost` (spec 006 FR-012). */
+  readonly costReport: CostReportUseCase;
+  /** `GET /v1/admin/providers` (spec 006 FR-013). */
+  readonly providerHealth: ProviderHealthUseCase;
   /** Maps a presented API key to its client id (hash + constant-time compare). */
   readonly authenticate: Authenticate;
 }
@@ -139,6 +147,8 @@ export function createApp(deps: AppDeps): GatewayApp {
   registerChatCompletions(app, deps.routeInference, deps.streamInference);
   registerSimulate(app, deps.simulatePolicy);
   registerAdminAudit(app, deps.queryAuditLog);
+  registerAdminCost(app, deps.costReport);
+  registerAdminProviders(app, deps.providerHealth);
 
   app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
     type: "http",

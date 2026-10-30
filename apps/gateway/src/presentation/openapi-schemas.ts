@@ -15,8 +15,12 @@ import {
   ChatCompletionChunkSchema,
   ChatCompletionRequestSchema,
   ChatCompletionResponseSchema,
+  CostQuerySchema,
+  CostReportSchema,
   ErrorEnvelopeSchema,
   HealthResponseSchema,
+  ProvidersQuerySchema,
+  ProvidersReportSchema,
   SimulateResponseSchema,
 } from "@tamiz/contracts";
 
@@ -35,3 +39,7 @@ export const SimulateResponseBody = SimulateResponseSchema.meta({ id: "SimulateR
 export const AuditEntryBody = AuditEntrySchema.meta({ id: "AuditEntry" });
 export const AuditPageBody = AuditPageSchema.meta({ id: "AuditPage" });
 export const AuditQueryParams = AuditQuerySchema;
+export const CostReportBody = CostReportSchema.meta({ id: "CostReport" });
+export const CostQueryParams = CostQuerySchema;
+export const ProvidersReportBody = ProvidersReportSchema.meta({ id: "ProvidersReport" });
+export const ProvidersQueryParams = ProvidersQuerySchema;

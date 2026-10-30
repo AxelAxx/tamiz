@@ -6,6 +6,7 @@
  * statement (the async writer batches them, research R-02).
  */
 import { and, desc, eq, gte, lt, type SQL, sql } from "drizzle-orm";
+import type { CostAggregate } from "../../application/audit/aggregates.js";
 import type {
   AuditFilters,
   AuditPosition,
@@ -160,6 +161,76 @@ export function createPostgresAuditReader(db: Database): AuditReaderPort {
         .orderBy(desc(auditEntries.createdAt), desc(auditEntries.id))
         .limit(limit);
       return rows.map(fromRow);
+    },
+
+    async cost(range, groupBy) {
+      const key =
+        groupBy === "day"
+          ? sql`to_char(${auditEntries.createdAt} at time zone 'UTC', 'YYYY-MM-DD')`
+          : groupBy === "route"
+            ? sql`${auditEntries.targetId}`
+            : sql`${auditEntries.targetModel}`;
+      const inRange = and(
+        gte(auditEntries.createdAt, range.from),
+        lt(auditEntries.createdAt, range.to),
+      );
+      const rows = await db.execute<Record<string, string | number | null>>(sql`
+        select ${key} as key, count(*) as requests,
+               coalesce(sum(${auditEntries.inputTokens}), 0) as input_tokens,
+               coalesce(sum(${auditEntries.outputTokens}), 0) as output_tokens,
+               coalesce(sum(${auditEntries.costUsd}), 0) as cost_usd,
+               coalesce(sum(${auditEntries.baselineCostUsd}), 0) as baseline_cost_usd
+        from ${auditEntries}
+        where ${inRange} and ${auditEntries.outcome} in ('answered', 'cancelled')
+          and ${auditEntries.targetId} is not null
+        group by 1 order by 1`);
+      const [counts] = await db.execute<Record<string, string | number>>(sql`
+        select count(*) filter (where ${auditEntries.outcome} = 'blocked') as blocked,
+               count(*) filter (where ${auditEntries.outcome} = 'failed') as failed
+        from ${auditEntries} where ${inRange}`);
+      return {
+        rows: rows.map(
+          (row): CostAggregate => ({
+            key: String(row["key"]),
+            requests: Number(row["requests"]),
+            inputTokens: Number(row["input_tokens"]),
+            outputTokens: Number(row["output_tokens"]),
+            costUsd: Number(row["cost_usd"]),
+            baselineCostUsd: Number(row["baseline_cost_usd"]),
+          }),
+        ),
+        blocked: Number(counts?.["blocked"] ?? 0),
+        failed: Number(counts?.["failed"] ?? 0),
+      };
+    },
+
+    async window(since) {
+      const rows = await db.execute<Record<string, string | number | null>>(sql`
+        with attempts as (
+          select ${auditEntries.targetId} as target_id, ${auditEntries.outcome} as outcome,
+                 ${auditEntries.latencyMs} as latency_ms
+          from ${auditEntries}
+          where ${auditEntries.createdAt} >= ${since} and ${auditEntries.targetId} is not null
+            and ${auditEntries.outcome} <> 'blocked'
+          union all
+          select a ->> 'targetId', 'abandoned', null
+          from ${auditEntries}, jsonb_array_elements(${auditEntries.abandoned}) as a
+          where ${auditEntries.createdAt} >= ${since}
+        )
+        select target_id, count(*) as requests,
+               count(*) filter (where outcome in ('failed', 'abandoned')) as errors,
+               percentile_cont(0.5) within group (order by latency_ms)
+                 filter (where outcome = 'answered') as p50,
+               percentile_cont(0.95) within group (order by latency_ms)
+                 filter (where outcome = 'answered') as p95
+        from attempts group by target_id`);
+      return rows.map((row) => ({
+        targetId: String(row["target_id"]),
+        requests: Number(row["requests"]),
+        errors: Number(row["errors"]),
+        latencyP50Ms: row["p50"] === null ? null : Number(row["p50"]),
+        latencyP95Ms: row["p95"] === null ? null : Number(row["p95"]),
+      }));
     },
   };
 }

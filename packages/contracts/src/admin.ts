@@ -7,7 +7,7 @@
 import { z } from "zod";
 import { AuditEntrySchema, AuditOutcomeSchema } from "./audit.js";
 import { PrivacyEntityKindSchema } from "./privacy-service.js";
-import { PrivacyActionSchema } from "./routing-policy.js";
+import { PrivacyActionSchema, ProviderNameSchema, ResidencySchema } from "./routing-policy.js";
 
 export const AUDIT_PAGE_DEFAULT = 50;
 export const AUDIT_PAGE_MAX = 200;
@@ -33,3 +33,71 @@ export const AuditPageSchema = z.strictObject({
 
 export type AuditQueryDto = z.infer<typeof AuditQuerySchema>;
 export type AuditPageDto = z.infer<typeof AuditPageSchema>;
+
+/** `GET /v1/admin/cost` (spec 006 FR-012). Days are UTC. */
+export const CostQuerySchema = z.strictObject({
+  from: z.iso.datetime(),
+  to: z.iso.datetime(),
+  groupBy: z.enum(["day", "route", "model"]).default("day"),
+});
+
+export const CostRowSchema = z.strictObject({
+  key: z.string(),
+  requests: z.int().min(0),
+  inputTokens: z.int().min(0),
+  outputTokens: z.int().min(0),
+  costUsd: z.number().min(0),
+  baselineCostUsd: z.number().min(0),
+});
+
+export const CostReportSchema = z.strictObject({
+  from: z.iso.datetime(),
+  to: z.iso.datetime(),
+  groupBy: z.enum(["day", "route", "model"]),
+  /** The policy's most expensive target; `null` when no target is priced. */
+  baseline: z
+    .strictObject({
+      targetId: z.string(),
+      inputUsdPerMillion: z.number().min(0),
+      outputUsdPerMillion: z.number().min(0),
+    })
+    .nullable(),
+  rows: z.array(CostRowSchema),
+  notServed: z.strictObject({
+    requests: z.int().min(0),
+    blocked: z.int().min(0),
+    failed: z.int().min(0),
+  }),
+  totals: CostRowSchema,
+});
+
+/** `GET /v1/admin/providers` (spec 006 FR-013). */
+export const ProvidersQuerySchema = z.strictObject({
+  windowMinutes: z.coerce.number().int().min(1).max(1_440).default(15),
+});
+
+export const ProviderHealthSchema = z.strictObject({
+  targetId: z.string(),
+  provider: ProviderNameSchema,
+  model: z.string(),
+  residency: ResidencySchema,
+  circuit: z.enum(["closed", "open", "half_open"]),
+  cooldownRemainingMs: z.int().min(0).optional(),
+  window: z.strictObject({
+    requests: z.int().min(0),
+    errors: z.int().min(0),
+    errorRate: z.number().min(0).max(1),
+    latencyP50Ms: z.number().min(0).nullable(),
+    latencyP95Ms: z.number().min(0).nullable(),
+  }),
+});
+
+export const ProvidersReportSchema = z.strictObject({
+  windowMinutes: z.int().min(1),
+  generatedAt: z.iso.datetime(),
+  targets: z.array(ProviderHealthSchema),
+});
+
+export type CostQueryDto = z.infer<typeof CostQuerySchema>;
+export type CostReportDto = z.infer<typeof CostReportSchema>;
+export type ProvidersReportDto = z.infer<typeof ProvidersReportSchema>;

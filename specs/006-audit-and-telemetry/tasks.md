@@ -166,28 +166,28 @@ approved by Alex (`T-006-01`).
 
 ### Tests first
 
-- [ ] T029 [P] [US3] `gateway/test/persistence/cost-report.test.ts` (Testcontainers) and the
+- [x] T029 [P] [US3] `gateway/test/persistence/cost-report.test.ts` (Testcontainers) and the
   in-memory equivalent:
   - by day, route and model;
   - local zero cost;
   - the baseline sums;
   - the not-served line;
   - totals to the cent (US3-1 … US3-3, SC-005).
-- [ ] T030 [P] [US3] `gateway/test/admin/cost-route.test.ts`:
+- [x] T030 [P] [US3] `gateway/test/admin/cost-route.test.ts`:
   - `from` and `to` are required;
   - the baseline is named (US3-4);
   - `contracts/cost-report.example.json` parses.
-- [ ] T031 [P] [US4] `gateway/test/admin/providers-route.test.ts`:
+- [x] T031 [P] [US4] `gateway/test/admin/providers-route.test.ts`:
   - an open circuit with its cool-down (US4-1);
   - window counts, error rate and percentiles (US4-2);
   - an idle target listed with zeros and nulls (US4-3).
 
 ### Implementation
 
-- [ ] T032 `contracts/src/admin.ts` (cost, providers);
+- [x] T032 `contracts/src/admin.ts` (cost, providers);
   `application/use-cases/{cost-report,provider-health}.ts`;
   `routes/admin/{cost,providers}.ts`; the SQL aggregates (`date_trunc`, `percentile_cont`).
-- [ ] T033 Gates; record; backlog row.
+- [x] T033 Gates; record; backlog row.
 
 ## Phase 6: Polish
 

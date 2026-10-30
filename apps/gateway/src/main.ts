@@ -12,7 +12,9 @@
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { serve } from "@hono/node-server";
 import { withAudit, withAuditStream } from "./application/audit/with-audit.js";
+import { costReport } from "./application/use-cases/cost-report.js";
 import { inspectSensitivity } from "./application/use-cases/inspect-sensitivity.js";
+import { providerHealth } from "./application/use-cases/provider-health.js";
 import { queryAuditLog } from "./application/use-cases/query-audit-log.js";
 import {
   type RouteInferenceDeps,
@@ -150,6 +152,8 @@ const auditDeps = {
 };
 const route = withAudit(routeInference(routing), auditDeps);
 const stream = withAuditStream(streamInference(routing), auditDeps);
+const auditReader =
+  database === undefined ? (auditLog as InMemoryAuditLog) : createPostgresAuditReader(database.db);
 const startedAt = systemClock.now();
 const app = createApp({
   clock: systemClock,
@@ -159,11 +163,14 @@ const app = createApp({
   routeInference: route,
   streamInference: stream,
   simulatePolicy: simulatePolicy(routing),
-  queryAuditLog: queryAuditLog(
-    database === undefined
-      ? (auditLog as InMemoryAuditLog)
-      : createPostgresAuditReader(database.db),
-  ),
+  queryAuditLog: queryAuditLog(auditReader),
+  costReport: costReport({ reader: auditReader, policies: routing.policies }),
+  providerHealth: providerHealth({
+    reader: auditReader,
+    policies: routing.policies,
+    circuitState,
+    clock: systemClock,
+  }),
   authenticate: createAuthenticator(
     config.apiKeys,
     database === undefined ? undefined : createPostgresApiKeyRepository(database.db),
