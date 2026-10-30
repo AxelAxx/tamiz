@@ -10,7 +10,7 @@ import {
 import { decide } from "../../src/domain/model/routing-decision.js";
 import { validatePolicy } from "../../src/domain/model/routing-policy.js";
 import type { Inspection, SensitivityLevel } from "../../src/domain/model/sensitivity.js";
-import { NOT_INSPECTED } from "../../src/domain/model/sensitivity.js";
+import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import {
   decideRoute,
   examplePolicyInput,
@@ -260,7 +260,7 @@ describe("decide with privacy", () => {
   });
 
   it("an uninspected request keeps the 003 route", () => {
-    const decision = decideRoute(strict, { ...code, inspection: NOT_INSPECTED });
+    const decision = decideRoute(strict, { ...code, inspection: CLEAN_INSPECTION });
     expect(decision.chain.map((t) => t.id)).toEqual([
       "anthropic-sonnet",
       "openai-mini",

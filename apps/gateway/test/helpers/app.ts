@@ -12,6 +12,7 @@ import type {
 } from "../../src/application/ports/llm-provider.port.js";
 import type { LoggerPort } from "../../src/application/ports/logger.port.js";
 import type { RoutingEventsPort } from "../../src/application/ports/routing-events.port.js";
+import type { InspectSensitivity } from "../../src/application/use-cases/inspect-sensitivity.js";
 import {
   type RouteInferenceDeps,
   routeInference,
@@ -25,6 +26,7 @@ import { createInMemoryCircuitState } from "../../src/infrastructure/cache/in-me
 import { loadPolicyFile } from "../../src/infrastructure/policy/file-policy-loader.js";
 import { createApp } from "../../src/presentation/app.js";
 import { noopLogger } from "./noop-logger.js";
+import { cleanPrivacyDeps } from "./privacy.js";
 
 /** A test key for the client `demo`; only its hash is given to the app. */
 export const DEMO_KEY = "tmz_demo-test-key-not-a-secret-000000000000000";
@@ -62,6 +64,8 @@ export async function createTestApp(
     ) => Promise<Result<StartedStream, ProviderError>>;
     readonly circuitState?: CircuitStatePort;
     readonly events?: RoutingEventsPort;
+    /** What the privacy service reports (spec 005); clean by default. */
+    readonly inspect?: InspectSensitivity;
   } = {},
 ) {
   const clock = createFakeClock(START);
@@ -90,6 +94,8 @@ export async function createTestApp(
     circuitState: options.circuitState ?? createInMemoryCircuitState(clock),
     events: options.events ?? { emit: () => {} },
     random: () => 0.5,
+    ...cleanPrivacyDeps(),
+    ...(options.inspect === undefined ? {} : { inspect: options.inspect }),
   };
   const route = routeInference(deps);
   const stream = streamInference(deps);

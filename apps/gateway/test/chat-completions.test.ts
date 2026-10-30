@@ -5,6 +5,7 @@ import type { ProviderCompletionInput } from "../src/application/ports/llm-provi
 import { classifyTask } from "../src/application/use-cases/classify-task.js";
 import type { RouteInference } from "../src/application/use-cases/route-inference.js";
 import { providerError, residencyViolationError } from "../src/domain/errors.js";
+import { CLEAN_INSPECTION } from "../src/domain/model/sensitivity.js";
 import { millisecondsUnchecked, targetIdUnchecked } from "../src/domain/model/units.js";
 import { err, ok } from "../src/domain/result.js";
 import { createInMemoryCircuitState } from "../src/infrastructure/cache/in-memory-circuit-state.js";
@@ -325,7 +326,7 @@ describe("resilience on the endpoint (spec 003)", () => {
   it("US2-1: a residency violation → 451 policy_blocked with policy data only", async () => {
     const policy = await defaultPolicy();
     const blocked: RouteInference = async (request) => {
-      const decision = decideRoute(policy, { ...classifyTask(request) });
+      const decision = decideRoute(policy, classifyTask(request, CLEAN_INSPECTION));
       const target = decision.chain[1];
       if (target === undefined) throw new Error("the default chain has two targets");
       return err({

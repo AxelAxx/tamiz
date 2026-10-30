@@ -7,7 +7,7 @@ import {
   type RoutingPolicyInput,
   validatePolicy,
 } from "../../src/domain/model/routing-policy.js";
-import { NOT_INSPECTED } from "../../src/domain/model/sensitivity.js";
+import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import { decideRoute, examplePolicyInput, validPolicy } from "./helpers/policies.js";
 
 // Spec 003 US2-3, US2-4, FR-012, FR-014, FR-020, research R-06, R-14 (tasks.md T021).
@@ -23,7 +23,7 @@ function request(overrides: Partial<DecisionInput> = {}): DecisionInput {
     requestedModel: "tamiz-auto",
     taskType: "chat" as const,
     size: "short" as const,
-    inspection: NOT_INSPECTED,
+    inspection: CLEAN_INSPECTION,
     ...overrides,
   };
 }

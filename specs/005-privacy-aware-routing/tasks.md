@@ -191,57 +191,57 @@ capture is clean.
 
 ### Tests first
 
-- [ ] T025 [P] [US2] `gateway/test/domain/placeholders.test.ts`:
+- [x] T025 [P] [US2] `gateway/test/domain/placeholders.test.ts`:
   - every vector in `specs/005-privacy-aware-routing/contracts/placeholder-vectors.json`
     and `specs/004-privacy-service/contracts/anonymize.example.json`;
   - `anonymizeMessages` numbers across messages, and the same value in two messages gets
     one placeholder (US2-2);
   - `restore` leaves unmapped `<PERSON_9>` and altered `PERSON_1` untouched (US2-3);
   - a `fast-check` round trip.
-- [ ] T026 [P] `services/privacy/tests/unit/test_shared_vectors.py`: the Python reference
+- [x] T026 [P] `services/privacy/tests/unit/test_shared_vectors.py`: the Python reference
   reproduces every vector of `placeholder-vectors.json` (research R-01).
-- [ ] T027 [P] [US1] [US2] [US3] `gateway/test/application/route-inference-privacy.test.ts`
+- [x] T027 [P] [US1] [US2] [US3] `gateway/test/application/route-inference-privacy.test.ts`
   (fake detector, scripted providers, fake clock):
   - US1-1 … US1-6, including the local circuit open → 503, never a non-local target;
   - US2-1: system, user and assistant messages are anonymized;
   - US2-4: the notice is the first system message;
   - US2-6: usage and cost come from the anonymized exchange;
   - US3-1 and US3-4.
-- [ ] T028 [P] [US1] [US3] `gateway/test/chat-completions-privacy.test.ts`
+- [x] T028 [P] [US1] [US3] `gateway/test/chat-completions-privacy.test.ts`
   (`app.request()`):
   - `x-tamiz-sensitivity` and `x-tamiz-privacy` on success and on errors;
   - `451` with the message format of `contracts/http.md`;
   - `503 privacy_unavailable`;
   - `anonymize;notice=v1`.
-- [ ] T029 [P] [US2] `gateway/test/privacy/no-leak.test.ts`:
+- [x] T029 [P] [US2] `gateway/test/privacy/no-leak.test.ts`:
   - run every privacy scenario with a pino capture, a routing-events capture, a
     response-header capture and a cache dump;
   - assert that no test value and no `placeholder → value` pair appears (US2-5, SC-006).
 
 ### Implementation
 
-- [ ] T030 `gateway/src/domain/model/placeholders.ts` (data-model §2.4, research R-01,
+- [x] T030 `gateway/src/domain/model/placeholders.ts` (data-model §2.4, research R-01,
   R-10).
-- [ ] T031 `gateway/src/domain/errors.ts`: add `PrivacyBlockedError` and
+- [x] T031 `gateway/src/domain/errors.ts`: add `PrivacyBlockedError` and
   `PrivacyUnavailableError`. `contracts/src/error.ts`: add `privacy_unavailable`.
   `presentation/mappers/error-envelope.ts`: map both.
-- [ ] T032 [P] `gateway/prompts/anonymization-notice.v1.md` (research R-06), read at boot
+- [x] T032 [P] `gateway/prompts/anonymization-notice.v1.md` (research R-06), read at boot
   by `main.ts`; a missing file is a boot error.
-- [ ] T033 `gateway/src/application/use-cases/route-inference.ts`:
+- [x] T033 `gateway/src/application/use-cases/route-inference.ts`:
   - `inspectSensitivity` runs concurrently with classification, then `decide`;
   - block → error;
   - `anonymize` → `anonymizeMessages`, the notice, `executeChain`, `restore`;
   - the mapping is held in the closure only.
-- [ ] T034 `gateway/src/presentation/routes/chat-completions.ts`: the headers, the
+- [x] T034 `gateway/src/presentation/routes/chat-completions.ts`: the headers, the
   451/503 mapping, the OpenAPI response headers.
-- [ ] T035 `gateway/src/application/ports/routing-events.port.ts`: the `privacy.*` events.
+- [x] T035 `gateway/src/application/ports/routing-events.port.ts`: the `privacy.*` events.
   `infrastructure/telemetry/log-routing-events.ts` logs them.
-- [ ] T036 `gateway/src/main.ts`: wire the detector and cache into the use cases, and
+- [x] T036 `gateway/src/main.ts`: wire the detector and cache into the use cases, and
   remove `NOT_INSPECTED`.
 
 ### Verification
 
-- [ ] T037 Run the gates, plus `quickstart.md` §4–§6 against the real privacy service and
+- [x] T037 Run the gates, plus `quickstart.md` §4–§6 against the real privacy service and
   Ollama where available. Write `docs/tasks/done/T-005-04-privacy-in-route-inference.md`
   and flip the backlog row.
 

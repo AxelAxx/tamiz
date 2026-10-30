@@ -16,6 +16,7 @@ import type { InferenceRequest } from "../../src/domain/model/inference-request.
 import type { ProviderName } from "../../src/domain/model/model-target.js";
 import { decide } from "../../src/domain/model/routing-decision.js";
 import type { RoutingPolicy } from "../../src/domain/model/routing-policy.js";
+import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import {
   clientIdUnchecked,
   requestIdUnchecked,
@@ -24,6 +25,7 @@ import {
 import { err, ok, type Result } from "../../src/domain/result.js";
 import { createInMemoryCircuitState } from "../../src/infrastructure/cache/in-memory-circuit-state.js";
 import { examplePolicyInput, validPolicy } from "../domain/helpers/policies.js";
+import { cleanPrivacyDeps } from "../helpers/privacy.js";
 import { recordingEvents } from "../resilience/helpers.js";
 
 // Spec 002 FR-012, US6-6 (tasks.md T016) and spec 003 US1-5, FR-011 (tasks.md T026):
@@ -81,6 +83,7 @@ function setup(
     circuitState: createInMemoryCircuitState(clock),
     events,
     random: () => 0.5,
+    ...cleanPrivacyDeps(),
   });
   return { route, clock, provider, resolved, policies, policy, events };
 }
@@ -149,7 +152,7 @@ describe("routeInference", () => {
 
     expect(result.ok).toBe(true);
     if (!result.ok) return;
-    expect(result.value.decision).toEqual(decide(policy, classifyTask(input)));
+    expect(result.value.decision).toEqual(decide(policy, classifyTask(input, CLEAN_INSPECTION)));
     expect(result.value.decision.sensitivity).toBe("none");
   });
 

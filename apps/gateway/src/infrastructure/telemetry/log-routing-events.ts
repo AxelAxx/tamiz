@@ -29,6 +29,10 @@ const FIELDS = [
   "level",
   "counts",
   "cached",
+  "sensitivity",
+  "action",
+  "ruleId",
+  "placeholders",
 ] as const;
 
 function isNotable(event: RoutingEvent): boolean {

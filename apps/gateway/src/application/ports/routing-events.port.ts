@@ -15,9 +15,11 @@ import type { ProviderErrorCause } from "../../domain/errors.js";
 import type { CircuitState } from "../../domain/model/circuit.js";
 import type { FallbackReason } from "../../domain/model/fallback.js";
 import type { ProviderName, Residency } from "../../domain/model/model-target.js";
+import type { PrivacyAction } from "../../domain/model/privacy-policy.js";
 import type {
   DetectorFailure,
   EntityKind,
+  Sensitivity,
   SensitivityLevel,
 } from "../../domain/model/sensitivity.js";
 import type { RequestId, TargetId } from "../../domain/model/units.js";
@@ -34,6 +36,8 @@ export const ROUTING_EVENT_TYPES = [
   "stream.failed",
   "privacy.inspected",
   "privacy.detector_failed",
+  "privacy.action",
+  "privacy.anonymized",
 ] as const;
 export type RoutingEventType = (typeof ROUTING_EVENT_TYPES)[number];
 
@@ -55,6 +59,13 @@ export type PrivacyEvent = { readonly requestId: RequestId; readonly at: string 
       readonly cached: boolean;
     }
   | { readonly type: "privacy.detector_failed"; readonly reason: DetectorFailure }
+  | {
+      readonly type: "privacy.action";
+      readonly sensitivity: Sensitivity;
+      readonly action: PrivacyAction;
+      readonly ruleId: string;
+    }
+  | { readonly type: "privacy.anonymized"; readonly placeholders: number }
 );
 
 export type RoutingEvent = PrivacyEvent | TargetEvent;

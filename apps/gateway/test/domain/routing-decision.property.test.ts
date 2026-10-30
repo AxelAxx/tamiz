@@ -7,7 +7,7 @@ import {
   type RoutingRuleInput,
   validatePolicy,
 } from "../../src/domain/model/routing-policy.js";
-import { NOT_INSPECTED } from "../../src/domain/model/sensitivity.js";
+import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import { TASK_SIZES, TASK_TYPES } from "../../src/domain/model/task-classifier.js";
 import { decideRoute, PERMISSIVE_PRIVACY, validPolicy } from "./helpers/policies.js";
 
@@ -94,7 +94,7 @@ const requestArb: fc.Arbitrary<DecisionInput> = fc.record({
   requestedModel: fc.oneof(fc.constantFrom(...MODEL_POOL), fc.string({ maxLength: 12 })),
   taskType: fc.constantFrom(...TASK_TYPES),
   size: fc.constantFrom(...TASK_SIZES),
-  inspection: fc.constant(NOT_INSPECTED),
+  inspection: fc.constant(CLEAN_INSPECTION),
 });
 
 describe("decide (property-based, SC-003)", () => {
