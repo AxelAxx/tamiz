@@ -10,7 +10,7 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: features `001`, `002` and `003` done.
+> Status: features `001` … `004` done.
 >
 > - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
 >   gateway skeleton, architecture check, CI.
@@ -25,7 +25,24 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >   streaming (`stream: true`) with fallback before the first token. Walkthrough:
 >   [`specs/003-resilience/quickstart.md`](specs/003-resilience/quickstart.md).
 >
-> Next: features `004-privacy-service` and `005-privacy-aware-routing`.
+> - **004 privacy service**: a Python service (`services/privacy`, FastAPI + Presidio +
+>   spaCy `es_core_news_lg`) with `POST /analyze` (findings and a sensitivity level, never
+>   values) and `POST /anonymize` (reversible `<DNI_1>`-style placeholders; the mapping is
+>   returned, stored nowhere). Spanish recognizers check the control characters of DNI,
+>   NIE, CIF, IBAN and NSS. Detection on the synthetic corpus v1 (324 cases), gated in CI:
+>
+>   | Kind | Precision | Recall |
+>   |---|---|---|
+>   | DNI, NIE, CIF, IBAN, NSS, phone, email, card | 1.000 | 1.000 |
+>   | Person (gate: recall ≥ 0.80) | 0.871 | 0.917 |
+>   | Location (reported) | 0.805 | 0.939 |
+>
+>   The corpus is generated in the formats the recognizers target, so these figures
+>   guard against regressions; they are not field accuracy. The PII-leak eval of feature
+>   007 measures what reaches providers. Walkthrough:
+>   [`specs/004-privacy-service/quickstart.md`](specs/004-privacy-service/quickstart.md).
+>
+> Next: feature `005-privacy-aware-routing`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 

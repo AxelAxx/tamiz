@@ -72,3 +72,18 @@ def test_unknown_path_is_a_typed_404(client: TestClient, log_capture: LogCapture
     assert line["error_type"] == "not_found"
     assert line["endpoint"] == "unmatched"
     log_capture.assert_absent("12345678Z")
+
+
+def test_third_party_debug_and_info_never_reach_the_handler(log_capture: LogCapture) -> None:
+    library = logging.getLogger("presidio-analyzer")
+    previous = library.level
+    library.setLevel(logging.DEBUG)
+    try:
+        library.debug("Context list is: lucia@example.com teléfono")
+        library.info("Found context keyword 'teléfono'")
+        library.warning("Regex pattern timed out, skipping.")
+    finally:
+        library.setLevel(previous)
+
+    assert [line["msg"] for line in log_capture.lines()] == ["Regex pattern timed out, skipping."]
+    log_capture.assert_absent("lucia@example.com")

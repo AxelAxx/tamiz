@@ -342,6 +342,10 @@ Privacy service (`services/privacy`, since `T-004-02`): `uv sync`, `uv run ruff 
 `uv run ruff format --check .`, `uv run mypy` (files from `pyproject.toml`), `uv run lint-imports`,
 `uv run pytest`, `uv run python -m privacy.main`; the same steps run in the `ci` job after
 `pnpm build`, plus `docker build services/privacy`. Biome ignores `services/privacy`.
+`uv run pytest -m "not nlp and not metrics"` skips the model-backed suites (seconds);
+`-m metrics` runs the corpus metrics and writes `reports/detection-metrics.json`;
+`uv run python scripts/export_openapi.py --check` and `scripts/generate_corpus.py --check`
+guard the committed contract and corpus.
 
 Spec Kit: `uvx --from git+https://github.com/github/spec-kit.git specify check` to verify
 the installation; skills are invoked from Claude Code as `/speckit-*`.

@@ -1,9 +1,10 @@
 # Local stack for Tamiz. Feature 003 (T-003-06) adds the key-value store that shares
-# circuit breaker state between gateway instances; the OPS task adds the gateway, the
-# privacy service, Postgres, Ollama and Jaeger.
+# circuit breaker state between gateway instances; feature 004 adds the privacy service;
+# the OPS task adds the gateway, Postgres, Ollama and Jaeger.
 #
 #   docker compose up valkey
 #   REDIS_URL=redis://localhost:6379 pnpm --filter @tamiz/gateway dev
+#   docker compose up privacy
 
 services:
   valkey:
@@ -15,4 +16,21 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+
+  # Personal-data detection and anonymization (spec 004). It has no authentication, so it
+  # is reachable only on the compose network (http://privacy:8001), never published.
+  # For local debugging, run it with uv instead (services/privacy/README.md).
+  privacy:
+    build: services/privacy
+    expose:
+      - "8001"
+    environment:
+      PRIVACY_LOG_LEVEL: info
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8001/health', timeout=2)"]
+      interval: 10s
+      timeout: 3s
+      start_period: 60s
+      retries: 3
     restart: unless-stopped

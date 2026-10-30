@@ -12,6 +12,7 @@ import time
 import traceback
 import uuid
 from datetime import UTC, datetime
+from typing import TextIO
 
 from starlette.types import ASGIApp, Message, Receive, Scope, Send
 
@@ -56,10 +57,36 @@ class JsonFormatter(logging.Formatter):
         return json.dumps(line, ensure_ascii=False, default=str)
 
 
+class ThirdPartyFilter(logging.Filter):
+    """Below WARNING, only the service's own loggers and Uvicorn's get through.
+
+    Libraries log request content at DEBUG/INFO (Presidio writes the words around each
+    match: "Context list is: …"). Logger levels alone are not enough, because a
+    `PRIVACY_LOG_LEVEL=debug` root or a library that resets its own level would let it
+    through; the handler filter makes it structural.
+    """
+
+    OWN = ("privacy", "uvicorn")
+
+    def filter(self, record: logging.LogRecord) -> bool:
+        if record.levelno >= logging.WARNING:
+            return True
+        return record.name.split(".", 1)[0] in self.OWN
+
+
+def service_handler(stream: TextIO | None = None) -> logging.Handler:
+    """The production handler: JSON lines, allow-listed fields, third-party filter."""
+    handler: logging.Handler = (
+        logging.StreamHandler() if stream is None else logging.StreamHandler(stream)
+    )
+    handler.setFormatter(JsonFormatter())
+    handler.addFilter(ThirdPartyFilter())
+    return handler
+
+
 def configure_logging(level: str) -> None:
     """Route every logger (Uvicorn's included) through the JSON formatter on stdout."""
-    handler = logging.StreamHandler()
-    handler.setFormatter(JsonFormatter())
+    handler = service_handler()
     root = logging.getLogger()
     root.handlers[:] = [handler]
     root.setLevel(level.upper())

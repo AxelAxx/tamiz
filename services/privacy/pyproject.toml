@@ -17,6 +17,7 @@ dependencies = [
 
 [dependency-groups]
 dev = [
+  "faker>=37",
   "httpx>=0.28",
   "hypothesis>=6.140",
   "import-linter>=2.5",
@@ -48,6 +49,7 @@ select = ["E", "F", "I", "B", "UP", "SIM", "RUF", "S", "PT"]
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["S101"] # pytest asserts
+"scripts/generate_corpus.py" = ["S311"] # seeded, reproducible test data; not cryptography
 
 # --- mypy (strict; constitution VII) ----------------------------------------------------
 

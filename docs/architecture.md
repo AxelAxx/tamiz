@@ -79,8 +79,9 @@ residencies, and the resilient execution (`application/resilience/execute-chain.
 residency guard → circuit breaker → retry → timeout → next target), for both completions
 and streams, with `x-tamiz-route` / `x-tamiz-rule` / `x-tamiz-fallback`. Every step is a
 `RoutingEvent` on the routing-events port, logged by default. Circuit state lives in
-memory or, with `REDIS_URL`, in Valkey. Still to come: the privacy service and
-anonymisation (features 004, 005) and the audit log and OpenTelemetry sinks (feature 006).
+memory or, with `REDIS_URL`, in Valkey. The privacy service exists since feature 004
+(below); the gateway calls it from feature 005. Still to come: the audit log and
+OpenTelemetry sinks (feature 006).
 
 ## Gateway layers and allowed dependencies
 
@@ -108,8 +109,28 @@ Rules enforced by `.dependency-cruiser.cjs` (feature 001):
 ## Privacy service layers
 
 `services/privacy/src/privacy/{domain,application,infrastructure,api}/` mirrors the
-gateway: recognizers and sensitivity rules in `domain`, analyze/anonymize use cases in
-`application`, Presidio and spaCy engines in `infrastructure`, FastAPI routers in `api`.
+gateway, enforced by import-linter (feature 004):
+
+| Layer | Holds | May import |
+|---|---|---|
+| `domain` | entity kinds, findings, sensitivity rule, overlap resolution, placeholders, check characters | standard library only |
+| `application` | `analyze_text`, `anonymize_text`, `PiiAnalyzerPort` | `domain` |
+| `infrastructure` | Presidio engine with spaCy `es_core_news_lg`, the Spanish recognizers, settings | `application`, `domain` |
+| `api` | FastAPI app, Pydantic contract (exported to `openapi.json`), errors, body limit, logging | `application`, `domain` |
+| `main.py` | composition root: loads the model, then serves | everything |
+
+```mermaid
+flowchart LR
+    req["POST /analyze or /anonymize"] --> limit["1 MiB limit + validation (400, no echo)"]
+    limit --> uc["analyze_text"]
+    uc --> engine["Presidio: spaCy PERSON/LOCATION, email, card, DNI, NIE, CIF, IBAN, NSS, phone"]
+    engine --> pipeline["kinds → min score → overlaps → level"]
+    pipeline --> resp["findings (offsets, no values) + level"]
+    pipeline --> anon["placeholders <KIND_n> + mapping (anonymize only)"]
+```
+
+Nothing is stored: no database, no files, no request content in logs (one allow-listed
+JSON line per request; third-party loggers below WARNING are filtered out).
 
 ## Dashboard
 
