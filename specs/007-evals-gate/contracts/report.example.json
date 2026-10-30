@@ -22,12 +22,29 @@
       "status": "pass",
       "durationMs": 21000,
       "metrics": [
-        { "name": "leak_rate.DNI", "value": 0, "unit": "ratio", "threshold": { "comparison": "eq", "bound": 0 }, "pass": true },
-        { "name": "leak_rate.PERSON", "value": 0.0125, "unit": "ratio", "threshold": { "comparison": "lt", "bound": 0.02 }, "pass": true },
+        {
+          "name": "leak_rate.DNI",
+          "value": 0,
+          "unit": "ratio",
+          "threshold": { "comparison": "eq", "bound": 0 },
+          "pass": true
+        },
+        {
+          "name": "leak_rate.PERSON",
+          "value": 0.0125,
+          "unit": "ratio",
+          "threshold": { "comparison": "lt", "bound": 0.02 },
+          "pass": true
+        },
         { "name": "leak_rate.LOCATION", "value": 0.61, "unit": "ratio" }
       ],
       "failing": [
-        { "id": "pii-leak-0042", "reason": "value reached a non-local target verbatim", "expected": { "kind": "PERSON", "messageIndex": 0, "start": 12, "end": 27 }, "actual": { "privacyAction": "allow", "chain": "mistral-small,openai-mini,ollama-llama" } }
+        {
+          "id": "pii-leak-0042",
+          "reason": "value reached a non-local target verbatim",
+          "expected": { "kind": "PERSON", "messageIndex": 0, "start": 12, "end": 27 },
+          "actual": { "privacyAction": "allow", "chain": "mistral-small,openai-mini,ollama-llama" }
+        }
       ],
       "failingCount": 1
     },
@@ -36,8 +53,20 @@
       "status": "pass",
       "durationMs": 9000,
       "metrics": [
-        { "name": "recall.IBAN", "value": 1, "unit": "ratio", "threshold": { "comparison": "gte", "bound": 0.95 }, "pass": true },
-        { "name": "recall.PERSON", "value": 0.86, "unit": "ratio", "threshold": { "comparison": "gte", "bound": 0.8 }, "pass": true },
+        {
+          "name": "recall.IBAN",
+          "value": 1,
+          "unit": "ratio",
+          "threshold": { "comparison": "gte", "bound": 0.95 },
+          "pass": true
+        },
+        {
+          "name": "recall.PERSON",
+          "value": 0.86,
+          "unit": "ratio",
+          "threshold": { "comparison": "gte", "bound": 0.8 },
+          "pass": true
+        },
         { "name": "precision.PERSON", "value": 0.83, "unit": "ratio" }
       ],
       "failing": [],
@@ -48,10 +77,21 @@
       "status": "fail",
       "durationMs": 4000,
       "metrics": [
-        { "name": "route_accuracy", "value": 0.9318, "unit": "ratio", "threshold": { "comparison": "gte", "bound": 0.95 }, "pass": false }
+        {
+          "name": "route_accuracy",
+          "value": 0.9318,
+          "unit": "ratio",
+          "threshold": { "comparison": "gte", "bound": 0.95 },
+          "pass": false
+        }
       ],
       "failing": [
-        { "id": "routing-017", "reason": "unexpected route", "expected": { "route": "openai-mini" }, "actual": { "route": "mistral-small", "rule": "default", "sensitivity": "low" } }
+        {
+          "id": "routing-017",
+          "reason": "unexpected route",
+          "expected": { "route": "openai-mini" },
+          "actual": { "route": "mistral-small", "rule": "default", "sensitivity": "low" }
+        }
       ],
       "failingCount": 3
     },
@@ -62,7 +102,13 @@
       "metrics": [
         { "name": "mean_score.routed", "value": 0.62, "unit": "score" },
         { "name": "mean_score.comparison", "value": 0.63, "unit": "score" },
-        { "name": "relative_score", "value": 0.9841, "unit": "ratio", "threshold": { "comparison": "gte", "bound": 0.95 }, "pass": true }
+        {
+          "name": "relative_score",
+          "value": 0.9841,
+          "unit": "ratio",
+          "threshold": { "comparison": "gte", "bound": 0.95 },
+          "pass": true
+        }
       ],
       "failing": [],
       "failingCount": 0
