@@ -20,6 +20,11 @@ from presidio_analyzer.predefined_recognizers import (
 
 from privacy.domain.entity_kind import EntityKind
 from privacy.domain.finding import Finding, finding
+from privacy.infrastructure.recognizers.identity import (
+    cif_recognizer,
+    dni_recognizer,
+    nie_recognizer,
+)
 
 LANGUAGE = "es"
 
@@ -48,6 +53,9 @@ def default_recognizers() -> list[EntityRecognizer]:
         SpacyRecognizer(supported_language=LANGUAGE, supported_entities=["PERSON", "LOCATION"]),
         EmailRecognizer(supported_language=LANGUAGE),
         CreditCardRecognizer(supported_language=LANGUAGE),
+        dni_recognizer(),
+        nie_recognizer(),
+        cif_recognizer(),
     ]
 
 

@@ -210,33 +210,33 @@ without the model.
 
 ### Tests first
 
-- [ ] T036 [P] [US2] `privacy/tests/unit/test_checksums_identity.py`: published valid
+- [x] T036 [P] [US2] `privacy/tests/unit/test_checksums_identity.py`: published valid
   and invalid examples for DNI, NIE and CIF (digit-control, letter-control and either
   organisation letters); hypothesis: our functions agree with `stdnum.es.dni`, `nie`,
   `cif` on generated inputs; changing the control character of a valid identifier makes
   it invalid (US2-2, US2-4, US2-5); add `python-stdnum` as a dev dependency
-- [ ] T037 [P] [US2] `privacy/tests/recognizers/test_identity_recognizers.py` (the three
+- [x] T037 [P] [US2] `privacy/tests/recognizers/test_identity_recognizers.py` (the three
   recognizers run alone, no model): valid DNI as `12345678Z`, `12345678-Z`,
   `12.345.678-Z` and `12345678z` → `DNI`, score ≥ 0.9 (US2-1); wrong letter → nothing
   (US2-2); `Pedido 12345678`, `46001 12345678`, a date → nothing (US2-3); NIE valid /
   wrong letter (US2-4); CIF valid with digit and letter control / wrong control
   (US2-5)
-- [ ] T038 [P] [US1] Extend `privacy/tests/nlp/test_analyze_nlp.py`: a sentence with a
+- [x] T038 [P] [US1] Extend `privacy/tests/nlp/test_analyze_nlp.py`: a sentence with a
   valid DNI → level `critical` (US1-2); a sentence with only a CIF → `low` (US1-4)
 
 ### Implementation
 
-- [ ] T039 `src/domain/checksums.py`: `compact`, `is_valid_dni`, `is_valid_nie`,
+- [x] T039 `src/domain/checksums.py`: `compact`, `is_valid_dni`, `is_valid_nie`,
   `is_valid_cif` (research R-13)
-- [ ] T040 `src/infrastructure/recognizers/validated.py`: `ValidatedPatternRecognizer`
-- [ ] T041 `src/infrastructure/recognizers/identity.py`: patterns with word boundaries,
+- [x] T040 `src/infrastructure/recognizers/validated.py`: `ValidatedPatternRecognizer`
+- [x] T041 `src/infrastructure/recognizers/identity.py`: patterns with word boundaries,
   one separator kind, case-insensitive; context words (`dni`, `nif`, `nie`, `cif`,
   `documento`)
-- [ ] T042 Register the three in `build_engine`; README table of recognizers
+- [x] T042 Register the three in `build_engine`; README table of recognizers
 
 ### Verification
 
-- [ ] T043 Gates green locally and in CI; write
+- [x] T043 Gates green locally and in CI; write
   `docs/tasks/done/T-004-04-identity-recognizers.md`, flip the backlog row
 
 ---
