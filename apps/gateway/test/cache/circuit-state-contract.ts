@@ -4,8 +4,9 @@ import type { CircuitStatePort } from "../../src/application/ports/circuit-state
 import { millisecondsUnchecked, targetIdUnchecked } from "../../src/domain/model/units.js";
 
 // The behaviour every `CircuitStatePort` adapter must have (spec 003 FR-006 … FR-008,
-// research R-04, tasks.md T012). The in-memory adapter runs it here; the Redis adapter
-// of `T-003-06` runs the same list against a real store.
+// research R-04, tasks.md T012). The in-memory adapter runs it with the fake clock; the
+// Redis adapter (`T-003-06`) runs the same list against a real store, whose expiries
+// are real time, so `realTime` also waits for real.
 
 const A = targetIdUnchecked("target-a");
 const B = targetIdUnchecked("target-b");
@@ -15,11 +16,24 @@ export type CircuitStateFactory = (
   clock: FakeClock,
 ) => CircuitStatePort | Promise<CircuitStatePort>;
 
-export function describeCircuitStateContract(name: string, factory: CircuitStateFactory): void {
+export interface ContractOptions {
+  /** The store expires keys in real time: `elapse` also waits for real. */
+  readonly realTime?: boolean;
+}
+
+export function describeCircuitStateContract(
+  name: string,
+  factory: CircuitStateFactory,
+  options: ContractOptions = {},
+): void {
   describe(`${name} (CircuitStatePort contract)`, () => {
     async function setup() {
       const clock = createFakeClock(START);
-      return { clock, state: await factory(clock) };
+      const elapse = async (ms: number) => {
+        clock.advance(ms);
+        if (options.realTime) await new Promise((resolve) => setTimeout(resolve, ms));
+      };
+      return { clock, elapse, state: await factory(clock) };
     }
 
     it("starts closed: no failures, not open, no trial pending", async () => {
@@ -60,15 +74,16 @@ export function describeCircuitStateContract(name: string, factory: CircuitState
     });
 
     it("US4-3: tryAcquireTrial grants one trial until the lease expires", async () => {
-      const { state, clock } = await setup();
+      const { state, elapse } = await setup();
+      const lease = millisecondsUnchecked(300);
       await state.open(A, millisecondsUnchecked(1_000));
 
-      expect(await state.tryAcquireTrial(A, millisecondsUnchecked(5_000))).toBe(true);
-      expect(await state.tryAcquireTrial(A, millisecondsUnchecked(5_000))).toBe(false);
-      clock.advance(4_999);
-      expect(await state.tryAcquireTrial(A, millisecondsUnchecked(5_000))).toBe(false);
-      clock.advance(1);
-      expect(await state.tryAcquireTrial(A, millisecondsUnchecked(5_000))).toBe(true);
+      expect(await state.tryAcquireTrial(A, lease)).toBe(true);
+      expect(await state.tryAcquireTrial(A, lease)).toBe(false);
+      await elapse(200);
+      expect(await state.tryAcquireTrial(A, lease)).toBe(false);
+      await elapse(150);
+      expect(await state.tryAcquireTrial(A, lease)).toBe(true);
     });
 
     it("opening again or recording a success releases the trial lease", async () => {

@@ -74,6 +74,14 @@ sequenceDiagram
     P-->>C: 200 + x-tamiz-route / x-tamiz-fallback
 ```
 
+What exists after feature 003: validation, classification, `decide` with the allowed
+residencies, and the resilient execution (`application/resilience/execute-chain.ts`:
+residency guard → circuit breaker → retry → timeout → next target), for both completions
+and streams, with `x-tamiz-route` / `x-tamiz-rule` / `x-tamiz-fallback`. Every step is a
+`RoutingEvent` on the routing-events port, logged by default. Circuit state lives in
+memory or, with `REDIS_URL`, in Valkey. Still to come: the privacy service and
+anonymisation (features 004, 005) and the audit log and OpenTelemetry sinks (feature 006).
+
 ## Gateway layers and allowed dependencies
 
 ```mermaid

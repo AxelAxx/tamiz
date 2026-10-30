@@ -10,13 +10,22 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: feature `001-contracts-and-skeleton` done: the pnpm + Turborepo + Biome
-> workspace, contracts (`packages/contracts`), the gateway skeleton with `GET /health`
-> (`apps/gateway`), the architecture check and CI pipeline, test utilities
-> (`packages/test-utils`) and one root test run with coverage (`T-001-02` … `T-001-07`).
-> Run the gates with the commands under "Developing"; the end-to-end walkthrough is
-> [`specs/001-contracts-and-skeleton/quickstart.md`](specs/001-contracts-and-skeleton/quickstart.md).
-> Next: feature `002-provider-routing`.
+> Status: features `001`, `002` and `003` done.
+>
+> - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
+>   gateway skeleton, architecture check, CI.
+> - **002 provider routing**: the OpenAI-compatible `POST /v1/chat/completions` with API
+>   keys, a declarative YAML routing policy, four providers (Ollama, Mistral, Anthropic,
+>   OpenAI), cost per request, `/openapi.json`, and a routing dataset gated at ≥ 95 %
+>   (currently 44/44). Walkthrough:
+>   [`specs/002-provider-routing/quickstart.md`](specs/002-provider-routing/quickstart.md).
+> - **003 resilience**: timeouts, retries with jittered backoff, per-target circuit
+>   breakers (optionally shared through Valkey), fallback along the decided chain with a
+>   residency guard that blocks instead of degrading (`451`), `x-tamiz-fallback`, and
+>   streaming (`stream: true`) with fallback before the first token. Walkthrough:
+>   [`specs/003-resilience/quickstart.md`](specs/003-resilience/quickstart.md).
+>
+> Next: features `004-privacy-service` and `005-privacy-aware-routing`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
@@ -44,6 +53,11 @@ pnpm build        # tsc per package
 ```
 
 Commits follow Conventional Commits and are checked by commitlint on `commit-msg`.
+
+To run the gateway locally, copy `.env.example` (every variable is documented there),
+generate a key with `pnpm --filter @tamiz/gateway generate-api-key <client>`, and start
+it with `pnpm --filter @tamiz/gateway dev`. `docker compose up valkey` plus
+`REDIS_URL=redis://localhost:6379` shares circuit breaker state between instances.
 
 ## Planned quick start
 

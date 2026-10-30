@@ -28,7 +28,9 @@ Each layer folder has a `README.md` stating what it may import.
 
 | Endpoint / event | Result |
 |---|---|
-| `POST /v1/chat/completions` | OpenAI-compatible, non-streaming (spec 002). Needs `Authorization: Bearer <key>`. Routed by the active policy; `200` with the contract body and `x-tamiz-route` / `x-tamiz-rule`; `400` `invalid_request` (contract, non-JSON, > 1 MiB; paths only, never values); `401` `unauthorized`; `502` `provider_error` / `504` `provider_timeout` with the routing headers |
+| `POST /v1/chat/completions` | OpenAI-compatible (spec 002). Needs `Authorization: Bearer <key>`. Routed by the active policy and executed with resilience (spec 003): per target a residency guard, the circuit breaker, retries with jittered backoff and a timeout, then the next target of the chain. `200` with the contract body, `x-tamiz-route` / `x-tamiz-rule`, and `x-tamiz-fallback` (`target:reason,…`) when a target was abandoned; `400` `invalid_request` (contract, non-JSON, > 1 MiB; paths only, never values); `401` `unauthorized`; `451` `policy_blocked` (residency); `502` `provider_error`; `503` `provider_unavailable` with `retry-after` (every circuit open); `504` `provider_timeout` (last failure a timeout, or the request deadline) — with the routing headers |
+| `POST /v1/chat/completions` with `stream: true` | Server-sent OpenAI `chat.completion.chunk` lines, a usage chunk with `cost_usd`, then `[DONE]`. Starts at the first token, so the headers are final; before it the rules above apply (JSON error if every target fails); after it a failure ends the stream with one `data: {"error": …}` event and no `[DONE]` |
+| Routing events | Every attempt, retry wait, fallback, skipped target, residency block, circuit change and failed stream is one `routing event` log line (no content); feature 006 adds traces and metrics |
 | `GET /openapi.json` | The OpenAPI 3.1 document generated from the contract schemas |
 | `GET /health` | `200` with `{ status: "ok", version, uptimeMs }`, validated against `HealthResponseSchema` from `@tamiz/contracts` |
 | Unknown route | `404` with `{ error: { type: "not_found", message, requestId } }` |
@@ -51,11 +53,15 @@ Configuration is read once from the environment by `loadConfig` and injected:
 | `OLLAMA_BASE_URL` | `http://localhost:11434/v1` | http(s) URL of Ollama's OpenAI-compatible endpoint |
 | `MISTRAL_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | unset | required when a policy target uses that provider; empty counts as unset |
 | `MISTRAL_BASE_URL` / `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` | provider default | http(s) URL override (proxies); ignored without the key |
+| `REDIS_URL` | unset (in-memory circuit state) | `redis://` or `rediss://`; shares circuit breaker state between instances, falling back to memory while unreachable (`docker compose up valkey`) |
 
 At boot the gateway also loads the policy file and checks that every provider it uses is
 configured. Any problem prints one `path: message` line per issue to stderr (never a
 secret) and exits 1 before binding a port. The shipped `default.yaml` needs the three
-API keys; `TAMIZ_POLICY_FILE=policies/local-only.yaml` needs none.
+API keys; `TAMIZ_POLICY_FILE=policies/local-only.yaml` needs none. The policy's optional
+`resilience` section (request deadline, attempts, backoff, breaker threshold and
+cool-down) and `residency` statements are documented in `policies/README.md` and
+`specs/003-resilience/contracts/policy.example.yaml`.
 
 The logger is pino with one JSON object per line, `service: "tamiz-gateway"`, ISO
 timestamps, and redaction of `prompt`, `messages` and `authorization` at the top level,
