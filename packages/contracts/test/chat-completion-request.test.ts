@@ -13,7 +13,7 @@ describe("ChatCompletionRequestSchema (spec US2-1 … US2-4, SC-004)", () => {
     expectTypeOf(result.data.model).toEqualTypeOf<string>();
     expectTypeOf(result.data.temperature).toEqualTypeOf<number | undefined>();
     expectTypeOf(result.data.max_tokens).toEqualTypeOf<number | undefined>();
-    expectTypeOf(result.data.stream).toEqualTypeOf<false | undefined>();
+    expectTypeOf(result.data.stream).toEqualTypeOf<boolean | undefined>();
     expectTypeOf(result.data.user).toEqualTypeOf<string | undefined>();
     expectTypeOf(result.data.messages[0]?.role).toEqualTypeOf<
       "system" | "user" | "assistant" | undefined
@@ -70,12 +70,33 @@ describe("ChatCompletionRequestSchema (spec US2-1 … US2-4, SC-004)", () => {
     expect(issue?.code === "invalid_type" && issue.expected).toBe("array");
   });
 
-  it("US2-4: rejects stream: true (streaming arrives in feature 003)", () => {
-    const result = ChatCompletionRequestSchema.safeParse({ ...minimalRequest, stream: true });
+  it("spec 003 FR-021: accepts stream: true (001 US2-4 rejected it until feature 003)", () => {
+    expect(ChatCompletionRequestSchema.safeParse({ ...minimalRequest, stream: true }).success).toBe(
+      true,
+    );
+  });
 
+  it("spec 003 R-10: accepts stream_options.include_usage and rejects unknown stream_options keys", () => {
+    expect(
+      ChatCompletionRequestSchema.safeParse({
+        ...minimalRequest,
+        stream: true,
+        stream_options: { include_usage: true },
+      }).success,
+    ).toBe(true);
+    const unknown = ChatCompletionRequestSchema.safeParse({
+      ...minimalRequest,
+      stream: true,
+      stream_options: { continuous_usage_stats: true },
+    });
+    expect(unknown.success).toBe(false);
+    if (unknown.success) return;
+    expect(unknown.error.issues[0]?.path).toEqual(["stream_options"]);
+  });
+
+  it("rejects a non-boolean stream", () => {
+    const result = ChatCompletionRequestSchema.safeParse({ ...minimalRequest, stream: "yes" });
     expect(result.success).toBe(false);
-    if (result.success) return;
-    expect(result.error.issues[0]?.path).toEqual(["stream"]);
   });
 
   it("accepts stream: false explicitly", () => {

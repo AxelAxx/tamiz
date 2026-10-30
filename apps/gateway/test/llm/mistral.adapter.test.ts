@@ -5,6 +5,7 @@ import {
   loadFixture,
   SECRET_API_KEY,
 } from "./adapter-scenarios.js";
+import { describeStreamScenarios, openAiDialect } from "./stream-scenarios.js";
 
 // tasks.md T028: Mistral's chat-completions endpoint at its default base URL. Mistral
 // has no content-filter finish reason; `model_length` is its second "length". Its
@@ -35,4 +36,14 @@ describeAdapterScenarios({
   ],
   maxTokensField: "max_tokens",
   rejected: { status: 401, cause: "authentication" },
+});
+
+// Spec 003 tasks.md T042: the same adapter, streaming.
+describeStreamScenarios({
+  provider: "mistral",
+  url: "https://api.mistral.ai/v1/chat/completions",
+  model: "mistral-small-latest",
+  createAdapter: () => createMistralAdapter({ apiKey: SECRET_API_KEY }),
+  dialect: openAiDialect("mistral-small-latest"),
+  stopReason: "stop",
 });

@@ -135,7 +135,11 @@ describe("POST /v1/chat/completions", () => {
     ["an unknown field", { ...VALID, tools: [] }, "tools"],
     ["a wrong type", { ...VALID, temperature: "hot-SECRET" }, "temperature"],
     ["empty messages", { ...VALID, messages: [] }, "messages"],
-    ["stream: true", { ...VALID, stream: true }, "stream"],
+    [
+      'stream: "yes" (not a boolean; true streams since spec 003)',
+      { ...VALID, stream: "yes" },
+      "stream",
+    ],
   ])(
     "US1-3: rejects %s with 400 invalid_request, no values, no routing headers",
     async (_n, body, path) => {
@@ -345,6 +349,7 @@ describe("resilience on the endpoint (spec 003)", () => {
       startedAt: START,
       logger: noopLogger,
       routeInference: blocked,
+      streamInference: () => Promise.reject(new Error("not streamed")),
       authenticate: (key) => (key === DEMO_KEY ? "demo" : undefined),
     });
 

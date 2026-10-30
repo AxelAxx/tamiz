@@ -21,6 +21,20 @@ describe("withTimeout", () => {
     expect(clock.pendingSleeps()).toBe(0);
   });
 
+  it("leaves the run's signal alive when the run wins (a stream keeps reading after its first token)", async () => {
+    const clock = createFakeClock();
+    let runSignal: AbortSignal | undefined;
+
+    await clock.drive(
+      withTimeout(clock)(target(), MS, async (signal) => {
+        runSignal = signal;
+        return ok("first token");
+      }),
+    );
+
+    expect(runSignal?.aborted).toBe(false);
+  });
+
   it("passes a provider failure through unchanged", async () => {
     const clock = createFakeClock();
     const error = failure("http_error", { status: 503 });

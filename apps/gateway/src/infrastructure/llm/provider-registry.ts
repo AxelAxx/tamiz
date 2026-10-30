@@ -3,7 +3,10 @@
  * T034). A provider without settings resolves to an adapter that fails typed, so a
  * misrouted call never throws; `T-002-05` adds the boot check that normally prevents it.
  */
-import type { LlmProviderPort } from "../../application/ports/llm-provider.port.js";
+import type {
+  LlmProviderPort,
+  ProviderCompletionInput,
+} from "../../application/ports/llm-provider.port.js";
 import type { ProviderRegistry } from "../../application/provider-registry.js";
 import { providerError } from "../../domain/errors.js";
 import type { ProviderName } from "../../domain/model/model-target.js";
@@ -27,16 +30,15 @@ export function createProviderRegistry(settings: ProviderSettings): ProviderRegi
 }
 
 function notConfigured(provider: ProviderName): LlmProviderPort {
-  return {
-    complete: async (input) =>
-      err(
-        providerError({
-          targetId: input.target.id,
-          provider,
-          cause: "authentication",
-          retryable: false,
-          message: "provider not configured",
-        }),
-      ),
-  };
+  const fail = async (input: ProviderCompletionInput) =>
+    err(
+      providerError({
+        targetId: input.target.id,
+        provider,
+        cause: "authentication",
+        retryable: false,
+        message: "provider not configured",
+      }),
+    );
+  return { complete: fail, stream: fail };
 }

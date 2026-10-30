@@ -66,7 +66,10 @@ function setup(
   const providers: ProviderRegistry = {
     resolve: (name) => {
       resolved.push(name);
-      return { complete: provider.fn };
+      return {
+        complete: provider.fn,
+        stream: () => Promise.reject(new Error("stream is not used by routeInference")),
+      };
     },
   };
   const policies = createInMemoryPolicyRepository(policy);

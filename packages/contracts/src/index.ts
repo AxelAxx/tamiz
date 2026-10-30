@@ -23,6 +23,8 @@ export {
 export {
   type ChatCompletionChoice,
   ChatCompletionChoiceSchema,
+  type ChatCompletionChunk,
+  ChatCompletionChunkSchema,
   type ChatCompletionRequest,
   ChatCompletionRequestSchema,
   type ChatCompletionResponse,
@@ -31,6 +33,8 @@ export {
   ChatCompletionUsageSchema,
   type ChatMessage,
   ChatMessageSchema,
+  type StreamErrorEvent,
+  StreamErrorEventSchema,
 } from "./chat-completion.js";
 export {
   type ErrorEnvelope,
