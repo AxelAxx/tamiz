@@ -41,18 +41,18 @@ approved by Alex (`T-007-01`).
 
 ### Tests first
 
-- [ ] T001 [P] [US1] `evals/test/datasets.test.ts` covers:
+- [x] T001 [P] [US1] `evals/test/datasets.test.ts` covers:
   - the header and case schemas for the four datasets;
   - unique ids;
   - offsets within the message;
   - an invalid line, which is reported with file and line (US1-4).
-- [ ] T002 [P] [US1] `evals/test/thresholds-and-report.test.ts` covers:
+- [x] T002 [P] [US1] `evals/test/thresholds-and-report.test.ts` covers:
   - each comparison (`eq`, `lt`, `lte`, `gte`) at, above and below its bound;
   - the run status (error > fail > pass);
   - the JSON report, which validates against `EvalReportSchema`;
   - the Markdown rendering and its 50-case cap;
   - the provenance fields (US1-1, US1-2, US1-6).
-- [ ] T003 [US1] `evals/test/runner.test.ts` runs the CLI against MSW fakes of the gateway
+- [x] T003 [US1] `evals/test/runner.test.ts` runs the CLI against MSW fakes of the gateway
   and privacy service. It checks:
   - exit 0 when everything passes, 1 below threshold, 2 when a service is down (the
     service is named) or answers off-contract;
@@ -62,21 +62,21 @@ approved by Alex (`T-007-01`).
 
 ### Implementation
 
-- [ ] T004 `contracts/src/evals.ts`: `EvalReportSchema` and its types, exported; the
+- [x] T004 `contracts/src/evals.ts`: `EvalReportSchema` and its types, exported; the
   example in `specs/007-evals-gate/contracts/report.example.json` parses.
-- [ ] T005 `evals/package.json`, the tsconfigs and `vitest.config.ts` make `@tamiz/evals`
+- [x] T005 `evals/package.json`, the tsconfigs and `vitest.config.ts` make `@tamiz/evals`
   a private ESM package. Register it in the root Vitest projects and turbo tasks. Add the
   root scripts `evals` and `evals:readme`.
-- [ ] T006 `evals/src/config.ts` (Zod env), `datasets.ts` (JSONL loader and schemas) and
+- [x] T006 `evals/src/config.ts` (Zod env), `datasets.ts` (JSONL loader and schemas) and
   `thresholds.ts` (the table in `data-model.md` §2).
-- [ ] T007 `evals/src/runner.ts`: validate, then observe with bounded concurrency, then
+- [x] T007 `evals/src/runner.ts`: validate, then observe with bounded concurrency, then
   score, metrics, compare and status. Exit code mapping per R-12.
-- [ ] T008 `evals/src/report/{json,markdown}.ts`; `evals/src/cli.ts` (`parseArgs`).
-- [ ] T009 `evals/src/clients/gateway.ts`: simulate and chat completions, with responses
+- [x] T008 `evals/src/report/{json,markdown}.ts`; `evals/src/cli.ts` (`parseArgs`).
+- [x] T009 `evals/src/clients/gateway.ts`: simulate and chat completions, with responses
   parsed by the contracts.
-- [ ] T010 [US4] `evals/src/evals/routing.ts` runs over `routing.v1.jsonl`, scoring
+- [x] T010 [US4] `evals/src/evals/routing.ts` runs over `routing.v1.jsonl`, scoring
   `chain[0].id` against `expected.route`.
-- [ ] T011 `evals/README.md` (package usage); `.gitignore` for `evals/reports/`; gates;
+- [x] T011 `evals/README.md` (package usage); `.gitignore` for `evals/reports/`; gates;
   record; backlog row.
 
 ## Phase 2: `T-007-03` — PII datasets, leak and detection evals (US2, US3)

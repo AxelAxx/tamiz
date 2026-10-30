@@ -323,7 +323,7 @@ pnpm test                    # build deps (turbo), then one root Vitest run over
 pnpm test --coverage         # same, plus the v8 coverage table (text) and coverage/lcov.info
 pnpm test:packages           # vitest per package (turbo, cached)
 pnpm build                   # tsc -p tsconfig.build.json per package (turbo)
-pnpm evals                   # eval runner with thresholds        (later: T-007-02)
+pnpm evals                   # eval runner (TAMIZ_EVAL_GATEWAY_URL + _API_KEY); exit 0 pass / 1 below threshold / 2 error
 pnpm --filter @tamiz/gateway generate-api-key <client>   # prints a key and its TAMIZ_API_KEYS entry
 docker compose up valkey     # shared circuit state for REDIS_URL (T-003-06)
 docker compose up privacy    # privacy service for TAMIZ_PRIVACY_URL (required since T-005-03)

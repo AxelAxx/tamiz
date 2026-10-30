@@ -70,6 +70,25 @@ export {
   errorTypeToHttpStatus,
 } from "./error.js";
 export {
+  EVAL_FAILING_CAP,
+  EVAL_IDS,
+  type EvalComparison,
+  EvalComparisonSchema,
+  type EvalFailingCase,
+  EvalFailingCaseSchema,
+  type EvalId,
+  EvalIdSchema,
+  type EvalMetric,
+  EvalMetricSchema,
+  type EvalReport,
+  EvalReportSchema,
+  type EvalResult,
+  EvalResultSchema,
+  type EvalStatus,
+  EvalStatusSchema,
+  EvalThresholdSchema,
+} from "./evals.js";
+export {
   type HealthCheck,
   HealthCheckSchema,
   type HealthResponse,

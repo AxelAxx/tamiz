@@ -1,0 +1,33 @@
+{
+  "name": "@tamiz/evals",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Eval runner, scorers and versioned synthetic datasets: the CI gate of Tamiz's AI behaviour",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "tamiz-evals": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "datasets"
+  ],
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json",
+    "evals": "node dist/cli.js"
+  },
+  "devDependencies": {
+    "@tamiz/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "msw": "^2.15.0",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@tamiz/contracts": "workspace:*",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.7"
+  }
+}
