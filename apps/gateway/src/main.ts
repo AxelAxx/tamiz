@@ -7,11 +7,12 @@
  * validate the policy file → check that every provider the policy uses is configured
  * (each step exits 1 listing every issue, before any port is bound) → logger → policy
  * repository, provider registry, circuit state and routing-events sink → `routeInference`
- * → app → `serve()` → one startup line with address, version and policy.
+ * wrapped by tracing and audit → app → `serve()` → one startup line with address, version and policy.
  */
 import { createHash, createHmac, randomBytes, randomUUID } from "node:crypto";
 import { serve } from "@hono/node-server";
 import { withAudit, withAuditStream } from "./application/audit/with-audit.js";
+import { withTracing, withTracingStream } from "./application/tracing/with-tracing.js";
 import { costReport } from "./application/use-cases/cost-report.js";
 import { inspectSensitivity } from "./application/use-cases/inspect-sensitivity.js";
 import { providerHealth } from "./application/use-cases/provider-health.js";
@@ -49,7 +50,11 @@ import { loadPolicyFile } from "./infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "./infrastructure/policy/in-memory-policy-repository.js";
 import { loadAnonymizationNotice } from "./infrastructure/privacy/anonymization-notice.js";
 import { createHttpPiiDetector } from "./infrastructure/privacy/http-pii-detector.js";
+import { fanOut } from "./infrastructure/telemetry/fan-out.js";
 import { createLogRoutingEvents } from "./infrastructure/telemetry/log-routing-events.js";
+import { createOtelRoutingEvents } from "./infrastructure/telemetry/otel-routing-events.js";
+import { setupTelemetry } from "./infrastructure/telemetry/otel-setup.js";
+import { createOtelTracer } from "./infrastructure/telemetry/otel-tracer.js";
 import { createApp } from "./presentation/app.js";
 
 /** Returns the value, or prints one `path: message` line per issue and exits 1. */
@@ -69,6 +74,11 @@ const anonymizationNotice = orExit(loadAnonymizationNotice());
 
 const logger = createLogger({ level: config.logLevel });
 
+// Spec 006 FR-011: spans are exported when an OTLP endpoint is configured, else a no-op.
+const telemetry = setupTelemetry({ env: process.env, version: config.version });
+const tracer = createOtelTracer();
+logger.info({ enabled: telemetry.enabled }, "trace export");
+
 // Spec 003 FR-029 … FR-031: shared circuit state when REDIS_URL is set (falling back to
 // memory while the store is unreachable); in-memory state for a single instance.
 const redisState =
@@ -79,7 +89,7 @@ const circuitState = redisState ?? createInMemoryCircuitState(systemClock);
 
 // Spec 005: every request is inspected by the privacy service before it is routed; results
 // are cached in this process by a SHA-256 hash of the messages (positions only).
-const events = createLogRoutingEvents(logger);
+const events = fanOut(createLogRoutingEvents(logger), createOtelRoutingEvents());
 const inspect = inspectSensitivity({
   detector: createHttpPiiDetector({ baseUrl: config.privacy.url }),
   cache: createInMemoryDetectionCache({
@@ -102,6 +112,7 @@ const routing: RouteInferenceDeps = {
   random: Math.random,
   inspect,
   anonymizationNotice,
+  tracer,
 };
 // Spec 006: one content-free audit entry per request. The messages are identified by an
 // HMAC keyed with TAMIZ_AUDIT_HASH_KEY, or an ephemeral key when it is unset.
@@ -150,8 +161,8 @@ const auditDeps = {
   newId: randomUUID,
   logger,
 };
-const route = withAudit(routeInference(routing), auditDeps);
-const stream = withAuditStream(streamInference(routing), auditDeps);
+const route = withAudit(withTracing(routeInference(routing), tracer), auditDeps);
+const stream = withAuditStream(withTracingStream(streamInference(routing), tracer), auditDeps);
 const auditReader =
   database === undefined ? (auditLog as InMemoryAuditLog) : createPostgresAuditReader(database.db);
 const startedAt = systemClock.now();
@@ -198,6 +209,7 @@ function shutdown(): void {
     await auditWriter?.close();
     await database?.close();
     await redisState?.close();
+    await telemetry.shutdown();
   })().finally(() => process.exit(0));
 }
 process.once("SIGINT", shutdown);

@@ -14,7 +14,8 @@
  *    signal) stops it.
  *
  * Every step is an event. The same function serves completions and, from `T-003-05`,
- * streams whose attempt resolves at the first token.
+ * streams whose attempt resolves at the first token. Each attempt runs in a tracer span
+ * (spec 006 FR-009); `describe` adds the served value's GenAI attributes to it.
  */
 import {
   type ProviderError,
@@ -33,6 +34,7 @@ import { err, ok, type Result } from "../../domain/result.js";
 import type { CircuitStatePort } from "../ports/circuit-state.port.js";
 import type { ClockPort } from "../ports/clock.port.js";
 import type { RoutingEventsPort } from "../ports/routing-events.port.js";
+import { NOOP_TRACER, type SpanAttributes, type TracerPort } from "../ports/tracer.port.js";
 import { type Admission, createCircuitBreaker } from "./circuit-breaker.js";
 import { withRetry } from "./retry.js";
 import { withTimeout } from "./timeout.js";
@@ -46,6 +48,8 @@ export interface ExecuteChainDeps {
   readonly random: () => number;
   readonly events: RoutingEventsPort;
   readonly circuitState: CircuitStatePort;
+  /** Attempt spans (spec 006); none when absent. */
+  readonly tracer?: TracerPort;
 }
 
 export interface ChainRequest {
@@ -114,11 +118,13 @@ function deadlineError(target: ModelTarget): ProviderError {
 
 export function executeChain<T>(deps: ExecuteChainDeps) {
   const { clock, events } = deps;
+  const tracer = deps.tracer ?? NOOP_TRACER;
   const timed = withTimeout(clock);
 
   return async (
     request: ChainRequest,
     attempt: ChainAttempt<T>,
+    describe: (value: T) => SpanAttributes = () => ({}),
   ): Promise<Result<Served<T>, ChainFailure>> => {
     const { decision, resilience, requestId } = request;
     const deadline = new Date(clock.now().getTime() + resilience.requestDeadlineMs);
@@ -199,12 +205,17 @@ export function executeChain<T>(deps: ExecuteChainDeps) {
             0,
             Math.min(request.timeoutFor(target), remainingMs()),
           ) as Milliseconds;
-          const outcome = await timed(
-            target,
-            timeoutMs,
-            (signal) => attempt(target, signal, timeoutMs),
-            request.signal,
-          );
+          const outcome = await tracer.attempt(target, async (span) => {
+            const result = await timed(
+              target,
+              timeoutMs,
+              (signal) => attempt(target, signal, timeoutMs),
+              request.signal,
+            );
+            if (result.ok) span.set(describe(result.value));
+            else span.fail(result.error.cause);
+            return result;
+          });
           const durationMs = clock.now().getTime() - started;
           events.emit(
             outcome.ok

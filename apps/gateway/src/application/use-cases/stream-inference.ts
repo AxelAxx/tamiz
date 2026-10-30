@@ -77,6 +77,7 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
     random: deps.random,
     events: deps.events,
     circuitState: deps.circuitState,
+    ...(deps.tracer === undefined ? {} : { tracer: deps.tracer }),
   });
 
   /** Passes the parts through, prices the finish, records a mid-stream failure. */
@@ -178,6 +179,8 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
           // must keep reaching the provider for the rest of the stream.
           signal: signal === undefined ? attemptSignal : AbortSignal.any([attemptSignal, signal]),
         }),
+      // A stream attempt ends at the first token; usage is on the request span.
+      (started) => ({ "gen_ai.response.model": started.modelName }),
     );
     if (!served.ok) return err({ decision, failure: served.error });
 

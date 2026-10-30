@@ -36,6 +36,7 @@ import type { ClockPort } from "../ports/clock.port.js";
 import type { ProviderCompletion } from "../ports/llm-provider.port.js";
 import type { PolicyRepositoryPort } from "../ports/policy-repository.port.js";
 import type { RoutingEventsPort } from "../ports/routing-events.port.js";
+import type { TracerPort } from "../ports/tracer.port.js";
 import type { ProviderRegistry } from "../provider-registry.js";
 import { type ChainFailure, executeChain } from "../resilience/execute-chain.js";
 import { classifyTask } from "./classify-task.js";
@@ -58,6 +59,8 @@ export interface RouteInferenceDeps {
   readonly inspect: InspectSensitivity;
   /** Added as a system message when anonymizing (spec 005 research R-06). */
   readonly anonymizationNotice: AnonymizationNotice;
+  /** Attempt spans (spec 006 FR-009); none when absent. */
+  readonly tracer?: TracerPort;
 }
 
 export interface RoutedCompletion {
@@ -176,6 +179,7 @@ export function routeInference(deps: RouteInferenceDeps): RouteInference {
     random: deps.random,
     events: deps.events,
     circuitState: deps.circuitState,
+    ...(deps.tracer === undefined ? {} : { tracer: deps.tracer }),
   });
 
   return async (request) => {
@@ -199,6 +203,16 @@ export function routeInference(deps: RouteInferenceDeps): RouteInference {
           timeoutMs,
           signal,
         }),
+      (completion) => ({
+        "gen_ai.response.model": completion.modelName,
+        "gen_ai.response.finish_reasons": [completion.finishReason],
+        ...(completion.usage === undefined
+          ? {}
+          : {
+              "gen_ai.usage.input_tokens": completion.usage.promptTokens,
+              "gen_ai.usage.output_tokens": completion.usage.completionTokens,
+            }),
+      }),
     );
     if (!served.ok) return err({ decision, failure: served.error });
 

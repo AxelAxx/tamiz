@@ -14,6 +14,8 @@ import type {
 } from "../../src/application/ports/llm-provider.port.js";
 import type { LoggerPort } from "../../src/application/ports/logger.port.js";
 import type { RoutingEventsPort } from "../../src/application/ports/routing-events.port.js";
+import type { TracerPort } from "../../src/application/ports/tracer.port.js";
+import { withTracing, withTracingStream } from "../../src/application/tracing/with-tracing.js";
 import { costReport } from "../../src/application/use-cases/cost-report.js";
 import type { InspectSensitivity } from "../../src/application/use-cases/inspect-sensitivity.js";
 import { providerHealth } from "../../src/application/use-cases/provider-health.js";
@@ -85,6 +87,8 @@ export async function createTestApp(
     ) => Promise<Result<StartedStream, ProviderError>>;
     readonly circuitState?: CircuitStatePort;
     readonly events?: RoutingEventsPort;
+    /** Spans (spec 006): the use cases are wrapped by tracing as in `main.ts`. */
+    readonly tracer?: TracerPort;
     /** What the privacy service reports (spec 005); clean by default. */
     readonly inspect?: InspectSensitivity;
     /** Receives the audit entries (spec 006); a fresh in-memory log by default. */
@@ -119,6 +123,7 @@ export async function createTestApp(
     random: () => 0.5,
     ...cleanPrivacyDeps(),
     ...(options.inspect === undefined ? {} : { inspect: options.inspect }),
+    ...(options.tracer === undefined ? {} : { tracer: options.tracer }),
   };
   const audit = options.audit ?? createInMemoryAuditLog();
   const auditDeps = {
@@ -129,8 +134,10 @@ export async function createTestApp(
       createHmac("sha256", TEST_AUDIT_KEY).update(JSON.stringify(messages)).digest("hex"),
     newId: randomUUID,
   };
-  const route = withAudit(routeInference(deps), auditDeps);
-  const stream = withAuditStream(streamInference(deps), auditDeps);
+  const traced = <T>(useCase: T, wrap: (u: T, t: TracerPort) => T): T =>
+    options.tracer === undefined ? useCase : wrap(useCase, options.tracer);
+  const route = withAudit(traced(routeInference(deps), withTracing), auditDeps);
+  const stream = withAuditStream(traced(streamInference(deps), withTracingStream), auditDeps);
   const records = [
     { clientId: "demo", keyHash: DEMO_KEY_HASH },
     { clientId: "ops", keyHash: hashApiKey(ADMIN_KEY), role: "admin" as const },
