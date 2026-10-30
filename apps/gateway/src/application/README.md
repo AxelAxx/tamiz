@@ -6,6 +6,9 @@ workspace package, no I/O library. Everything external (time, providers, persist
 logging) is declared as a port interface under `ports/` and implemented in
 `infrastructure/`; use cases are tested with in-memory fakes (constitution VIII).
 
-Current modules: `ports/clock.port.ts` (`ClockPort`) and `ports/logger.port.ts`
-(`LoggerPort`). Feature 002 adds `ports/llm-provider.port.ts`,
-`ports/policy-repository.port.ts` and `use-cases/{classify-task,route-inference}.ts`.
+Current modules: `ports/clock.port.ts` (`ClockPort`), `ports/logger.port.ts`
+(`LoggerPort`), `ports/llm-provider.port.ts` (`LlmProviderPort`, `FINISH_REASONS`),
+`ports/policy-repository.port.ts` (`PolicyRepositoryPort`), `provider-registry.ts`
+(`ProviderRegistry`, type only) and the use cases `use-cases/classify-task.ts`
+(`classifyTask`) and `use-cases/route-inference.ts` (`routeInference`, non-streaming,
+`chain[0]` only).

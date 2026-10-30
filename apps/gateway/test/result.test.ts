@@ -89,6 +89,10 @@ describe("DomainError", () => {
         return `configuration:${error.issues.length}`;
       case "not_found":
         return `not_found:${error.resource}`;
+      case "provider":
+        return `provider:${error.cause}`;
+      case "unauthorized":
+        return "unauthorized";
       default:
         return assertNever(error);
     }

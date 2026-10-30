@@ -2,7 +2,9 @@
  * A model a request can be routed to (spec 002 FR-001, data-model sections 1 and 3.4).
  * The closed lists are mirrored as `z.enum` in `@tamiz/contracts` (research R-03).
  */
-import type { Milliseconds, TargetId, Usd } from "./units.js";
+// From `brands.ts`, not `units.ts`: `errors.ts` imports this file, and `units.ts` imports
+// `errors.ts`.
+import type { Milliseconds, TargetId, Usd } from "./brands.js";
 
 export const PROVIDER_NAMES = ["ollama", "mistral", "anthropic", "openai"] as const;
 export type ProviderName = (typeof PROVIDER_NAMES)[number];
