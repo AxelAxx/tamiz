@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft (awaiting Alex's review)
+**Status**: Approved (reviewed by Alex on 2026-10-30)
 
 **Input**: User description: "004-privacy-service: a Python service that tells the
 gateway which personal data a text contains and how sensitive it is (`/analyze`), and

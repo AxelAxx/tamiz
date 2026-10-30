@@ -90,7 +90,7 @@ and no hierarchy of our own.
 
 ```text
 specs/004-privacy-service/
-├── spec.md              # Specification (T-004-01), draft awaiting review
+├── spec.md              # Specification (T-004-01), approved 2026-10-30
 ├── plan.md              # This file
 ├── research.md          # Phase 0: decisions R-01 … R-15
 ├── data-model.md        # Phase 1: domain, port, contract and corpus shapes

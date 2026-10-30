@@ -5,10 +5,10 @@
 | Task | `T-004-01` (see `docs/tasks/BACKLOG.md`) |
 | Feature | `004-privacy-service` |
 | Spec | `specs/004-privacy-service/spec.md` |
-| Branch / PR | `004-privacy-service` (Spec Kit naming), cut from `main` at 99bd087 / PR opened after this commit |
+| Branch / PR | `004-privacy-service` (Spec Kit naming), cut from `main` at 99bd087 / PR #21 |
 | Date | 2026-10-30 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | done as a draft; `spec.md` is `Draft` until Alex reviews it, then flips to `Approved` in the same PR (as in `T-002-01` and `T-003-01`) |
+| Status | done; spec reviewed and approved by Alex on 2026-10-30 without changes (`spec.md` flipped to `Approved` in the same PR, as in `T-003-01`) |
 
 ## What was done
 
@@ -96,7 +96,6 @@ Documentation only; no code changed.
 
 ## Pending / follow-ups
 
-- Alex's review of `spec.md`; on approval, flip `Status` to `Approved` and merge.
 - Not verified: current releases of `presidio-analyzer` (2.2 line) and spaCy /
   `es_core_news_lg` (3.8). `T-004-02` pins them in `uv.lock` (research note).
 - No new backlog rows.
