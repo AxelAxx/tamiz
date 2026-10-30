@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft (awaiting Alex's review)
+**Status**: Approved (reviewed by Alex on 2026-10-30)
 
 **Input**: User description: "005-privacy-aware-routing: the gateway inspects every request
 with the privacy service, derives its sensitivity level, and the routing policy turns that

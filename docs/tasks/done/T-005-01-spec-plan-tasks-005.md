@@ -5,10 +5,10 @@
 | Task | `T-005-01` (see `docs/tasks/BACKLOG.md`) |
 | Feature | `005-privacy-aware-routing` |
 | Spec | `specs/005-privacy-aware-routing/spec.md` |
-| Branch / PR | `005-privacy-aware-routing` (Spec Kit naming), cut from `main` at 436d2d2 / PR opened after this commit |
+| Branch / PR | `005-privacy-aware-routing` (Spec Kit naming), cut from `main` at 436d2d2 / PR #28 |
 | Date | 2026-10-30 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | done as a draft; `spec.md` is `Draft` until Alex reviews it, then it flips to `Approved` in the same PR (as in `T-003-01` and `T-004-01`) |
+| Status | done; spec reviewed and approved by Alex on 2026-10-30 without changes (`spec.md` flipped to `Approved` in the same PR, as in `T-004-01`) |
 
 ## What was done
 
@@ -100,7 +100,6 @@ Documentation only; no code changed.
 
 ## Pending / follow-ups
 
-- Alex's review of `spec.md`. On approval, flip the status to `Approved` and merge.
 - No new backlog rows.
 
 ## Pitfalls for the next session
