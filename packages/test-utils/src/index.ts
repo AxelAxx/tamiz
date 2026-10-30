@@ -11,3 +11,8 @@ export {
   healthResponse,
 } from "./builders.js";
 export { createFakeClock, type FakeClock } from "./fake-clock.js";
+export {
+  createInMemoryPolicyRepository,
+  type InMemoryPolicyRepository,
+} from "./in-memory-policy-repository.js";
+export { createScriptedPort, type ScriptedPort } from "./scripted-port.js";

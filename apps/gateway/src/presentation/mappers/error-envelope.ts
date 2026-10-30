@@ -40,6 +40,12 @@ export function domainErrorToErrorType(error: DomainError): ErrorType {
       return "not_found";
     case "configuration":
       return "internal";
+    // T-002-06 (tasks.md T058) maps `cause === "timeout"` to `provider_timeout` (504)
+    // once the contract gains that type.
+    case "provider":
+      return "provider_error";
+    case "unauthorized":
+      return "unauthorized";
     default:
       return assertNever(error);
   }

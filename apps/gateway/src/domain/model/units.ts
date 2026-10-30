@@ -13,29 +13,19 @@
  */
 import { type ValidationError, validationError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
+import type {
+  ClientId,
+  Milliseconds,
+  PolicyId,
+  RequestId,
+  RuleId,
+  TargetId,
+  Usd,
+} from "./brands.js";
 
-declare const usdBrand: unique symbol;
-declare const millisecondsBrand: unique symbol;
-declare const policyIdBrand: unique symbol;
-declare const targetIdBrand: unique symbol;
-declare const ruleIdBrand: unique symbol;
-declare const requestIdBrand: unique symbol;
-declare const clientIdBrand: unique symbol;
-
-/** A cost or price in US dollars; finite and never negative. */
-export type Usd = number & { readonly [usdBrand]: true };
-/** A duration in whole milliseconds; never negative. */
-export type Milliseconds = number & { readonly [millisecondsBrand]: true };
-/** Identifies a routing policy document. */
-export type PolicyId = string & { readonly [policyIdBrand]: true };
-/** Identifies a model target inside a policy. */
-export type TargetId = string & { readonly [targetIdBrand]: true };
-/** Identifies a routing rule inside a policy. */
-export type RuleId = string & { readonly [ruleIdBrand]: true };
-/** Correlates a request across headers, logs and audit entries. */
-export type RequestId = string & { readonly [requestIdBrand]: true };
-/** Identifies the client application that owns an API key. */
-export type ClientId = string & { readonly [clientIdBrand]: true };
+// The brand types live in `brands.ts` (no imports) so `errors.ts` can use them without a
+// cycle; they are re-exported here, the module the rest of the domain imports.
+export type { ClientId, Milliseconds, PolicyId, RequestId, RuleId, TargetId, Usd };
 
 /** Charset of the 001 `RequestId` / `PolicyId` contract brands. */
 const EDGE_IDENTIFIER = /^[A-Za-z0-9_-]+$/;
