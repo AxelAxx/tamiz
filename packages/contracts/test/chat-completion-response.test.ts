@@ -1,5 +1,9 @@
 import { describe, expect, expectTypeOf, it } from "vitest";
-import { type ChatCompletionResponse, ChatCompletionResponseSchema } from "../src/index.js";
+import {
+  type ChatCompletionResponse,
+  ChatCompletionResponseSchema,
+  type Usd,
+} from "../src/index.js";
 import { invalidResponses, validResponse } from "./fixtures/chat-completion.js";
 
 describe("ChatCompletionResponseSchema (spec US2-5, SC-004)", () => {
@@ -92,5 +96,45 @@ describe("ChatCompletionResponseSchema (spec US2-5, SC-004)", () => {
       if (result.success) return;
       expect(result.error.issues[0]?.path).toEqual(sample.path);
     });
+  });
+});
+
+describe("usage cost extension (spec 002 US7-5, FR-035)", () => {
+  const withUsage = (usage: Record<string, unknown>) => ({
+    ...validResponse,
+    usage: { ...validResponse.usage, ...usage },
+  });
+
+  it("accepts cost_usd and estimated, and types cost_usd as Usd", () => {
+    const result = ChatCompletionResponseSchema.safeParse(
+      withUsage({ cost_usd: 0.00045, estimated: false }),
+    );
+
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.usage.cost_usd).toBe(0.00045);
+    expectTypeOf(result.data.usage.cost_usd).toEqualTypeOf<Usd | undefined>();
+    expectTypeOf(result.data.usage.estimated).toEqualTypeOf<boolean | undefined>();
+  });
+
+  it("keeps both fields optional (the 001 shape still validates)", () => {
+    expect(ChatCompletionResponseSchema.safeParse(validResponse).success).toBe(true);
+  });
+
+  it("rejects a negative cost and a non-boolean estimated", () => {
+    expect(ChatCompletionResponseSchema.safeParse(withUsage({ cost_usd: -0.01 })).success).toBe(
+      false,
+    );
+    expect(ChatCompletionResponseSchema.safeParse(withUsage({ estimated: "yes" })).success).toBe(
+      false,
+    );
+  });
+
+  it("still rejects unknown usage keys", () => {
+    const result = ChatCompletionResponseSchema.safeParse(withUsage({ cached_tokens: 3 }));
+
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.error.issues[0]?.path).toEqual(["usage"]);
   });
 });

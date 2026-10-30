@@ -7,6 +7,7 @@
  * multimodal content parts, `stream: true`) are rejected until a later feature adds them.
  */
 import { z } from "zod";
+import { UsdSchema } from "./branded.js";
 
 export const ChatMessageSchema = z.strictObject({
   role: z.enum(["system", "user", "assistant"]),
@@ -33,6 +34,10 @@ export const ChatCompletionUsageSchema = z.strictObject({
   prompt_tokens: z.number().int().min(0),
   completion_tokens: z.number().int().min(0),
   total_tokens: z.number().int().min(0),
+  /** Spec 002 FR-035: the request's cost in US dollars; the gateway always sets it. */
+  cost_usd: UsdSchema.optional(),
+  /** Spec 002 FR-034: true when the token counts were estimated, not reported. */
+  estimated: z.boolean().optional(),
 });
 
 export const ChatCompletionResponseSchema = z.strictObject({

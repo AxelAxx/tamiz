@@ -46,7 +46,8 @@ describe("POST /v1/chat/completions", () => {
 
     expect(response.status).toBe(200);
     const body = ChatCompletionResponseSchema.parse(await response.json());
-    expect(body).toEqual({
+    const { cost_usd, ...tokens } = body.usage;
+    expect({ ...body, usage: tokens }).toEqual({
       id: "chatcmpl-req-abc",
       object: "chat.completion",
       created: Math.floor(Date.parse("2026-05-06T07:08:09.000Z") / 1000),
@@ -54,8 +55,10 @@ describe("POST /v1/chat/completions", () => {
       choices: [
         { index: 0, message: { role: "assistant", content: "Hola." }, finish_reason: "stop" },
       ],
-      usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15 },
+      usage: { prompt_tokens: 12, completion_tokens: 3, total_tokens: 15, estimated: false },
     });
+    // US7-5: mistral-small is priced 0.1 / 0.3 USD per million in policies/default.yaml.
+    expect(cost_usd).toBeCloseTo((12 * 0.1 + 3 * 0.3) / 1e6, 12);
     expect(response.headers.get("x-tamiz-route")).toBe("mistral-small");
     expect(response.headers.get("x-tamiz-rule")).toBe("default");
     expect(response.headers.get("x-request-id")).toBe("req-abc");
@@ -74,17 +77,41 @@ describe("POST /v1/chat/completions", () => {
     expect(JSON.stringify(provider.calls[0])).not.toContain("someone@example.com");
   });
 
-  it("reports zero usage when the provider omits it (until T-002-07)", async () => {
+  it("US7-4: estimates and flags usage when the provider omits it, and prices the estimate", async () => {
     const { app } = await createTestApp({
-      script: () => ({ ok: true, value: { text: "x", finishReason: "length", modelName: "m" } }),
+      script: () => ({
+        ok: true,
+        value: { text: "abcdefgh", finishReason: "length", modelName: "m" },
+      }),
     });
 
     const body = ChatCompletionResponseSchema.parse(
       await (await app.request("/v1/chat/completions", post(VALID))).json(),
     );
 
-    expect(body.usage).toEqual({ prompt_tokens: 0, completion_tokens: 0, total_tokens: 0 });
+    // "Hola, ¿qué tal?" is 15 characters → 4 tokens; "abcdefgh" → 2 tokens.
+    const { cost_usd, ...tokens } = body.usage;
+    expect(tokens).toEqual({
+      prompt_tokens: 4,
+      completion_tokens: 2,
+      total_tokens: 6,
+      estimated: true,
+    });
+    expect(cost_usd).toBeCloseTo((4 * 0.1 + 2 * 0.3) / 1e6, 12);
     expect(body.choices[0]?.finish_reason).toBe("length");
+  });
+
+  it("US7-2: a zero-priced local target costs exactly 0", async () => {
+    const { app } = await createTestApp();
+
+    const response = await app.request(
+      "/v1/chat/completions",
+      post({ ...VALID, model: "tamiz-local" }),
+    );
+
+    expect(response.headers.get("x-tamiz-route")).toBe("ollama-llama");
+    const body = ChatCompletionResponseSchema.parse(await response.json());
+    expect(body.usage.cost_usd).toBe(0);
   });
 
   it.each([
