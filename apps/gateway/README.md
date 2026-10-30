@@ -54,6 +54,9 @@ Configuration is read once from the environment by `loadConfig` and injected:
 | `MISTRAL_API_KEY` / `ANTHROPIC_API_KEY` / `OPENAI_API_KEY` | unset | required when a policy target uses that provider; empty counts as unset |
 | `MISTRAL_BASE_URL` / `ANTHROPIC_BASE_URL` / `OPENAI_BASE_URL` | provider default | http(s) URL override (proxies); ignored without the key |
 | `REDIS_URL` | unset (in-memory circuit state) | `redis://` or `rediss://`; shares circuit breaker state between instances, falling back to memory while unreachable (`docker compose up valkey`) |
+| `TAMIZ_PRIVACY_URL` | required | http(s) base URL of the privacy service (`services/privacy`); requests are inspected there before routing (spec 005) |
+| `TAMIZ_PRIVACY_TIMEOUT_MS` | `2000` | 100–30 000; a slower answer counts as a detector failure (fail closed) |
+| `TAMIZ_PRIVACY_CACHE_MAX_ENTRIES` / `TAMIZ_PRIVACY_CACHE_TTL_MS` | `1000` / `600000` | in-memory cache of detection results (positions only) by SHA-256 of the messages; `0` entries disables it |
 
 At boot the gateway also loads the policy file and checks that every provider it uses is
 configured. Any problem prints one `path: message` line per issue to stderr (never a

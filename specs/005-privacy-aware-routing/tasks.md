@@ -129,55 +129,55 @@ inspection use case tests pass with a fake clock.
 
 ### Tests first
 
-- [ ] T012 [P] `gateway/test/contracts/privacy-service-drift.test.ts`: for each mirrored
+- [x] T012 [P] `gateway/test/contracts/privacy-service-drift.test.ts`: for each mirrored
   schema, the property names, required lists, enums and `additionalProperties` equal the
   components of `services/privacy/openapi.json` (FR-010, research R-03).
-- [ ] T013 [P] [US3] `gateway/test/privacy/http-pii-detector.test.ts` (MSW):
+- [x] T013 [P] [US3] `gateway/test/privacy/http-pii-detector.test.ts` (MSW):
   - joined messages and per-message UTF-16 offsets, including a message with an emoji
     before a finding;
   - network error, 5xx and 503 `not_ready` → `unavailable`;
   - a malformed body, an unknown kind or a finding crossing the separator → `contract`
     (US3-3);
   - no request text in any thrown error or log.
-- [ ] T014 [P] [US7] `gateway/test/cache/in-memory-detection-cache.test.ts`:
+- [x] T014 [P] [US7] `gateway/test/cache/in-memory-detection-cache.test.ts`:
   - least-recently-used eviction at `maxEntries` (US7-4);
   - expiry by `ttlMs` on the fake clock;
   - a serialized dump of the cache contains only hashes, kinds, offsets, scores and
     levels (US7-2);
   - `maxEntries: 0` disables it.
-- [ ] T015 [P] [US3] [US7] `gateway/test/application/inspect-sensitivity.test.ts`:
+- [x] T015 [P] [US3] [US7] `gateway/test/application/inspect-sensitivity.test.ts`:
   - a cache hit does not call the detector (US7-1);
   - different kinds or minimum score → a miss (US7-3);
   - failures are not cached;
   - the timeout fires at `timeoutMs` on the fake clock (US3-2);
   - an aborted client signal discards the result;
   - events `privacy.inspected` and `privacy.detector_failed` (US3-1) carry no content.
-- [ ] T016 [P] [US3] `gateway/test/config/env-005.test.ts`:
+- [x] T016 [P] [US3] `gateway/test/config/env-005.test.ts`:
   - a missing or non-http `TAMIZ_PRIVACY_URL` → exit, naming the variable (US3-5);
   - timeout range checks;
   - cache defaults.
 
 ### Implementation
 
-- [ ] T017 `contracts/src/privacy-service.ts` (data-model §1.1), exported from the index.
-- [ ] T018 [P] `packages/test-utils/src/fake-pii-detector.ts`: `FakePiiDetector`
+- [x] T017 `contracts/src/privacy-service.ts` (data-model §1.1), exported from the index.
+- [x] T018 [P] `packages/test-utils/src/fake-pii-detector.ts`: `FakePiiDetector`
   (scripted inspections, call log, optional delay on the fake clock).
-- [ ] T019 `gateway/src/application/ports/{pii-detector,detection-cache}.port.ts`
+- [x] T019 `gateway/src/application/ports/{pii-detector,detection-cache}.port.ts`
   (data-model §3.1).
-- [ ] T020 `gateway/src/infrastructure/privacy/http-pii-detector.ts` (research R-02).
-- [ ] T021 `gateway/src/infrastructure/cache/in-memory-detection-cache.ts` (research
+- [x] T020 `gateway/src/infrastructure/privacy/http-pii-detector.ts` (research R-02).
+- [x] T021 `gateway/src/infrastructure/cache/in-memory-detection-cache.ts` (research
   R-08).
-- [ ] T022 `gateway/src/application/use-cases/inspect-sensitivity.ts`:
+- [x] T022 `gateway/src/application/use-cases/inspect-sensitivity.ts`:
   - `withTimeout` from feature 003;
   - an injected `hash` function (SHA-256 provided by `main.ts`);
   - routing events.
-- [ ] T023 `gateway/src/infrastructure/config/env.ts`: the `TAMIZ_PRIVACY_*` variables.
+- [x] T023 `gateway/src/infrastructure/config/env.ts`: the `TAMIZ_PRIVACY_*` variables.
   Update `.env.example` and the gateway README. In `main.ts`, build the detector and the
   cache; they are not used yet.
 
 ### Verification
 
-- [ ] T024 Run the gates and `quickstart.md` §2. Write
+- [x] T024 Run the gates and `quickstart.md` §2. Write
   `docs/tasks/done/T-005-03-pii-detector-port.md` and flip the backlog row.
 
 ---

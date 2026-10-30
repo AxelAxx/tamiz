@@ -1,6 +1,7 @@
 import type {
   RoutingEvent,
   RoutingEventsPort,
+  TargetEvent,
 } from "../../src/application/ports/routing-events.port.js";
 import {
   type ProviderError,
@@ -51,10 +52,21 @@ export function failure(
   });
 }
 
-/** Records every emitted event in order. */
-export function recordingEvents(): RoutingEventsPort & { readonly events: RoutingEvent[] } {
-  const events: RoutingEvent[] = [];
-  return { events, emit: (event) => void events.push(event) };
+/** Records every emitted event in order; `targetEvents` keeps those about a target. */
+export function recordingEvents(): RoutingEventsPort & {
+  readonly all: RoutingEvent[];
+  readonly events: TargetEvent[];
+} {
+  const all: RoutingEvent[] = [];
+  const events: TargetEvent[] = [];
+  return {
+    all,
+    events,
+    emit: (event) => {
+      all.push(event);
+      if ("targetId" in event) events.push(event);
+    },
+  };
 }
 
 /** A deterministic `random`: returns the given values in turn, repeating the last one. */

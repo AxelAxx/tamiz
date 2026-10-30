@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 import { loadConfig } from "../../src/infrastructure/config/env.js";
 
 /** A valid `TAMIZ_API_KEYS` (required since spec 002 T-002-06); a test hash, not a secret. */
-const BASE = { TAMIZ_API_KEYS: `demo:${"0".repeat(64)}` } as const;
+const BASE = {
+  TAMIZ_API_KEYS: `demo:${"0".repeat(64)}`,
+  TAMIZ_PRIVACY_URL: "http://privacy.test:8001",
+} as const;
 
 // Spec 002 research R-12, data-model section 5 (tasks.md T039): the policy file and the
 // provider settings join the 001 environment schema. Secrets are never echoed.
@@ -74,8 +77,11 @@ describe("loadConfig, feature 002 settings", () => {
   });
 
   it("US5-4: requires TAMIZ_API_KEYS and names a malformed entry by position, never its text", () => {
-    const missing = loadConfig({});
-    const malformed = loadConfig({ TAMIZ_API_KEYS: `demo:${"0".repeat(64)},Bad_Entry-SECRET` });
+    const missing = loadConfig({ TAMIZ_PRIVACY_URL: BASE.TAMIZ_PRIVACY_URL });
+    const malformed = loadConfig({
+      ...BASE,
+      TAMIZ_API_KEYS: `demo:${"0".repeat(64)},Bad_Entry-SECRET`,
+    });
 
     expect(!missing.ok && missing.error.issues.map((issue) => issue.path)).toEqual([
       "TAMIZ_API_KEYS",

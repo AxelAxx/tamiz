@@ -4,7 +4,10 @@ import { loadConfig } from "../../src/infrastructure/config/env.js";
 // Spec 003 FR-031, research R-11 (tasks.md T056): `REDIS_URL` selects the shared circuit
 // state; without it the gateway keeps in-memory state. Never echoed.
 
-const BASE = { TAMIZ_API_KEYS: `demo:${"0".repeat(64)}` } as const;
+const BASE = {
+  TAMIZ_API_KEYS: `demo:${"0".repeat(64)}`,
+  TAMIZ_PRIVACY_URL: "http://privacy.test:8001",
+} as const;
 
 describe("loadConfig, feature 003 settings", () => {
   it("leaves redisUrl absent when REDIS_URL is unset or empty", () => {
