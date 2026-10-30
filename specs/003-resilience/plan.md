@@ -91,7 +91,7 @@ the two above and no package beyond `ioredis` and `testcontainers` (`T-003-06`).
 
 ```text
 specs/003-resilience/
-├── spec.md              # Specification (T-003-01), draft for Alex's review
+├── spec.md              # Specification (T-003-01), approved 2026-10-30
 ├── plan.md              # This file
 ├── research.md          # Phase 0: decisions R-01 … R-15
 ├── data-model.md        # Phase 1: contract, domain, port and adapter shapes

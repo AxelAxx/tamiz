@@ -8,7 +8,7 @@
 | Branch / PR | `003-resilience` (Spec Kit naming), cut from `main` at 89d6344 / PR opened after this commit |
 | Date | 2026-10-30 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | done as a draft; `spec.md` says `Draft` until Alex approves it in the PR (as in `T-002-01`). The implementation tasks must not start before that. |
+| Status | done; spec reviewed and approved by Alex on 2026-10-30 without changes (`spec.md` flipped to `Approved` in the same PR, as in `T-002-01`) |
 
 ## What was done
 
@@ -108,13 +108,12 @@ grep -c "^- \[ \] T0" specs/003-resilience/tasks.md   # 66
 
 ## Pending / follow-ups
 
-- **Alex reviews the PR.** On approval, `spec.md` changes to `Approved` in the same PR
-  and the PR is merged; `T-003-02` can then start.
+- Alex approved the artefacts on 2026-10-30 without changes; every decision above
+  stands as planned. `T-003-02` can start (and `T-003-06` after `T-003-03`).
 - No new backlog rows.
 
 ## Pitfalls for the next session
 
-- Do not start `T-003-02` before the spec is approved (constitution III).
 - `T-003-02` changes `ClockPort` and `createFakeClock`. Rebuild `@tamiz/test-utils`
   before gateway-only Vitest runs (T-002-03 pitfall).
 - `T-003-04` widens `DomainError` twice. Grep `assertNever(` (mapper and

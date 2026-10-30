@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft (awaiting Alex's review)
+**Status**: Approved (reviewed by Alex, 2026-10-30)
 
 **Input**: User description: "003-resilience: timeouts, retry with exponential backoff
 and jitter, per-target circuit breaker (closed/open/half-open) with a circuit state port,
