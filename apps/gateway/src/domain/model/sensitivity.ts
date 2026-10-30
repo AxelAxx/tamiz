@@ -52,8 +52,5 @@ export function sensitivityOf(inspection: Inspection): Sensitivity {
   return inspection.status === "ok" ? inspection.level : "unknown";
 }
 
-/**
- * Interim inspection used until the gateway calls the privacy service (spec 005 tasks.md
- * T009 → removed in T036): routes as level `none`, which keeps feature 003 behaviour.
- */
-export const NOT_INSPECTED: Inspection = { status: "ok", level: "none", entities: [] };
+/** The inspection of a text in which nothing was found (level `none`). */
+export const CLEAN_INSPECTION: Inspection = { status: "ok", level: "none", entities: [] };

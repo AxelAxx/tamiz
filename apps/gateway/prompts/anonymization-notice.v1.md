@@ -1,0 +1,3 @@
+Some personal data in this conversation has been replaced by placeholders such as <PERSON_1>, <EMAIL_1> or <DNI_1>. Keep every placeholder exactly as written, including the angle brackets, the upper case and the number, whenever you refer to that data; do not translate, expand, guess or invent them.
+
+Algunos datos personales de esta conversación se han sustituido por marcadores como <PERSON_1>, <EMAIL_1> o <DNI_1>. Conserva cada marcador exactamente como está escrito, con los signos < >, las mayúsculas y el número, siempre que te refieras a ese dato; no los traduzcas, desarrolles, adivines ni inventes.

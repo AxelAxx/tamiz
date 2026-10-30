@@ -9,23 +9,30 @@
  * ends the stream with one error part, is never fallen back, and counts for the target's
  * circuit (FR-024). The finish carries usage (reported, or estimated from the streamed
  * text) and its cost (FR-026). The client's signal reaches the provider (FR-027).
+ *
+ * Spec 005: the same inspection and privacy actions as `routeInference` happen before the
+ * stream starts; for `anonymize` each streamed text is restored. Placeholders split
+ * across chunks are handled by the restoring buffer of `T-005-05`; until then a split
+ * placeholder reaches the client as placeholder text, never as a leaked value.
  */
 import type { ProviderError } from "../../domain/errors.js";
 import { computeCost, type Usage } from "../../domain/model/cost.js";
 import type { Abandoned } from "../../domain/model/fallback.js";
 import type { InferenceRequest } from "../../domain/model/inference-request.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
-import { decide, type RoutingDecision } from "../../domain/model/routing-decision.js";
+import type { RoutingDecision } from "../../domain/model/routing-decision.js";
 import type { RoutingPolicy } from "../../domain/model/routing-policy.js";
 import type { Usd } from "../../domain/model/units.js";
 import { err, ok, type Result } from "../../domain/result.js";
 import type { FinishReason, StartedStream } from "../ports/llm-provider.port.js";
 import { createCircuitBreaker } from "../resilience/circuit-breaker.js";
 import { executeChain } from "../resilience/execute-chain.js";
-import { classifyTask } from "./classify-task.js";
+import type { ProtectedMessages } from "./protect-messages.js";
 import {
   blocked,
+  decideWithPrivacy,
   effectiveTimeoutMs,
+  protectForProvider,
   type RouteInferenceDeps,
   type RoutingFailure,
   resolveUsage,
@@ -53,6 +60,8 @@ export interface RoutedStream {
   /** Deltas, then exactly one `finish` or one `error`. */
   readonly parts: AsyncIterable<RoutedStreamPart>;
   readonly createdAt: Date;
+  /** Set when the request was anonymized: the notice version (`x-tamiz-privacy`). */
+  readonly noticeVersion?: string;
 }
 
 export type StreamInference = (
@@ -74,13 +83,14 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
     policy: RoutingPolicy,
     target: ModelTarget,
     started: StartedStream,
+    sent: ProtectedMessages,
   ): AsyncGenerator<RoutedStreamPart> {
     let text = started.first;
     for await (const part of started.rest) {
       switch (part.type) {
         case "delta":
           text += part.text;
-          yield part;
+          yield { type: "delta", text: sent.restore(part.text) };
           break;
         case "finish": {
           const usage = resolveUsage(
@@ -90,7 +100,7 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
               modelName: started.modelName,
               ...(part.usage === undefined ? {} : { usage: part.usage }),
             },
-            request.messages,
+            sent.providerMessages,
           );
           yield {
             type: "finish",
@@ -135,10 +145,9 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
   }
 
   return async (request, signal) => {
-    const classified = classifyTask(request);
-    const policy = await deps.policies.getActive();
-    const decision = decide(policy, classified);
+    const { policy, inspection, decision } = await decideWithPrivacy(deps, request, signal);
     if (decision.kind === "block") return err(blocked(decision));
+    const sent = protectForProvider(deps, request, decision, inspection);
 
     const served = await execute(
       {
@@ -151,7 +160,7 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
       (target, attemptSignal, timeoutMs) =>
         deps.providers.resolve(target.provider).stream({
           target,
-          messages: request.messages,
+          messages: sent.providerMessages,
           ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
           ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
           timeoutMs,
@@ -168,9 +177,10 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
       target,
       abandoned,
       modelName: started.modelName,
-      first: started.first,
-      parts: routedParts(request, policy, target, started),
+      first: sent.restore(started.first),
+      parts: routedParts(request, policy, target, started, sent),
       createdAt: deps.clock.now(),
+      ...(sent.noticeVersion === undefined ? {} : { noticeVersion: sent.noticeVersion }),
     });
   };
 }

@@ -13,7 +13,7 @@ import {
   type RoutingPolicy,
   type RoutingPolicyInput,
 } from "../../src/domain/model/routing-policy.js";
-import { NOT_INSPECTED, SENSITIVITIES } from "../../src/domain/model/sensitivity.js";
+import { CLEAN_INSPECTION, SENSITIVITIES } from "../../src/domain/model/sensitivity.js";
 import { classify } from "../../src/domain/model/task-classifier.js";
 import { targetIdUnchecked } from "../../src/domain/model/units.js";
 import { decideRoute, examplePolicyInput, validPolicy } from "./helpers/policies.js";
@@ -25,7 +25,7 @@ function request(overrides: Partial<DecisionInput> = {}): DecisionInput {
     requestedModel: "gpt-4o",
     taskType: "chat",
     size: "short",
-    inspection: NOT_INSPECTED,
+    inspection: CLEAN_INSPECTION,
     ...overrides,
   };
 }
@@ -278,7 +278,7 @@ describe("SC-007: classification plus decision are fast", () => {
       decideRoute(policy, {
         ...classification,
         requestedModel: "gpt-4o",
-        inspection: NOT_INSPECTED,
+        inspection: CLEAN_INSPECTION,
       });
       durations.push(performance.now() - start);
     }

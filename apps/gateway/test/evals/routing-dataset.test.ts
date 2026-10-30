@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { classifyTask } from "../../src/application/use-cases/classify-task.js";
 import { MESSAGE_ROLES } from "../../src/domain/model/inference-request.js";
+import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import { TASK_SIZES, TASK_TYPES } from "../../src/domain/model/task-classifier.js";
 import { clientIdUnchecked, requestIdUnchecked } from "../../src/domain/model/units.js";
 import { loadPolicyFile } from "../../src/infrastructure/policy/file-policy-loader.js";
@@ -71,12 +72,15 @@ describe("routing gate (US8-1, US8-2, US8-4, FR-037)", () => {
     const policy = loaded.value;
 
     const results = cases.map((c) => {
-      const classified = classifyTask({
-        requestId: requestIdUnchecked(c.id),
-        clientId: clientIdUnchecked("routing-eval"),
-        requestedModel: c.model ?? "tamiz-auto",
-        messages: c.messages,
-      });
+      const classified = classifyTask(
+        {
+          requestId: requestIdUnchecked(c.id),
+          clientId: clientIdUnchecked("routing-eval"),
+          requestedModel: c.model ?? "tamiz-auto",
+          messages: c.messages,
+        },
+        CLEAN_INSPECTION,
+      );
       const decision = decideRoute(policy, classified);
       return {
         id: c.id,

@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
+  CLEAN_INSPECTION,
   ENTITY_KINDS,
-  NOT_INSPECTED,
   SENSITIVITIES,
   SENSITIVITY_LEVELS,
   sensitivityOf,
@@ -20,7 +20,7 @@ describe("sensitivity", () => {
   it("is `unknown` when inspection failed, else the level", () => {
     expect(sensitivityOf({ status: "failed", reason: "timeout" })).toBe("unknown");
     expect(sensitivityOf({ status: "ok", level: "high", entities: [] })).toBe("high");
-    expect(sensitivityOf(NOT_INSPECTED)).toBe("none");
+    expect(sensitivityOf(CLEAN_INSPECTION)).toBe("none");
   });
 
   it("has the privacy service's closed list of kinds (services/privacy/openapi.json)", () => {

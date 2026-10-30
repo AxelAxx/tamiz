@@ -20,6 +20,7 @@ import {
 import { err, ok, type Result } from "../../src/domain/result.js";
 import { createInMemoryCircuitState } from "../../src/infrastructure/cache/in-memory-circuit-state.js";
 import { examplePolicyInput, validPolicy } from "../domain/helpers/policies.js";
+import { cleanPrivacyDeps } from "../helpers/privacy.js";
 import { failure, recordingEvents } from "../resilience/helpers.js";
 
 // Spec 003 US6-3, US6-4, US6-6, US6-7, FR-023, FR-024, FR-026, FR-027 (tasks.md T043):
@@ -65,6 +66,7 @@ function setup(script: StreamScript) {
     circuitState,
     events,
     random: () => 0.5,
+    ...cleanPrivacyDeps(),
   });
   return { stream, clock, events, calls, circuitState };
 }

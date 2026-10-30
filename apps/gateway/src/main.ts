@@ -9,16 +9,20 @@
  * repository, provider registry, circuit state and routing-events sink → `routeInference`
  * → app → `serve()` → one startup line with address, version and policy.
  */
+import { createHash } from "node:crypto";
 import { serve } from "@hono/node-server";
+import { inspectSensitivity } from "./application/use-cases/inspect-sensitivity.js";
 import {
   type RouteInferenceDeps,
   routeInference,
 } from "./application/use-cases/route-inference.js";
 import { streamInference } from "./application/use-cases/stream-inference.js";
 import type { ConfigurationError } from "./domain/errors.js";
+import type { Milliseconds } from "./domain/model/units.js";
 import type { Result } from "./domain/result.js";
 import { verifyApiKey } from "./infrastructure/auth/api-keys.js";
 import { createInMemoryCircuitState } from "./infrastructure/cache/in-memory-circuit-state.js";
+import { createInMemoryDetectionCache } from "./infrastructure/cache/in-memory-detection-cache.js";
 import { createRedisCircuitState } from "./infrastructure/cache/redis-circuit-state.js";
 import { systemClock } from "./infrastructure/clock/system-clock.js";
 import { loadConfig } from "./infrastructure/config/env.js";
@@ -27,6 +31,8 @@ import { createProviderRegistry } from "./infrastructure/llm/provider-registry.j
 import { createLogger } from "./infrastructure/logging/logger.js";
 import { loadPolicyFile } from "./infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "./infrastructure/policy/in-memory-policy-repository.js";
+import { loadAnonymizationNotice } from "./infrastructure/privacy/anonymization-notice.js";
+import { createHttpPiiDetector } from "./infrastructure/privacy/http-pii-detector.js";
 import { createLogRoutingEvents } from "./infrastructure/telemetry/log-routing-events.js";
 import { createApp } from "./presentation/app.js";
 
@@ -43,6 +49,7 @@ function orExit<T>(result: Result<T, ConfigurationError>): T {
 const config = orExit(loadConfig(process.env));
 const policy = orExit(await loadPolicyFile(config.policyFile));
 orExit(checkProviderSettings(policy, config));
+const anonymizationNotice = orExit(loadAnonymizationNotice());
 
 const logger = createLogger({ level: config.logLevel });
 
@@ -54,13 +61,31 @@ const redisState =
     : await createRedisCircuitState({ url: config.redisUrl, clock: systemClock, logger });
 const circuitState = redisState ?? createInMemoryCircuitState(systemClock);
 
+// Spec 005: every request is inspected by the privacy service before it is routed; results
+// are cached in this process by a SHA-256 hash of the messages (positions only).
+const events = createLogRoutingEvents(logger);
+const inspect = inspectSensitivity({
+  detector: createHttpPiiDetector({ baseUrl: config.privacy.url }),
+  cache: createInMemoryDetectionCache({
+    maxEntries: config.privacy.cacheMaxEntries,
+    ttlMs: config.privacy.cacheTtlMs,
+    now: () => systemClock.now(),
+  }),
+  clock: systemClock,
+  events,
+  hash: (text) => createHash("sha256").update(text).digest("hex"),
+  timeoutMs: config.privacy.timeoutMs as Milliseconds,
+});
+
 const routing: RouteInferenceDeps = {
   policies: createInMemoryPolicyRepository(policy),
   providers: createProviderRegistry(config.providers),
   clock: systemClock,
   circuitState,
-  events: createLogRoutingEvents(logger),
+  events,
   random: Math.random,
+  inspect,
+  anonymizationNotice,
 };
 const route = routeInference(routing);
 const stream = streamInference(routing);

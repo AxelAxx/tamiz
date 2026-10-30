@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyTask } from "../../src/application/use-cases/classify-task.js";
 import type { InferenceRequest } from "../../src/domain/model/inference-request.js";
-import { NOT_INSPECTED } from "../../src/domain/model/sensitivity.js";
+import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import { classify } from "../../src/domain/model/task-classifier.js";
 import { clientIdUnchecked, requestIdUnchecked } from "../../src/domain/model/units.js";
 
@@ -22,28 +22,29 @@ describe("classifyTask", () => {
   it("adds the domain classification to the request", () => {
     const input = request();
 
-    const classified = classifyTask(input);
+    const classified = classifyTask(input, CLEAN_INSPECTION);
 
     expect(classified).toMatchObject(classify(input.messages));
     expect(classified.taskType).toBe("summarize");
     expect(classified.size).toBe("short");
   });
 
-  it("uses NOT_INSPECTED (level `none`) until the gateway inspects the request (spec 005 T009)", () => {
-    expect(classifyTask(request()).inspection).toEqual(NOT_INSPECTED);
+  it("carries the request's inspection (spec 005)", () => {
+    const inspection = { status: "failed", reason: "timeout" } as const;
+    expect(classifyTask(request(), inspection).inspection).toEqual(inspection);
   });
 
   it("keeps every request field, including the optional sampling parameters", () => {
     const input = request({ temperature: 0.2, maxTokens: 128 });
 
-    const classified = classifyTask(input);
+    const classified = classifyTask(input, CLEAN_INSPECTION);
 
     expect(classified).toMatchObject(input);
     expect(classified.messages).toBe(input.messages);
   });
 
   it("does not add absent optional fields", () => {
-    const classified = classifyTask(request());
+    const classified = classifyTask(request(), CLEAN_INSPECTION);
 
     expect("temperature" in classified).toBe(false);
     expect("maxTokens" in classified).toBe(false);
@@ -52,6 +53,7 @@ describe("classifyTask", () => {
   it("classifies code requests from a fenced block", () => {
     const classified = classifyTask(
       request({ messages: [{ role: "user", content: "Why?\n```ts\nconst x = 1;\n```" }] }),
+      CLEAN_INSPECTION,
     );
 
     expect(classified.taskType).toBe("code");
