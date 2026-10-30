@@ -76,7 +76,7 @@ describe("providerError", () => {
     expect(error.status).toBe(401);
   });
 
-  it("closes the cause list to the six FR-013 values", () => {
+  it("closes the cause list to the six FR-013 values plus spec 003's `aborted`", () => {
     expect(PROVIDER_ERROR_CAUSES).toEqual([
       "http_error",
       "timeout",
@@ -84,6 +84,7 @@ describe("providerError", () => {
       "malformed_response",
       "rate_limited",
       "authentication",
+      "aborted",
     ]);
   });
 });

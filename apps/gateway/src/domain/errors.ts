@@ -8,7 +8,7 @@
  *
  * Feature 002 adds `provider` and `unauthorized` (spec 002 FR-013, data-model 3.7).
  */
-import type { TargetId } from "./model/brands.js";
+import type { Milliseconds, TargetId } from "./model/brands.js";
 import type { ProviderName } from "./model/model-target.js";
 
 /** One offending field or setting: where it is and what was expected. Never the value. */
@@ -46,6 +46,9 @@ export const PROVIDER_ERROR_CAUSES = [
   "malformed_response",
   "rate_limited",
   "authentication",
+  // Spec 003 research R-03: the request deadline or a client disconnect ended the call.
+  // Never retried, never counted by the circuit breaker, never a fallback reason.
+  "aborted",
 ] as const;
 export type ProviderErrorCause = (typeof PROVIDER_ERROR_CAUSES)[number];
 
@@ -61,6 +64,8 @@ export interface ProviderError {
   readonly retryable: boolean;
   readonly message: string;
   readonly status?: number;
+  /** An upstream `retry-after` hint (spec 003 FR-004); a lower bound for the next wait. */
+  readonly retryAfterMs?: Milliseconds;
 }
 
 /** The caller is not authenticated. */
