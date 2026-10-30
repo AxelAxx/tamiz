@@ -10,7 +10,11 @@
  * → app → `serve()` → one startup line with address, version and policy.
  */
 import { serve } from "@hono/node-server";
-import { routeInference } from "./application/use-cases/route-inference.js";
+import {
+  type RouteInferenceDeps,
+  routeInference,
+} from "./application/use-cases/route-inference.js";
+import { streamInference } from "./application/use-cases/stream-inference.js";
 import type { ConfigurationError } from "./domain/errors.js";
 import type { Result } from "./domain/result.js";
 import { verifyApiKey } from "./infrastructure/auth/api-keys.js";
@@ -41,7 +45,7 @@ orExit(checkProviderSettings(policy, config));
 
 const logger = createLogger({ level: config.logLevel });
 
-const route = routeInference({
+const routing: RouteInferenceDeps = {
   policies: createInMemoryPolicyRepository(policy),
   providers: createProviderRegistry(config.providers),
   clock: systemClock,
@@ -49,7 +53,9 @@ const route = routeInference({
   circuitState: createInMemoryCircuitState(systemClock),
   events: createLogRoutingEvents(logger),
   random: Math.random,
-});
+};
+const route = routeInference(routing);
+const stream = streamInference(routing);
 const startedAt = systemClock.now();
 const app = createApp({
   clock: systemClock,
@@ -57,6 +63,7 @@ const app = createApp({
   startedAt,
   logger,
   routeInference: route,
+  streamInference: stream,
   authenticate: (key) => verifyApiKey(key, config.apiKeys),
 });
 

@@ -5,6 +5,7 @@ import {
   loadFixture,
   SECRET_API_KEY,
 } from "./adapter-scenarios.js";
+import { anthropicDialect, describeStreamScenarios } from "./stream-scenarios.js";
 
 // tasks.md T029: Anthropic's messages endpoint at its default base URL. The API has no
 // choices and always reports usage, so those two edge cases do not apply.
@@ -33,4 +34,15 @@ describeAdapterScenarios({
   ],
   maxTokensField: "max_tokens",
   rejected: { status: 401, cause: "authentication" },
+});
+
+// Spec 003 tasks.md T042: the same adapter, streaming.
+describeStreamScenarios({
+  provider: "anthropic",
+  url: "https://api.anthropic.com/v1/messages",
+  model: "claude-haiku-4-5",
+  createAdapter: () => createAnthropicAdapter({ apiKey: SECRET_API_KEY }),
+  dialect: anthropicDialect("claude-haiku-4-5"),
+  stopReason: "end_turn",
+  usageAlways: true,
 });

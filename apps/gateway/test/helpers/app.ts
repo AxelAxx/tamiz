@@ -8,10 +8,15 @@ import type { CircuitStatePort } from "../../src/application/ports/circuit-state
 import type {
   ProviderCompletion,
   ProviderCompletionInput,
+  StartedStream,
 } from "../../src/application/ports/llm-provider.port.js";
 import type { LoggerPort } from "../../src/application/ports/logger.port.js";
 import type { RoutingEventsPort } from "../../src/application/ports/routing-events.port.js";
-import { routeInference } from "../../src/application/use-cases/route-inference.js";
+import {
+  type RouteInferenceDeps,
+  routeInference,
+} from "../../src/application/use-cases/route-inference.js";
+import { streamInference } from "../../src/application/use-cases/stream-inference.js";
 import type { ProviderError } from "../../src/domain/errors.js";
 import type { RoutingPolicy } from "../../src/domain/model/routing-policy.js";
 import { ok, type Result } from "../../src/domain/result.js";
@@ -39,6 +44,7 @@ export async function defaultPolicy(): Promise<RoutingPolicy> {
 /** Chat dependencies for tests that never call `/v1/*`: any call fails the test. */
 export const NO_CHAT = {
   routeInference: () => Promise.reject(new Error("routeInference must not be called")),
+  streamInference: () => Promise.reject(new Error("streamInference must not be called")),
   authenticate: () => undefined,
 } as const;
 
@@ -50,6 +56,10 @@ export async function createTestApp(
     ) => CompletionResult | Promise<CompletionResult>;
     readonly logger?: LoggerPort;
     readonly policy?: RoutingPolicy;
+    /** Answers `stream()` calls (spec 003 streaming tests). */
+    readonly streamScript?: (
+      input: ProviderCompletionInput,
+    ) => Promise<Result<StartedStream, ProviderError>>;
     readonly circuitState?: CircuitStatePort;
     readonly events?: RoutingEventsPort;
   } = {},
@@ -65,14 +75,24 @@ export async function createTestApp(
           modelName: `${input.target.model}-served`,
         })),
   );
-  const route = routeInference({
+  const deps: RouteInferenceDeps = {
     policies: createInMemoryPolicyRepository(options.policy ?? (await defaultPolicy())),
-    providers: { resolve: () => ({ complete: provider.fn }) },
+    providers: {
+      resolve: () => ({
+        complete: provider.fn,
+        stream: (input) =>
+          options.streamScript === undefined
+            ? Promise.reject(new Error("no stream script for this test"))
+            : options.streamScript(input),
+      }),
+    },
     clock,
     circuitState: options.circuitState ?? createInMemoryCircuitState(clock),
     events: options.events ?? { emit: () => {} },
     random: () => 0.5,
-  });
+  };
+  const route = routeInference(deps);
+  const stream = streamInference(deps);
   const records = [{ clientId: "demo", keyHash: DEMO_KEY_HASH }];
   const app = createApp({
     clock,
@@ -80,6 +100,7 @@ export async function createTestApp(
     startedAt: START,
     logger: options.logger ?? noopLogger,
     routeInference: route,
+    streamInference: stream,
     authenticate: (key) => verifyApiKey(key, records),
   });
   /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */

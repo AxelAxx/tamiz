@@ -72,8 +72,8 @@ export const invalidRequests: readonly InvalidSample[] = [
     path: ["messages", 0, "role"],
   },
   {
-    name: "stream: true",
-    payload: { ...minimalRequest, stream: true },
+    name: 'stream: "yes" (not a boolean)',
+    payload: { ...minimalRequest, stream: "yes" },
     path: ["stream"],
   },
   {

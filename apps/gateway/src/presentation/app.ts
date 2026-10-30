@@ -14,6 +14,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ClockPort } from "../application/ports/clock.port.js";
 import type { LoggerPort } from "../application/ports/logger.port.js";
 import type { RouteInference } from "../application/use-cases/route-inference.js";
+import type { StreamInference } from "../application/use-cases/stream-inference.js";
 import { fromZodIssues, httpStatusFor, toErrorEnvelope } from "./mappers/error-envelope.js";
 import { type Authenticate, apiKeyAuth } from "./middlewares/api-key-auth.js";
 import { requestId } from "./middlewares/request-id.js";
@@ -26,6 +27,7 @@ export interface AppDeps {
   readonly startedAt: Date;
   readonly logger: LoggerPort;
   readonly routeInference: RouteInference;
+  readonly streamInference: StreamInference;
   /** Maps a presented API key to its client id (hash + constant-time compare). */
   readonly authenticate: Authenticate;
 }
@@ -124,7 +126,7 @@ export function createApp(deps: AppDeps): GatewayApp {
   });
 
   registerHealth(app, deps);
-  registerChatCompletions(app, deps.routeInference);
+  registerChatCompletions(app, deps.routeInference, deps.streamInference);
 
   app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
     type: "http",

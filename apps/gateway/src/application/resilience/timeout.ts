@@ -49,11 +49,18 @@ export function withTimeout(clock: ClockPort) {
       outer?.addEventListener("abort", onOuterAbort, { once: true });
     });
 
-    return Promise.race([run(attempt.signal), expired, cancelled]).finally(() => {
+    let runWon = false;
+    const ran = run(attempt.signal).then((result) => {
+      runWon = true;
+      return result;
+    });
+
+    return Promise.race([ran, expired, cancelled]).finally(() => {
       timer.abort();
       if (onOuterAbort !== undefined) outer?.removeEventListener("abort", onOuterAbort);
-      // Ends the run when the timer or the outer signal won; a no-op when the run won.
-      attempt.abort();
+      // Ends the run only when the timer or the outer signal won. When the run won, its
+      // signal must stay alive: a stream keeps reading after its first token (spec 003).
+      if (!runWon) attempt.abort();
     });
   };
 }

@@ -9,6 +9,7 @@
  * validates exactly like the contract schema.
  */
 import {
+  ChatCompletionChunkSchema,
   ChatCompletionRequestSchema,
   ChatCompletionResponseSchema,
   ErrorEnvelopeSchema,
@@ -20,6 +21,9 @@ export const ChatCompletionRequestBody = ChatCompletionRequestSchema.meta({
 });
 export const ChatCompletionResponseBody = ChatCompletionResponseSchema.meta({
   id: "ChatCompletionResponse",
+});
+export const ChatCompletionChunkBody = ChatCompletionChunkSchema.meta({
+  id: "ChatCompletionChunk",
 });
 export const ErrorEnvelopeBody = ErrorEnvelopeSchema.meta({ id: "ErrorEnvelope" });
 export const HealthResponseBody = HealthResponseSchema.meta({ id: "HealthResponse" });

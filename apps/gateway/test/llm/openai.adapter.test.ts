@@ -5,6 +5,7 @@ import {
   loadFixture,
   SECRET_API_KEY,
 } from "./adapter-scenarios.js";
+import { describeStreamScenarios, openAiDialect } from "./stream-scenarios.js";
 
 // tasks.md T027: the OpenAI chat-completions endpoint at its default base URL.
 
@@ -31,4 +32,14 @@ describeAdapterScenarios({
   ],
   maxTokensField: "max_tokens",
   rejected: { status: 401, cause: "authentication" },
+});
+
+// Spec 003 tasks.md T042: the same adapter, streaming.
+describeStreamScenarios({
+  provider: "openai",
+  url: "https://api.openai.com/v1/chat/completions",
+  model: "gpt-4o-mini",
+  createAdapter: () => createOpenAiAdapter({ apiKey: SECRET_API_KEY }),
+  dialect: openAiDialect("gpt-4o-mini"),
+  stopReason: "stop",
 });

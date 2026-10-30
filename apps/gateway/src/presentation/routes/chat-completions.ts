@@ -8,12 +8,24 @@
  * `x-tamiz-rule`, plus `x-tamiz-fallback` whenever a target was abandoned. A failure maps
  * to 451 (residency), 502 (provider error), 503 with `retry-after` (every circuit open)
  * or 504 (timeout or request deadline).
+ *
+ * With `stream: true` (spec 003 FR-021 … FR-027) the response starts only once the
+ * answering target's first token is there, so the headers are final; it is a stream of
+ * chunks, a finish and a usage chunk, then `[DONE]`. A failure before the first token
+ * gets the JSON error response above; after it, one error event and no `[DONE]`. The
+ * client's disconnect aborts the upstream call.
  */
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
 import type { Context } from "hono";
-import type { RouteInference } from "../../application/use-cases/route-inference.js";
+import { streamSSE } from "hono/streaming";
+import type {
+  RouteInference,
+  RoutingFailure,
+} from "../../application/use-cases/route-inference.js";
+import type { StreamInference } from "../../application/use-cases/stream-inference.js";
 import { type Abandoned, formatFallbackHeader } from "../../domain/model/fallback.js";
 import type { RoutingDecision } from "../../domain/model/routing-decision.js";
+import { chunkMapper } from "../mappers/chat-completion-chunk.js";
 import { toChatCompletionResponse } from "../mappers/chat-completion-response.js";
 import {
   domainErrorToEnvelope,
@@ -24,6 +36,7 @@ import { toInferenceRequest } from "../mappers/inference-request.js";
 import type { ClientIdVariables } from "../middlewares/api-key-auth.js";
 import type { RequestIdVariables } from "../middlewares/request-id.js";
 import {
+  ChatCompletionChunkBody,
   ChatCompletionRequestBody,
   ChatCompletionResponseBody,
   ErrorEnvelopeBody,
@@ -63,7 +76,11 @@ export const chatCompletionsRoute = createRoute({
           ),
         "x-request-id": z.string().describe("Request id, echoed or generated"),
       }),
-      content: { "application/json": { schema: ChatCompletionResponseBody } },
+      content: {
+        "application/json": { schema: ChatCompletionResponseBody },
+        // With `stream: true`: server-sent `data:` lines, each a chunk, then `[DONE]`.
+        "text/event-stream": { schema: ChatCompletionChunkBody },
+      },
     },
     400: errorResponse("The body fails the contract, is not JSON, or exceeds 1 MiB"),
     401: errorResponse("Missing or invalid API key"),
@@ -87,23 +104,52 @@ function setRoutingHeaders(
   if (abandoned.length > 0) c.header(FALLBACK_HEADER, formatFallbackHeader(abandoned));
 }
 
+function failed(c: Context<ChatEnv>, requestId: string, { decision, failure }: RoutingFailure) {
+  setRoutingHeaders(c, decision, failure.target.id, failure.abandoned);
+  if (failure.kind === "unavailable") {
+    c.header("retry-after", String(Math.ceil(failure.error.retryAfterMs / 1000)));
+  }
+  const status = httpStatusFor(domainErrorToErrorType(failure.error)) as 451 | 502 | 503 | 504;
+  return c.json(domainErrorToEnvelope(failure.error, requestId), status);
+}
+
 export function registerChatCompletions(
   app: OpenAPIHono<ChatEnv>,
   routeInference: RouteInference,
+  streamInference: StreamInference,
 ): void {
   app.openapi(chatCompletionsRoute, async (c) => {
     const requestId = c.get("requestId");
-    const request = toInferenceRequest(c.req.valid("json"), requestId, c.get("clientId"));
-    const result = await routeInference(request);
-    if (!result.ok) {
-      const { decision, failure } = result.error;
-      setRoutingHeaders(c, decision, failure.target.id, failure.abandoned);
-      if (failure.kind === "unavailable") {
-        c.header("retry-after", String(Math.ceil(failure.error.retryAfterMs / 1000)));
-      }
-      const status = httpStatusFor(domainErrorToErrorType(failure.error)) as 451 | 502 | 503 | 504;
-      return c.json(domainErrorToEnvelope(failure.error, requestId), status);
+    const body = c.req.valid("json");
+    const request = toInferenceRequest(body, requestId, c.get("clientId"));
+
+    if (body.stream === true) {
+      const streamed = await streamInference(request, c.req.raw.signal);
+      if (!streamed.ok) return failed(c, requestId, streamed.error);
+      const routed = streamed.value;
+      setRoutingHeaders(c, routed.decision, routed.target.id, routed.abandoned);
+      const chunks = chunkMapper(routed, requestId);
+      // The documented 200 is JSON; the event stream is the same status with another type.
+      return streamSSE(c, async (sse) => {
+        const send = (data: unknown) => sse.writeSSE({ data: JSON.stringify(data) });
+        await send(chunks.first());
+        for await (const part of routed.parts) {
+          if (part.type === "delta") {
+            await send(chunks.delta(part.text));
+          } else if (part.type === "finish") {
+            for (const chunk of chunks.finish(part)) await send(chunk);
+            await sse.writeSSE({ data: "[DONE]" });
+            return;
+          } else {
+            await send(chunks.error(part.error));
+            return;
+          }
+        }
+      }) as never;
     }
+
+    const result = await routeInference(request);
+    if (!result.ok) return failed(c, requestId, result.error);
     const { decision, target, abandoned } = result.value;
     setRoutingHeaders(c, decision, target.id, abandoned);
     return c.json(toChatCompletionResponse(result.value, requestId), 200);
