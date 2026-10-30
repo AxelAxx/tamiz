@@ -10,7 +10,8 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "generate-api-key": "tsx scripts/generate-api-key.ts"
   },
   "devDependencies": {
     "@tamiz/test-utils": "workspace:*",
@@ -30,6 +31,7 @@
     "@ai-sdk/openai": "^3.0.135",
     "@ai-sdk/openai-compatible": "^2.0.88",
     "@hono/node-server": "^2.1.5",
+    "@hono/zod-openapi": "^1.6.3",
     "@hono/zod-validator": "^0.9.1",
     "@tamiz/contracts": "workspace:*",
     "ai": "^6.0.319",

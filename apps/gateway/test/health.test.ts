@@ -2,6 +2,7 @@ import { HealthResponseSchema } from "@tamiz/contracts";
 import { createFakeClock } from "@tamiz/test-utils";
 import { describe, expect, it } from "vitest";
 import { createApp } from "../src/presentation/app.js";
+import { NO_CHAT } from "./helpers/app.js";
 import { noopLogger } from "./helpers/noop-logger.js";
 
 // Spec 001, US3 scenarios 1 and 2 (FR-017): GET /health matches the health contract and
@@ -13,7 +14,7 @@ describe("GET /health", () => {
     const startedAt = new Date("2026-01-01T00:00:00Z");
     const clock = createFakeClock(startedAt);
     clock.advance(1234);
-    const app = createApp({ clock, version: "9.9.9", startedAt, logger: noopLogger });
+    const app = createApp({ clock, version: "9.9.9", startedAt, logger: noopLogger, ...NO_CHAT });
 
     const response = await app.request("/health");
 
@@ -29,7 +30,7 @@ describe("GET /health", () => {
   it("reports zero uptime right after start and never a negative value", async () => {
     const startedAt = new Date("2026-01-01T00:00:00Z");
     const clock = createFakeClock(startedAt);
-    const app = createApp({ clock, version: "0.1.0", startedAt, logger: noopLogger });
+    const app = createApp({ clock, version: "0.1.0", startedAt, logger: noopLogger, ...NO_CHAT });
 
     const atStart = HealthResponseSchema.parse(await (await app.request("/health")).json());
     expect(atStart.uptimeMs).toBe(0);
@@ -46,6 +47,7 @@ describe("GET /health", () => {
       version: "0.1.0",
       startedAt,
       logger: noopLogger,
+      ...NO_CHAT,
     });
     const response = await app.request("/health");
     expect(response.headers.get("x-request-id")).toMatch(/^[A-Za-z0-9_-]{1,128}$/);
@@ -58,6 +60,7 @@ describe("GET /health", () => {
       version: "0.1.0",
       startedAt,
       logger: noopLogger,
+      ...NO_CHAT,
     });
     await app.request("/health"); // warm up the router once
     const before = performance.now();

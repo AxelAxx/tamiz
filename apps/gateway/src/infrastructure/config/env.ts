@@ -1,6 +1,7 @@
 /**
  * Environment configuration (spec FR-015, research R-11, data-model section 7; spec 002
- * research R-12 and data-model section 5 add the policy file and the provider settings).
+ * research R-12 and data-model section 5 add the policy file and the provider settings,
+ * research R-10 the required client API key hashes).
  *
  * Values are read once at boot through {@link loadConfig}; the resulting object is frozen
  * and injected. Nothing else reads `process.env`. An invalid environment yields a
@@ -15,6 +16,7 @@ import {
   type ErrorIssue,
 } from "../../domain/errors.js";
 import { err, ok, type Result } from "../../domain/result.js";
+import { type ApiKeyRecord, parseApiKeys } from "../auth/api-keys.js";
 import type { KeyedProviderSettings, ProviderSettings } from "../llm/settings.js";
 
 export const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"] as const;
@@ -39,6 +41,7 @@ export const EnvSchema = z.object({
   LOG_LEVEL: z.enum(LOG_LEVELS).default("info"),
   NODE_ENV: z.enum(NODE_ENVS).default("development"),
   APP_VERSION: z.string().min(1).optional(),
+  TAMIZ_API_KEYS: z.string(),
   TAMIZ_POLICY_FILE: z.string().min(1).default(DEFAULT_POLICY_FILE),
   OLLAMA_BASE_URL: HttpUrlSchema.default(DEFAULT_OLLAMA_BASE_URL),
   MISTRAL_API_KEY: optionalSetting(z.string()),
@@ -58,6 +61,7 @@ const EXPECTED_FORMAT: Readonly<Record<EnvKey, string>> = {
   LOG_LEVEL: `one of ${LOG_LEVELS.join(", ")}`,
   NODE_ENV: `one of ${NODE_ENVS.join(", ")}`,
   APP_VERSION: "a non-empty version string",
+  TAMIZ_API_KEYS: "comma-separated clientId:sha256hex entries (see generate-api-key)",
   TAMIZ_POLICY_FILE: "a non-empty path to the routing policy file",
   OLLAMA_BASE_URL: "an http(s) URL",
   MISTRAL_API_KEY: "a Mistral API key",
@@ -78,6 +82,8 @@ export interface GatewayConfig {
   readonly policyFile: string;
   /** Ollama always has a base URL; a keyed provider is present only with its API key. */
   readonly providers: ProviderSettings;
+  /** Hashes of the client API keys; never the keys themselves (FR-030). */
+  readonly apiKeys: ReadonlyArray<ApiKeyRecord>;
 }
 
 export type Environment = Readonly<Record<string, string | undefined>>;
@@ -117,6 +123,10 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
     );
   }
   const values = parsed.data;
+  const apiKeys = parseApiKeys(values.TAMIZ_API_KEYS);
+  if (!apiKeys.ok) {
+    return err(configurationError("Invalid environment configuration", apiKeys.error.issues));
+  }
   const mistral = keyed(values.MISTRAL_API_KEY, values.MISTRAL_BASE_URL);
   const anthropic = keyed(values.ANTHROPIC_API_KEY, values.ANTHROPIC_BASE_URL);
   const openai = keyed(values.OPENAI_API_KEY, values.OPENAI_BASE_URL);
@@ -134,6 +144,7 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
         ...(anthropic !== undefined && { anthropic }),
         ...(openai !== undefined && { openai }),
       },
+      apiKeys: apiKeys.value,
     }),
   );
 }

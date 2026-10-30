@@ -16,6 +16,7 @@ const errorTypes = [
   "provider_error",
   "policy_blocked",
   "internal",
+  "provider_timeout",
 ] as const;
 
 describe("ErrorEnvelopeSchema (spec US2-7, FR-010)", () => {
@@ -28,7 +29,7 @@ describe("ErrorEnvelopeSchema (spec US2-7, FR-010)", () => {
     expect(result.data.error.type).toBe(type);
   });
 
-  it("the enum holds exactly the seven documented values", () => {
+  it("the enum holds the seven 001 values plus provider_timeout (002 FR-028)", () => {
     expect(ErrorTypeSchema.options).toEqual(errorTypes);
     expectTypeOf<ErrorType>().toEqualTypeOf<(typeof errorTypes)[number]>();
   });
@@ -95,6 +96,7 @@ describe("errorTypeToHttpStatus (data-model section 5)", () => {
       policy_blocked: 451,
       provider_error: 502,
       internal: 500,
+      provider_timeout: 504,
     });
   });
 

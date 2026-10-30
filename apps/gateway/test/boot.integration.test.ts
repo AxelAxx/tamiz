@@ -41,6 +41,7 @@ function inheritedEnv(): Record<string, string | undefined> {
 
 /** Test values, never real credentials: no provider is called during boot. */
 const ALL_PROVIDER_KEYS = {
+  TAMIZ_API_KEYS: `demo:${"0".repeat(64)}`,
   MISTRAL_API_KEY: "test-mistral-key-SECRET",
   ANTHROPIC_API_KEY: "test-anthropic-key-SECRET",
   OPENAI_API_KEY: "test-openai-key-SECRET",
@@ -211,7 +212,20 @@ describe("gateway process boot", () => {
     BOOT_TIMEOUT_MS,
   );
 
-  it.todo(
-    "002 US5-4: exits with code 1 naming the entry position when TAMIZ_API_KEYS is malformed (T-002-06)",
+  it(
+    "002 US5-4: exits with code 1 naming the entry position when TAMIZ_API_KEYS is malformed",
+    async () => {
+      child = spawnGateway({
+        ...ALL_PROVIDER_KEYS,
+        TAMIZ_API_KEYS: `demo:${"0".repeat(64)},not-a-valid-entry-SECRET`,
+      });
+      const exit = await waitForExit(child, collect(child));
+
+      expect(exit.code).toBe(1);
+      expect(exit.stderr).toContain("TAMIZ_API_KEYS[1]");
+      expect(exit.stderr).not.toContain("SECRET");
+      expect(exit.stdout).not.toContain("gateway listening");
+    },
+    BOOT_TIMEOUT_MS,
   );
 });

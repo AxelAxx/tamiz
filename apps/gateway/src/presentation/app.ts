@@ -1,29 +1,41 @@
 /**
- * The Hono application (research R-08).
+ * The Hono application (research R-08; spec 002 research R-11).
  *
  * `createApp(deps)` returns an app that tests drive in-process with `app.request()`; it
  * never binds a port itself (that is `main.ts`). Every response carries `x-request-id`;
- * unknown routes and unhandled errors answer with the `ErrorEnvelope` contract; one
- * structured log line per request records method, path, status and duration, never the
- * body.
+ * unknown routes, invalid bodies and unhandled errors answer with the `ErrorEnvelope`
+ * contract; one structured log line per request records method, path, status, duration,
+ * client and route, never the body. Routes are declared with `createRoute`, and the
+ * OpenAPI 3.1 document derived from the contract schemas is served at `/openapi.json`.
  */
-import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
+import { bodyLimit } from "hono/body-limit";
+import { HTTPException } from "hono/http-exception";
 import type { ClockPort } from "../application/ports/clock.port.js";
 import type { LoggerPort } from "../application/ports/logger.port.js";
-import { httpStatusFor, toErrorEnvelope } from "./mappers/error-envelope.js";
-import { type RequestIdVariables, requestId } from "./middlewares/request-id.js";
-import { healthRoutes } from "./routes/health.js";
+import type { RouteInference } from "../application/use-cases/route-inference.js";
+import { fromZodIssues, httpStatusFor, toErrorEnvelope } from "./mappers/error-envelope.js";
+import { type Authenticate, apiKeyAuth } from "./middlewares/api-key-auth.js";
+import { requestId } from "./middlewares/request-id.js";
+import { type ChatEnv, ROUTE_HEADER, registerChatCompletions } from "./routes/chat-completions.js";
+import { registerHealth } from "./routes/health.js";
 
 export interface AppDeps {
   readonly clock: ClockPort;
   readonly version: string;
   readonly startedAt: Date;
   readonly logger: LoggerPort;
+  readonly routeInference: RouteInference;
+  /** Maps a presented API key to its client id (hash + constant-time compare). */
+  readonly authenticate: Authenticate;
 }
 
-export type AppEnv = { Variables: RequestIdVariables };
+export type AppEnv = ChatEnv;
 
-export type GatewayApp = Hono<AppEnv>;
+export type GatewayApp = OpenAPIHono<AppEnv>;
+
+/** FR-032: request bodies above 1 MiB are refused before parsing. */
+export const MAX_BODY_BYTES = 1_048_576;
 
 /**
  * Request headers worth a log line. `authorization` is listed on purpose: the logger
@@ -45,13 +57,23 @@ function presentHeaders(
 }
 
 export function createApp(deps: AppDeps): GatewayApp {
-  const app = new Hono<AppEnv>();
+  const app = new OpenAPIHono<AppEnv>({
+    defaultHook: (result, c) => {
+      if (result.success) return;
+      return c.json(
+        toErrorEnvelope("invalid_request", fromZodIssues(result.error.issues), c.get("requestId")),
+        httpStatusFor("invalid_request"),
+      );
+    },
+  });
 
   app.use(requestId());
 
   app.use(async (c, next) => {
     const started = deps.clock.now().getTime();
     await next();
+    const clientId: string | undefined = c.get("clientId");
+    const route = c.res.headers.get(ROUTE_HEADER);
     deps.logger.info(
       {
         requestId: c.get("requestId"),
@@ -62,12 +84,60 @@ export function createApp(deps: AppDeps): GatewayApp {
         },
         status: c.res.status,
         durationMs: Math.max(0, deps.clock.now().getTime() - started),
+        ...(clientId !== undefined && { clientId }),
+        ...(route !== null && { route }),
       },
       "request completed",
     );
   });
 
-  app.route("/", healthRoutes(deps));
+  app.use(
+    "/v1/*",
+    bodyLimit({
+      maxSize: MAX_BODY_BYTES,
+      onError: (c) =>
+        c.json(
+          toErrorEnvelope(
+            "invalid_request",
+            `body: expected at most ${MAX_BODY_BYTES} bytes`,
+            c.get("requestId"),
+          ),
+          httpStatusFor("invalid_request"),
+        ),
+    }),
+  );
+  app.use("/v1/*", apiKeyAuth(deps.authenticate));
+  // The JSON validator skips bodies of another media type; refuse them explicitly.
+  app.use("/v1/*", async (c, next) => {
+    const contentType = c.req.header("content-type")?.toLowerCase() ?? "";
+    if (c.req.method === "POST" && !contentType.startsWith("application/json")) {
+      return c.json(
+        toErrorEnvelope(
+          "invalid_request",
+          "body: expected content-type application/json",
+          c.get("requestId"),
+        ),
+        httpStatusFor("invalid_request"),
+      );
+    }
+    await next();
+  });
+
+  registerHealth(app, deps);
+  registerChatCompletions(app, deps.routeInference);
+
+  app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
+    type: "http",
+    scheme: "bearer",
+  });
+  app.doc31("/openapi.json", {
+    openapi: "3.1.0",
+    info: {
+      title: "Tamiz gateway",
+      version: deps.version,
+      description: "Privacy-aware LLM gateway: OpenAI-compatible, policy-routed.",
+    },
+  });
 
   app.notFound((c) =>
     c.json(
@@ -77,6 +147,13 @@ export function createApp(deps: AppDeps): GatewayApp {
   );
 
   app.onError((error, c) => {
+    // The JSON validator throws a 400 for a body that is not JSON.
+    if (error instanceof HTTPException && error.status === 400) {
+      return c.json(
+        toErrorEnvelope("invalid_request", "body: expected a JSON object", c.get("requestId")),
+        httpStatusFor("invalid_request"),
+      );
+    }
     deps.logger.error(
       { requestId: c.get("requestId"), err: error, path: c.req.path },
       "unhandled error",

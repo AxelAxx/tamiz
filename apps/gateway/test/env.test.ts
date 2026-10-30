@@ -4,6 +4,9 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/infrastructure/config/env.js";
 
+/** A valid `TAMIZ_API_KEYS` (required since spec 002 T-002-06); a test hash, not a secret. */
+const BASE = { TAMIZ_API_KEYS: `demo:${"0".repeat(64)}` } as const;
+
 // Spec 001, US4 scenarios 2 and 3 (FR-015): configuration is loaded through a schema and
 // an invalid environment yields a typed failure, never an exception.
 
@@ -13,8 +16,8 @@ const packageJson = JSON.parse(readFileSync(resolve(here, "../package.json"), "u
 };
 
 describe("loadConfig", () => {
-  it("US4-2: returns ok with the documented defaults for an empty environment", () => {
-    const result = loadConfig({});
+  it("US4-2: returns ok with the documented defaults when only the required TAMIZ_API_KEYS is set", () => {
+    const result = loadConfig(BASE);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value).toEqual({
@@ -25,11 +28,12 @@ describe("loadConfig", () => {
       version: packageJson.version,
       policyFile: "policies/default.yaml",
       providers: { ollama: { baseUrl: "http://localhost:11434/v1" } },
+      apiKeys: [{ clientId: "demo", keyHash: "0".repeat(64) }],
     });
   });
 
   it("returns a frozen config object", () => {
-    const result = loadConfig({});
+    const result = loadConfig(BASE);
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(Object.isFrozen(result.value)).toBe(true);
@@ -37,6 +41,7 @@ describe("loadConfig", () => {
 
   it("reads explicit values and coerces PORT to a number", () => {
     const result = loadConfig({
+      ...BASE,
       PORT: "8080",
       HOST: "127.0.0.1",
       LOG_LEVEL: "debug",
@@ -51,19 +56,19 @@ describe("loadConfig", () => {
   });
 
   it("APP_VERSION overrides the package version", () => {
-    const result = loadConfig({ APP_VERSION: "9.9.9-container" });
+    const result = loadConfig({ ...BASE, APP_VERSION: "9.9.9-container" });
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.version).toBe("9.9.9-container");
   });
 
   it("ignores unrelated environment variables", () => {
-    const result = loadConfig({ PATH: "/usr/bin", HOME: "/home/x" });
+    const result = loadConfig({ ...BASE, PATH: "/usr/bin", HOME: "/home/x" });
     expect(result.ok).toBe(true);
   });
 
   it("US4-3: returns a configuration error listing every invalid variable", () => {
-    const result = loadConfig({ PORT: "abc", LOG_LEVEL: "loud" });
+    const result = loadConfig({ ...BASE, PORT: "abc", LOG_LEVEL: "loud" });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     expect(result.error.kind).toBe("configuration");
@@ -72,7 +77,7 @@ describe("loadConfig", () => {
   });
 
   it("US4-3: issue messages state the expected format and never echo the value", () => {
-    const result = loadConfig({ PORT: "abc", LOG_LEVEL: "loud", NODE_ENV: "staging" });
+    const result = loadConfig({ ...BASE, PORT: "abc", LOG_LEVEL: "loud", NODE_ENV: "staging" });
     expect(result.ok).toBe(false);
     if (result.ok) return;
     const byPath = new Map(result.error.issues.map((issue) => [issue.path, issue.message]));
@@ -87,8 +92,8 @@ describe("loadConfig", () => {
   });
 
   it("rejects a port outside 1-65535 and a non-integer port", () => {
-    expect(loadConfig({ PORT: "0" }).ok).toBe(false);
-    expect(loadConfig({ PORT: "65536" }).ok).toBe(false);
-    expect(loadConfig({ PORT: "80.5" }).ok).toBe(false);
+    expect(loadConfig({ ...BASE, PORT: "0" }).ok).toBe(false);
+    expect(loadConfig({ ...BASE, PORT: "65536" }).ok).toBe(false);
+    expect(loadConfig({ ...BASE, PORT: "80.5" }).ok).toBe(false);
   });
 });
