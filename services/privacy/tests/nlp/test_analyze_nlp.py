@@ -1,7 +1,4 @@
-"""/analyze with the real Spanish model (spec 004 US1-1, FR-008; edge case: English text).
-
-The phone part of US1-1 lands with the Spanish phone recognizer (T-004-05, task T048).
-"""
+"""/analyze with the real Spanish model (spec 004 US1, FR-008; edge case: English text)."""
 
 import pytest
 from fastapi.testclient import TestClient
@@ -15,18 +12,50 @@ def kinds_and_values(text: str, body: dict[str, object]) -> list[tuple[str, str]
     return [(f["kind"], text[f["start"] : f["end"]]) for f in findings]
 
 
-def test_us1_1_name_and_email_in_spanish_are_found_with_exact_spans(
+def test_us1_1_name_email_and_phone_in_spanish_are_found_with_exact_spans(
     nlp_client: TestClient,
 ) -> None:
-    text = "Hola, soy Lucía Fernández Ruiz y mi correo es lucia.fernandez@example.com."
+    text = (
+        "Hola, soy Lucía Fernández Ruiz, mi correo es lucia.fernandez@example.com "
+        "y mi teléfono es el 612 345 678."
+    )
 
     body = nlp_client.post("/analyze", json={"text": text}).json()
 
     assert kinds_and_values(text, body) == [
         ("PERSON", "Lucía Fernández Ruiz"),
         ("EMAIL", "lucia.fernandez@example.com"),
+        ("PHONE", "612 345 678"),
     ]
     assert body["sensitivity_level"] == "high"
+
+
+def test_us2_8_a_phone_word_nearby_raises_the_phone_score(nlp_client: TestClient) -> None:
+    with_context = nlp_client.post("/analyze", json={"text": "Mi móvil es el 612 345 678."}).json()
+    bare = nlp_client.post("/analyze", json={"text": "Apunta: 612 345 678."}).json()
+
+    [phone_with_context] = with_context["findings"]
+    [bare_phone] = bare["findings"]
+    assert bare_phone["score"] == 0.6
+    assert phone_with_context["score"] > bare_phone["score"]
+
+
+def test_us2_6_an_iban_makes_the_text_critical(nlp_client: TestClient) -> None:
+    text = "Por favor, el recibo va a la cuenta ES91 2100 0418 4502 0005 1332."
+
+    body = nlp_client.post("/analyze", json={"text": text}).json()
+
+    assert kinds_and_values(text, body) == [("IBAN", "ES91 2100 0418 4502 0005 1332")]
+    assert body["sensitivity_level"] == "critical"
+
+
+def test_us2_7_an_nss_makes_the_text_critical(nlp_client: TestClient) -> None:
+    text = "Número de afiliación a la Seguridad Social 28/12345678/40."
+
+    body = nlp_client.post("/analyze", json={"text": text}).json()
+
+    assert ("NSS", "28/12345678/40") in kinds_and_values(text, body)
+    assert body["sensitivity_level"] == "critical"
 
 
 def test_a_location_alone_is_low(nlp_client: TestClient) -> None:

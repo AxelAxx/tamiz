@@ -21,8 +21,10 @@ Done so far:
   [`openapi.json`](openapi.json).
 
 - `T-004-04`: DNI, NIE and CIF, validated by their check characters.
+- `T-004-05`: IBAN, social security number (NSS) and Spanish phone numbers.
 
-Still to come: IBAN, phone and NSS in `T-004-05`, and `/anonymize` in `T-004-06`.
+Still to come: `/anonymize` in `T-004-06`, and the synthetic corpus with detection
+metrics in `T-004-07`.
 
 ## Recognizers
 
@@ -34,6 +36,9 @@ Still to come: IBAN, phone and NSS in `T-004-05`, and `/anonymize` in `T-004-06`
 | `DNI` | own (`recognizers/identity.py`) | the letter is `TRWAGMYFPDXBNJZSQVHLCKE[number mod 23]` |
 | `NIE` | own | X/Y/Z → 0/1/2, then the DNI rule |
 | `CIF` | own | the control digit or letter matches; A, B, E, H need a digit; P, Q, R, S, N, W need a letter |
+| `IBAN` | own (`recognizers/banking.py`) | SEPA country length, mod-97 = 1, and for `ES` the two account control digits |
+| `NSS` | own (`recognizers/social_security.py`) | province 01–53 or 66, and `CC = base mod 97` |
+| `PHONE` | own (`recognizers/phone.py`) | nine digits starting 6, 71–74, 8 or 9, optional `+34`/`0034`; no checksum, so score 0.6, raised by words such as *teléfono* or *móvil* nearby |
 
 Own recognizers accept upper or lower case and the usual separators (`12.345.678-Z`,
 `X-1234567-L`, `B-12345674`). Validated candidates score 1.0; invalid ones are dropped.

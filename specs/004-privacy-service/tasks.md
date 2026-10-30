@@ -248,37 +248,37 @@ without the model; the `nlp` suite shows phones and overlaps resolved.
 
 ### Tests first
 
-- [ ] T044 [P] [US2] `privacy/tests/unit/test_checksums_banking.py`: IBAN mod-97 and
+- [x] T044 [P] [US2] `privacy/tests/unit/test_checksums_banking.py`: IBAN mod-97 and
   Spanish account control digits (published examples; hypothesis against
   `stdnum.iban` and `stdnum.es.ccc`); NSS examples and the control-digit mutation
   property; `is_spanish_phone` structure table (US2-6, US2-7)
-- [ ] T045 [P] [US2] `privacy/tests/recognizers/test_banking_recognizers.py`: Spanish
+- [x] T045 [P] [US2] `privacy/tests/recognizers/test_banking_recognizers.py`: Spanish
   IBAN grouped and compact → `IBAN` (US2-6); one wrong check digit → nothing; valid
   mod-97 but wrong account control digits → nothing; a valid German or French IBAN →
   `IBAN`
-- [ ] T046 [P] [US2] `privacy/tests/recognizers/test_nss_recognizer.py`: NSS with `/`,
+- [x] T046 [P] [US2] `privacy/tests/recognizers/test_nss_recognizer.py`: NSS with `/`,
   space, dash or no separator → `NSS`; wrong control digits or province 00 → nothing
   (US2-7)
-- [ ] T047 [P] [US2] `privacy/tests/recognizers/test_phone_recognizer.py`: mobiles and
+- [x] T047 [P] [US2] `privacy/tests/recognizers/test_phone_recognizer.py`: mobiles and
   landlines with `+34`, `0034`, none; spaces, dots, dashes; numbers starting with 1–5
   and ten-digit numbers → nothing; score 0.6 bare and higher with `teléfono` / `móvil`
   nearby (US2-8)
-- [ ] T048 [P] [US1] Extend `privacy/tests/nlp/test_analyze_nlp.py`: the US1-1 sentence
+- [x] T048 [P] [US1] Extend `privacy/tests/nlp/test_analyze_nlp.py`: the US1-1 sentence
   with a phone → `PERSON`, `EMAIL`, `PHONE`, level `high` (US1-1 complete)
-- [ ] T049 [P] `privacy/tests/nlp/test_overlaps_nlp.py`: a phone-shaped run inside an
+- [x] T049 [P] `privacy/tests/nlp/test_overlaps_nlp.py`: a phone-shaped run inside an
   IBAN → one `IBAN`; an NSS that is also phone-shaped → reported once (spec edge cases)
 
 ### Implementation
 
-- [ ] T050 `src/domain/checksums.py`: `is_valid_iban`, `is_valid_nss`,
+- [x] T050 `src/domain/checksums.py`: `is_valid_iban`, `is_valid_nss`,
   `is_spanish_phone` (research R-13)
-- [ ] T051 `src/infrastructure/recognizers/{banking,social_security,phone}.py`
+- [x] T051 `src/infrastructure/recognizers/{banking,social_security,phone}.py`
   (research R-12 scores and context words)
-- [ ] T052 Register the three in `build_engine`; README recognizers table complete
+- [x] T052 Register the three in `build_engine`; README recognizers table complete
 
 ### Verification
 
-- [ ] T053 Gates green locally and in CI; write
+- [x] T053 Gates green locally and in CI; write
   `docs/tasks/done/T-004-05-banking-phone-nss-recognizers.md`, flip the backlog row
 
 ---
