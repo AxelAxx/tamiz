@@ -20,11 +20,14 @@ from presidio_analyzer.predefined_recognizers import (
 
 from privacy.domain.entity_kind import EntityKind
 from privacy.domain.finding import Finding, finding
+from privacy.infrastructure.recognizers.banking import iban_recognizer
 from privacy.infrastructure.recognizers.identity import (
     cif_recognizer,
     dni_recognizer,
     nie_recognizer,
 )
+from privacy.infrastructure.recognizers.phone import phone_recognizer
+from privacy.infrastructure.recognizers.social_security import nss_recognizer
 
 LANGUAGE = "es"
 
@@ -56,6 +59,9 @@ def default_recognizers() -> list[EntityRecognizer]:
         dni_recognizer(),
         nie_recognizer(),
         cif_recognizer(),
+        iban_recognizer(),
+        nss_recognizer(),
+        phone_recognizer(),
     ]
 
 
