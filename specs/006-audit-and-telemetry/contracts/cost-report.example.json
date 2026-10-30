@@ -1,0 +1,41 @@
+{
+  "from": "2026-10-28T00:00:00.000Z",
+  "to": "2026-10-30T00:00:00.000Z",
+  "groupBy": "day",
+  "baseline": {
+    "targetId": "anthropic-sonnet",
+    "inputUsdPerMillion": 3,
+    "outputUsdPerMillion": 15
+  },
+  "rows": [
+    {
+      "key": "2026-10-28",
+      "requests": 120,
+      "inputTokens": 48000,
+      "outputTokens": 12000,
+      "costUsd": 0.0084,
+      "baselineCostUsd": 0.324
+    },
+    {
+      "key": "2026-10-29",
+      "requests": 95,
+      "inputTokens": 38000,
+      "outputTokens": 9500,
+      "costUsd": 0.00665,
+      "baselineCostUsd": 0.2565
+    }
+  ],
+  "notServed": {
+    "requests": 7,
+    "blocked": 5,
+    "failed": 2
+  },
+  "totals": {
+    "key": "total",
+    "requests": 215,
+    "inputTokens": 86000,
+    "outputTokens": 21500,
+    "costUsd": 0.01505,
+    "baselineCostUsd": 0.5805
+  }
+}

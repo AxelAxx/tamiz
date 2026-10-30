@@ -1,0 +1,38 @@
+{
+  "id": "5f0c8a3e-2b7d-4c1a-9e6f-1d2c3b4a5e60",
+  "requestId": "req-7f3a",
+  "clientId": "demo",
+  "startedAt": "2026-10-30T10:15:02.120Z",
+  "endedAt": "2026-10-30T10:15:03.480Z",
+  "latencyMs": 1360,
+  "requestHash": "e69ad4eba10dd86e6fedeca64b44e1caa036d186e4f7acb3feb689b0e52b072a",
+  "policyId": "default",
+  "policyVersion": 3,
+  "ruleId": "default",
+  "taskType": "chat",
+  "size": "short",
+  "sensitivity": "high",
+  "entities": {
+    "PERSON": 1,
+    "EMAIL": 1
+  },
+  "privacyAction": "anonymize",
+  "noticeVersion": "v1",
+  "outcome": "answered",
+  "streamed": false,
+  "target": {
+    "id": "mistral-small",
+    "provider": "mistral",
+    "model": "mistral-small-latest",
+    "residency": "eu"
+  },
+  "abandoned": [],
+  "usage": {
+    "inputTokens": 40,
+    "outputTokens": 10,
+    "estimated": false
+  },
+  "costUsd": 7e-6,
+  "baselineCostUsd": 0.00027,
+  "baselineTargetId": "anthropic-sonnet"
+}
