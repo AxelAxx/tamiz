@@ -112,6 +112,47 @@ pnpm build       # pass
   by the collector test above, and the Jaeger check is left to `T-OPS-01`, whose
   acceptance already includes "visible in … Jaeger".
 
+## Feature 006 quickstart run (T036, polish PR)
+
+Run on 2026-10-30 against real processes on this machine:
+- the privacy service (`uv run python -m privacy.main`);
+- the gateway (`tsx src/main.ts`, `default.yaml`, in-memory audit log, fake keys for the
+  cloud providers);
+- a minimal local OTLP/HTTP collector in place of Jaeger.
+
+There was no Docker and no Ollama, so every provider call failed (`network` for Ollama,
+`authentication` for the cloud targets). That exercised the failed path end to end.
+
+- **§1 suites.** Green; they are part of `pnpm test`.
+- **§2 PostgreSQL.** Run by CI on PRs #36–#39 (Testcontainers), not locally.
+- **§3, a request with a DNI:**
+  - responses: `502` with `x-tamiz-sensitivity: critical`,
+    `x-tamiz-privacy: restrict_to_local` and `x-tamiz-route: ollama-llama`;
+  - `GET /v1/admin/audit?entity=DNI`: one entry with `critical`, `restrict_to_local`,
+    `{"DNI": 1}`, outcome `failed` and no text.
+- **§3, a request with a name:** `high`, `anonymize`, fallback `ollama-llama:network`, then
+  `mistral-small`.
+- **§3 cost.** The baseline is `anthropic-sonnet` (3/15). There are no served rows,
+  because nothing was answered, and `notServed` shows 3 failed.
+- **§3 providers.** All four targets are listed, `ollama-llama` with an `open` circuit and
+  `anthropic-sonnet` idle (zeros, null latency).
+- **§3 client key on the admin API.** `403`.
+- **§3 traces.** The collector received 12 spans, all with service `tamiz-gateway`:
+  - three `tamiz.request` roots with the decision attributes, `error.type` and the
+    events `privacy.inspected`, `privacy.action`, `privacy.anonymized`, `routing.retry`,
+    `routing.fallback`, `circuit.changed` and `routing.decision`;
+  - their `chat {model}` children, with `gen_ai.provider.name`, `gen_ai.request.model`
+    and `error.type`.
+- **No leaks.** The DNI, the name and the message words appear in neither the exported
+  spans nor the gateway and privacy logs.
+- **Model noise.** "Hola, ¿qué tal?" came back `low` from the real model (spaCy noise, as
+  seen in feature 004); the action was still `allow`.
+- **Not verified:**
+  - the Jaeger UI itself, and the PostgreSQL path end to end (both need Docker);
+  - a served answer with tokens and cost (needs Ollama or provider keys).
+
+  `T-OPS-01` covers them.
+
 ## Pending / follow-ups
 
 - 006 polish (T034–T036): README status, `docs/architecture.md`, quickstart run.

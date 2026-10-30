@@ -83,8 +83,32 @@ memory or, with `REDIS_URL`, in Valkey. The privacy service exists since feature
 Since feature 005 the gateway calls it on every request (`application/use-cases/
 inspect-sensitivity.ts`), applies the policy's privacy action in `decide`, anonymizes
 and restores in `protect-messages.ts` / `restore-stream.ts`, and answers
-`POST /v1/simulate` with the same steps minus the provider call. Still to come: the
-audit log and OpenTelemetry sinks (feature 006).
+`POST /v1/simulate` with the same steps minus the provider call.
+
+Since feature 006 the use cases are wrapped, outermost first, by:
+
+- **`withAudit` / `withAuditStream`** (`application/audit/with-audit.ts`). They write one
+  content-free `AuditEntry` when the request ends (for a stream: the last part, an error
+  part, or the client leaving). The entry goes to the bounded in-memory log or, with
+  `DATABASE_URL`, to PostgreSQL through an asynchronous batched writer whose losses are
+  `audit.dropped` events.
+- **`withTracing` / `withTracingStream`** (`application/tracing/with-tracing.ts`). They
+  open the `tamiz.request` span. `executeChain` runs each attempt in a `chat {model}`
+  child span, and the routing events reach both the log and the active span (`fanOut`).
+
+The admin API reads the same store:
+
+- `GET /v1/admin/audit` (keyset pages);
+- `GET /v1/admin/cost` (actual vs baseline);
+- `GET /v1/admin/providers` (circuit state plus a window of the log).
+
+| Concern | Port | Adapters |
+|---|---|---|
+| Audit write | `AuditLogPort` | in-memory ring buffer; async batched writer → PostgreSQL |
+| Audit read, cost, provider window | `AuditReaderPort` | in-memory (pure aggregates); SQL (`percentile_cont`, `jsonb_array_elements`) |
+| Spans | `TracerPort` | OpenTelemetry (OTLP/HTTP from `OTEL_*`), no-op by default |
+| Routing events | `RoutingEventsPort` | pino log sink + OTel span-event sink, through `fanOut` |
+| API keys | `StoredKeyLookup` (infrastructure) | environment (`TAMIZ_API_KEYS`, `TAMIZ_ADMIN_API_KEYS`) then PostgreSQL |
 
 ## Gateway layers and allowed dependencies
 
