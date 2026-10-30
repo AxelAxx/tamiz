@@ -5,10 +5,10 @@
 | Task | `T-006-01` (see `docs/tasks/BACKLOG.md`) |
 | Feature | `006-audit-and-telemetry` |
 | Spec | `specs/006-audit-and-telemetry/spec.md` |
-| Branch / PR | `006-audit-and-telemetry` (Spec Kit naming), cut from `main` at f62b110 / PR opened after this commit |
+| Branch / PR | `006-audit-and-telemetry` (Spec Kit naming), cut from `main` at f62b110 / PR #34 |
 | Date | 2026-10-30 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | done as a draft; `spec.md` is `Draft` until Alex reviews it |
+| Status | done; spec reviewed and approved by Alex on 2026-10-30 without changes (`spec.md` flipped to `Approved` in the same PR) |
 
 ## What was done
 
@@ -58,7 +58,6 @@ The Spec Kit set for feature 006:
 
 ## Pending / follow-ups
 
-- Alex's review; on approval, flip the status to `Approved` and merge.
 - No new backlog rows. The backlog's `T-006-03` "api keys" is covered by FR-006.
 
 ## Pitfalls for the next session

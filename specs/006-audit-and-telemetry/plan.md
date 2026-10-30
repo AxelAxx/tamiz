@@ -101,7 +101,7 @@ Windows 11 (no Docker locally, as in feature 003).
 
 ```text
 specs/006-audit-and-telemetry/
-├── spec.md              # Specification (T-006-01), draft awaiting review
+├── spec.md              # Specification (T-006-01), approved 2026-10-30
 ├── plan.md              # This file
 ├── research.md          # Phase 0: decisions R-01 … R-12
 ├── data-model.md        # Phase 1: entry, tables, contracts, ports, spans

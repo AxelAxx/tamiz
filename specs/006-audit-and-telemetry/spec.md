@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-30
 
-**Status**: Draft (awaiting Alex's review)
+**Status**: Approved (reviewed by Alex on 2026-10-30)
 
 **Input**: User description: "006-audit-and-telemetry: every request leaves one audit entry with what was decided and what it cost, never what was said; entries are stored in PostgreSQL and queryable through an admin API with filters and pagination; admin aggregates for cost (against an 'everything to frontier' baseline) and provider health; OpenTelemetry traces with the GenAI semantic conventions and routing/privacy events, visible in Jaeger. Privacy acceptance: no prompt content in logs, traces or the database. Backlog T-006-02 … T-006-06."
 
