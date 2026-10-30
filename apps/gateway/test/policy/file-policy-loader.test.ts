@@ -40,6 +40,10 @@ describe("loadPolicyFile (FR-020)", () => {
     ["negative-price", "targets.0.pricing.inputUsdPerMillion: "],
     ["rule-id-default", "rules.0.id: "],
     ["sensitivity-condition", "rules.0.when: "],
+    // Spec 005 US6-1 … US6-3.
+    ["missing-privacy", "privacy: "],
+    ["critical-allow", "privacy.levels.critical: expected critical data in clear"],
+    ["non-local-route", 'privacy.localRoute.0: expected a local target (target residency "eu")'],
   ])("rejects %s and names the path (US2-1, US2-2)", async (name, expected) => {
     const lines = (await issuesOf(invalid(name))).map(line);
 
@@ -86,6 +90,10 @@ describe("loadPolicyFile (FR-020)", () => {
         "rules:",
         "  - { id: r, when: {}, route: [nope] }",
         "default: { route: [ghost] }",
+        "privacy:",
+        "  onDetectorError: restrict_to_local",
+        "  localRoute: [a]",
+        "  levels: { none: { action: allow }, low: { action: allow }, high: { action: allow }, critical: { action: restrict_to_local } }",
       ].join("\n"),
     );
 
@@ -102,7 +110,7 @@ describe("loadPolicyFile (FR-020)", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.id).toBe("default");
-    expect(result.value.version).toBe(2);
+    expect(result.value.version).toBe(3);
     expect(result.value.defaultTimeoutMs).toBe(30000);
     expect(new Set(result.value.targets.map((target) => target.provider))).toEqual(
       new Set(["ollama", "mistral", "anthropic", "openai"]),

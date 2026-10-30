@@ -9,11 +9,17 @@
  * (spec 002 FR-033, FR-034). A chain without an answer comes back as a `RoutingFailure`,
  * never as a throw.
  */
+
+import { type PrivacyBlockedError, privacyBlockedError } from "../../domain/errors.js";
 import { computeCost, type Usage } from "../../domain/model/cost.js";
 import type { Abandoned } from "../../domain/model/fallback.js";
 import type { InferenceRequest, Message } from "../../domain/model/inference-request.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
-import { decide, type RoutingDecision } from "../../domain/model/routing-decision.js";
+import {
+  type BlockDecision,
+  decide,
+  type RoutingDecision,
+} from "../../domain/model/routing-decision.js";
 import type { RoutingPolicy } from "../../domain/model/routing-policy.js";
 import { estimateTokens } from "../../domain/model/task-classifier.js";
 import type { Milliseconds, Usd } from "../../domain/model/units.js";
@@ -50,9 +56,24 @@ export interface RoutedCompletion {
   readonly createdAt: Date;
 }
 
-export interface RoutingFailure {
-  readonly decision: RoutingDecision;
-  readonly failure: ChainFailure;
+/**
+ * Why no answer came back: the chain was executed and failed (feature 003), or the
+ * privacy step blocked the request before any provider was called (spec 005 FR-011).
+ */
+export type RoutingFailure =
+  | { readonly decision: RoutingDecision; readonly failure: ChainFailure }
+  | {
+      readonly decision: BlockDecision;
+      readonly failure: { readonly kind: "blocked"; readonly error: PrivacyBlockedError };
+    };
+
+export function blocked(decision: BlockDecision): RoutingFailure {
+  const error = privacyBlockedError({
+    ruleId: decision.ruleId,
+    sensitivity: decision.sensitivity,
+    reason: decision.reason,
+  });
+  return { decision, failure: { kind: "blocked", error } };
 }
 
 export type RouteInference = (
@@ -93,6 +114,7 @@ export function routeInference(deps: RouteInferenceDeps): RouteInference {
     const classified = classifyTask(request);
     const policy = await deps.policies.getActive();
     const decision = decide(policy, classified);
+    if (decision.kind === "block") return err(blocked(decision));
 
     const served = await execute(
       {

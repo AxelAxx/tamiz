@@ -71,52 +71,52 @@ version 3. **Independent test**: the domain and policy suites pass, including at
 
 ### Tests first
 
-- [ ] T001 [P] [US6] `contracts/test/routing-policy-privacy.test.ts`:
+- [x] T001 [P] [US6] `contracts/test/routing-policy-privacy.test.ts`:
   - the `privacy` section is required and its four levels are required;
   - actions and `onDetectorError` are closed enums, and `allow` is rejected there;
   - unknown keys are rejected.
-- [ ] T002 [P] [US6] [US1] `gateway/test/domain/privacy-policy.test.ts`:
+- [x] T002 [P] [US6] [US1] `gateway/test/domain/privacy-policy.test.ts`:
   - `validatePrivacy` rejects a non-local `localRoute` (US6-3) and `critical: allow`
     without residencies ⊆ {local, eu} (US6-2);
   - `applyPrivacy` for each action (US1-1 … US1-5);
   - a missing section is an issue (US6-1).
-- [ ] T003 [P] [US1] `gateway/test/domain/privacy-decision.property.test.ts`
+- [x] T003 [P] [US1] `gateway/test/domain/privacy-decision.property.test.ts`
   (`fast-check`, ≥ 10 000 runs): over random policies, rules, levels and inspections, a
   `critical` route never contains a target outside {local, eu} unless the action is
   `anonymize`, and `block` has no chain (SC-001, FR-005).
-- [ ] T004 [P] [US6] `gateway/test/policy/shipped-policies.test.ts` and
+- [x] T004 [P] [US6] `gateway/test/policy/shipped-policies.test.ts` and
   `boot.integration.test.ts`:
   - `default.yaml` and `local-only.yaml` load at version 3;
   - a policy without `privacy` exits 1, naming it;
   - `test/evals/routing-dataset.test.ts` still reaches ≥ 95 % (US6-4).
-- [ ] T005 [P] `gateway/test/domain/sensitivity.test.ts`: ordered levels, `sensitivityOf`
+- [x] T005 [P] `gateway/test/domain/sensitivity.test.ts`: ordered levels, `sensitivityOf`
   (`unknown` on failure), `ENTITY_KINDS` matching the privacy service's list.
 
 ### Implementation
 
-- [ ] T006 `contracts/src/routing-policy.ts`:
+- [x] T006 `contracts/src/routing-policy.ts`:
   - add `SensitivityLevelSchema`, `PrivacyActionSchema`, `PrivacyLevelSchema` and
     `PrivacySectionSchema`;
   - add the required `privacy` field;
   - export the new names from the index (data-model §1.2).
-- [ ] T007 `gateway/src/domain/model/sensitivity.ts`: the levels, `ENTITY_KINDS`,
+- [x] T007 `gateway/src/domain/model/sensitivity.ts`: the levels, `ENTITY_KINDS`,
   `MessageIndex`, `DetectedEntity`, `Inspection` and `sensitivityOf` (data-model §2.1).
-- [ ] T008 `gateway/src/domain/model/privacy-policy.ts`: `PRIVACY_ACTIONS`,
+- [x] T008 `gateway/src/domain/model/privacy-policy.ts`: `PRIVACY_ACTIONS`,
   `PrivacySettings`, `validatePrivacy`, `applyPrivacy` (research R-04, data-model §2.2),
   plus `validatePolicy` calling `validatePrivacy`.
-- [ ] T009 `gateway/src/domain/model/routing-decision.ts`:
+- [x] T009 `gateway/src/domain/model/routing-decision.ts`:
   - `RoutingDecision = RouteDecision | BlockDecision`, and `DecisionInput.inspection`;
   - update the callers (`route-inference.ts`, `stream-inference.ts`, the routing dataset
     test) to pass the interim constant `NOT_INSPECTED` (`ok` / `none`, documented as
     removed in T036) and to handle `block` as `451`.
-- [ ] T010 `gateway/src/infrastructure/policy/policy-mapper.ts` maps the section.
+- [x] T010 `gateway/src/infrastructure/policy/policy-mapper.ts` maps the section.
   `gateway/policies/default.yaml` follows `contracts/policy.example.yaml`, and
   `local-only.yaml` gets every level `allow`. Both are version 3. Update
   `gateway/policies/README.md`.
 
 ### Verification
 
-- [ ] T011 `pnpm lint && pnpm typecheck && pnpm arch && pnpm test && pnpm build`. Write
+- [x] T011 `pnpm lint && pnpm typecheck && pnpm arch && pnpm test && pnpm build`. Write
   `docs/tasks/done/T-005-02-domain-privacy-policy.md` and flip the backlog row.
 
 ---

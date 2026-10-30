@@ -10,6 +10,8 @@
  */
 import type { Milliseconds, RuleId, TargetId } from "./model/brands.js";
 import type { ProviderName, Residency } from "./model/model-target.js";
+import type { BlockReason } from "./model/privacy-policy.js";
+import type { Sensitivity } from "./model/sensitivity.js";
 
 /** One offending field or setting: where it is and what was expected. Never the value. */
 export interface ErrorIssue {
@@ -87,6 +89,19 @@ export interface ResidencyViolationError {
   readonly message: string;
 }
 
+/**
+ * The privacy step blocked the request (spec 005 FR-003, FR-014, research R-05): the
+ * level's action is `block`, no target was left after filtering by residency, or
+ * inspection failed with `onDetectorError: block`. Names levels, actions and rule ids only.
+ */
+export interface PrivacyBlockedError {
+  readonly kind: "privacy_blocked";
+  readonly ruleId: RuleId | "default";
+  readonly sensitivity: Sensitivity;
+  readonly reason: BlockReason;
+  readonly message: string;
+}
+
 /** Every target of the chain was skipped because its circuit is open (spec 003 FR-015). */
 export interface ProviderUnavailableError {
   readonly kind: "provider_unavailable";
@@ -102,7 +117,8 @@ export type DomainError =
   | ProviderError
   | UnauthorizedError
   | ResidencyViolationError
-  | ProviderUnavailableError;
+  | ProviderUnavailableError
+  | PrivacyBlockedError;
 
 export function validationError(
   message: string,
@@ -137,6 +153,22 @@ export function residencyViolationError(
     kind: "residency_violation",
     ...fields,
     message: `rule ${fields.ruleId} does not allow residency ${fields.residency} (target ${fields.targetId})`,
+  };
+}
+
+const BLOCK_MESSAGES: Record<BlockReason, string> = {
+  action: "action block",
+  no_target: "no allowed target",
+  detector_unavailable: "privacy service unavailable",
+};
+
+export function privacyBlockedError(
+  fields: Omit<PrivacyBlockedError, "kind" | "message">,
+): PrivacyBlockedError {
+  return {
+    kind: "privacy_blocked",
+    ...fields,
+    message: `sensitivity ${fields.sensitivity}: ${BLOCK_MESSAGES[fields.reason]} (rule ${fields.ruleId})`,
   };
 }
 

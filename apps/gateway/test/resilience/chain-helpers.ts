@@ -39,6 +39,7 @@ export function decisionFor(
   allowedResidencies: ReadonlyArray<Residency> = RESIDENCIES,
 ): RoutingDecision {
   return {
+    kind: "route",
     policyId: policyIdUnchecked("test"),
     policyVersion: 1,
     ruleId: "default",

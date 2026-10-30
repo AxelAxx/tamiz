@@ -18,6 +18,7 @@ const errorTypes = [
   "internal",
   "provider_timeout",
   "provider_unavailable",
+  "privacy_unavailable",
 ] as const;
 
 describe("ErrorEnvelopeSchema (spec US2-7, FR-010)", () => {
@@ -30,7 +31,7 @@ describe("ErrorEnvelopeSchema (spec US2-7, FR-010)", () => {
     expect(result.data.error.type).toBe(type);
   });
 
-  it("the enum holds the seven 001 values plus provider_timeout (002 FR-028) and provider_unavailable (003 FR-019)", () => {
+  it("the enum holds the seven 001 values plus provider_timeout (002 FR-028) provider_unavailable (003 FR-019) and privacy_unavailable (005 FR-014)", () => {
     expect(ErrorTypeSchema.options).toEqual(errorTypes);
     expectTypeOf<ErrorType>().toEqualTypeOf<(typeof errorTypes)[number]>();
   });
@@ -99,6 +100,7 @@ describe("errorTypeToHttpStatus (data-model section 5)", () => {
       internal: 500,
       provider_timeout: 504,
       provider_unavailable: 503,
+      privacy_unavailable: 503,
     });
   });
 

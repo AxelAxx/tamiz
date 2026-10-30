@@ -12,7 +12,7 @@
  * replace `classify` later behind the same signature.
  */
 import type { InferenceRequest, Message } from "./inference-request.js";
-import type { Sensitivity } from "./sensitivity.js";
+import type { Inspection } from "./sensitivity.js";
 
 export const TASK_TYPES = [
   "chat",
@@ -131,9 +131,9 @@ export interface Classification {
   readonly estimatedInputTokens: number;
 }
 
-/** What the routing decision receives: the request, its classification and sensitivity. */
+/** What the routing decision receives: the request, its classification and inspection. */
 export type ClassifiedRequest = InferenceRequest &
-  Classification & { readonly sensitivity: Sensitivity };
+  Classification & { readonly inspection: Inspection };
 
 const WORD_CHAR = /[a-z0-9]/;
 

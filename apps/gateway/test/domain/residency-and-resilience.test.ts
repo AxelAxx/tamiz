@@ -1,13 +1,14 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 import { RESIDENCIES } from "../../src/domain/model/model-target.js";
-import { decide } from "../../src/domain/model/routing-decision.js";
+import type { DecisionInput } from "../../src/domain/model/routing-decision.js";
 import {
   DEFAULT_RESILIENCE,
   type RoutingPolicyInput,
   validatePolicy,
 } from "../../src/domain/model/routing-policy.js";
-import { examplePolicyInput, validPolicy } from "./helpers/policies.js";
+import { NOT_INSPECTED } from "../../src/domain/model/sensitivity.js";
+import { decideRoute, examplePolicyInput, validPolicy } from "./helpers/policies.js";
 
 // Spec 003 US2-3, US2-4, FR-012, FR-014, FR-020, research R-06, R-14 (tasks.md T021).
 
@@ -17,12 +18,12 @@ function issues(input: RoutingPolicyInput) {
   return result.error.issues;
 }
 
-function request(overrides: Partial<Parameters<typeof decide>[1]> = {}) {
+function request(overrides: Partial<DecisionInput> = {}): DecisionInput {
   return {
     requestedModel: "tamiz-auto",
     taskType: "chat" as const,
     size: "short" as const,
-    sensitivity: "unknown" as const,
+    inspection: NOT_INSPECTED,
     ...overrides,
   };
 }
@@ -137,9 +138,9 @@ describe("decide: allowed residencies (US2-4, FR-012)", () => {
     ];
     const policy = validPolicy({ ...input, rules });
 
-    expect(decide(policy, request({ requestedModel: "tamiz-local" })).allowedResidencies).toEqual([
-      "local",
-    ]);
+    expect(
+      decideRoute(policy, request({ requestedModel: "tamiz-local" })).allowedResidencies,
+    ).toEqual(["local"]);
   });
 
   it("copies the default chain's residency list when no rule matches", () => {
@@ -148,16 +149,15 @@ describe("decide: allowed residencies (US2-4, FR-012)", () => {
       default: { route: ["mistral-small", "ollama-llama"], residency: ["eu", "local"] },
     });
 
-    expect(decide(policy, request({ requestedModel: "anything" })).allowedResidencies).toEqual([
-      "eu",
-      "local",
-    ]);
+    expect(decideRoute(policy, request({ requestedModel: "anything" })).allowedResidencies).toEqual(
+      ["eu", "local"],
+    );
   });
 
   it("US2-4: allows every residency when nothing is declared", () => {
     const policy = validPolicy(examplePolicyInput());
 
-    expect(decide(policy, request()).allowedResidencies).toEqual(RESIDENCIES);
+    expect(decideRoute(policy, request()).allowedResidencies).toEqual(RESIDENCIES);
   });
 
   it("every decision's allowed set is non-empty and contains every target of its own chain", () => {
@@ -178,7 +178,7 @@ describe("decide: allowed residencies (US2-4, FR-012)", () => {
         fc.constantFrom("chat", "code", "summarize", "translate", "extract", "classify"),
         fc.constantFrom("short", "medium", "long"),
         (taskType, size) => {
-          const decision = decide(policy, request({ taskType, size }));
+          const decision = decideRoute(policy, request({ taskType, size }));
           expect(decision.allowedResidencies.length).toBeGreaterThan(0);
           for (const target of decision.chain) {
             expect(decision.allowedResidencies).toContain(target.residency);

@@ -11,10 +11,18 @@
  * Feature 003 adds resilience settings (defaults filled here) and residency statements on
  * rules and the default chain; a chain entry outside its own statement is rejected
  * (spec 003 FR-012, FR-014, FR-020, research R-06, R-14).
+ *
+ * Feature 005 adds the required privacy section (spec 005 FR-002, FR-004), validated by
+ * `validatePrivacy`.
  */
 import { type ErrorIssue, type ValidationError, validationError } from "../errors.js";
 import { err, ok, type Result } from "../result.js";
 import type { ModelTarget, ProviderName, Residency } from "./model-target.js";
+import {
+  type PrivacySettings,
+  type PrivacySettingsInput,
+  validatePrivacy,
+} from "./privacy-policy.js";
 import type { TaskSize, TaskType } from "./task-classifier.js";
 import {
   type Milliseconds,
@@ -83,6 +91,7 @@ export interface RoutingPolicy {
     readonly residency?: ReadonlyArray<Residency>;
   };
   readonly resilience: ResilienceSettings;
+  readonly privacy: PrivacySettings;
 }
 
 /** Unbranded input: the shape the policy schema produces, before domain validation. */
@@ -124,6 +133,8 @@ export interface RoutingPolicyInput {
     readonly residency?: ReadonlyArray<Residency>;
   };
   readonly resilience?: ResilienceSettingsInput;
+  /** Required since policy version 3; `undefined` is reported as an issue (FR-004). */
+  readonly privacy: PrivacySettingsInput | undefined;
 }
 
 type Issues = ErrorIssue[];
@@ -395,8 +406,10 @@ export function validatePolicy(input: RoutingPolicyInput): Result<RoutingPolicy,
     defaultResidency,
   );
   const resilience = validateResilience(input.resilience, issues);
+  const privacy = validatePrivacy(input.privacy, declared);
+  issues.push(...privacy.issues);
 
-  if (issues.length > 0 || defaultTimeoutMs === undefined) {
+  if (issues.length > 0 || defaultTimeoutMs === undefined || privacy.settings === undefined) {
     return err(validationError("Invalid routing policy", issues));
   }
   return ok({
@@ -410,6 +423,7 @@ export function validatePolicy(input: RoutingPolicyInput): Result<RoutingPolicy,
       ...(defaultResidency === undefined ? {} : { residency: defaultResidency }),
     },
     resilience,
+    privacy: privacy.settings,
   });
 }
 

@@ -40,6 +40,16 @@ function examplePolicy(): Record<string, unknown> {
       },
     ],
     default: { route: ["mistral-small", "ollama-llama"] },
+    privacy: {
+      onDetectorError: "restrict_to_local",
+      localRoute: ["ollama-llama"],
+      levels: {
+        none: { action: "allow" },
+        low: { action: "allow" },
+        high: { action: "anonymize", residency: ["local", "eu"] },
+        critical: { action: "restrict_to_local" },
+      },
+    },
   };
 }
 

@@ -97,6 +97,8 @@ describe("DomainError", () => {
         return `residency_violation:${error.targetId}`;
       case "provider_unavailable":
         return "provider_unavailable";
+      case "privacy_blocked":
+        return `privacy_blocked:${error.reason}`;
       default:
         return assertNever(error);
     }

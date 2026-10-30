@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { classifyTask } from "../../src/application/use-cases/classify-task.js";
 import type { InferenceRequest } from "../../src/domain/model/inference-request.js";
+import { NOT_INSPECTED } from "../../src/domain/model/sensitivity.js";
 import { classify } from "../../src/domain/model/task-classifier.js";
 import { clientIdUnchecked, requestIdUnchecked } from "../../src/domain/model/units.js";
 
@@ -28,8 +29,8 @@ describe("classifyTask", () => {
     expect(classified.size).toBe("short");
   });
 
-  it("sets sensitivity to `unknown` until feature 005 inspects the request", () => {
-    expect(classifyTask(request()).sensitivity).toBe("unknown");
+  it("uses NOT_INSPECTED (level `none`) until the gateway inspects the request (spec 005 T009)", () => {
+    expect(classifyTask(request()).inspection).toEqual(NOT_INSPECTED);
   });
 
   it("keeps every request field, including the optional sampling parameters", () => {

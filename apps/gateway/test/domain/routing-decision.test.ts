@@ -13,10 +13,10 @@ import {
   type RoutingPolicy,
   type RoutingPolicyInput,
 } from "../../src/domain/model/routing-policy.js";
-import { SENSITIVITIES } from "../../src/domain/model/sensitivity.js";
+import { NOT_INSPECTED, SENSITIVITIES } from "../../src/domain/model/sensitivity.js";
 import { classify } from "../../src/domain/model/task-classifier.js";
 import { targetIdUnchecked } from "../../src/domain/model/units.js";
-import { examplePolicyInput, validPolicy } from "./helpers/policies.js";
+import { decideRoute, examplePolicyInput, validPolicy } from "./helpers/policies.js";
 
 // Spec 002 US3, FR-005 … FR-007, research R-08, tasks.md T003.
 
@@ -25,19 +25,19 @@ function request(overrides: Partial<DecisionInput> = {}): DecisionInput {
     requestedModel: "gpt-4o",
     taskType: "chat",
     size: "short",
-    sensitivity: "unknown",
+    inspection: NOT_INSPECTED,
     ...overrides,
   };
 }
 
 function chainIds(input: RoutingPolicyInput, req: DecisionInput): string[] {
-  return decide(validPolicy(input), req).chain.map((target) => target.id);
+  return decideRoute(validPolicy(input), req).chain.map((target) => target.id);
 }
 
 describe("closed lists", () => {
-  it("allows only `allow` and `unknown` in this feature", () => {
-    expect(PRIVACY_ACTIONS).toEqual(["allow"]);
-    expect(SENSITIVITIES).toEqual(["unknown"]);
+  it("has the privacy actions and sensitivities of spec 005", () => {
+    expect(PRIVACY_ACTIONS).toEqual(["allow", "anonymize", "restrict_to_local", "block"]);
+    expect(SENSITIVITIES).toEqual(["unknown", "none", "low", "high", "critical"]);
     expect(DEFAULT_RULE_ID).toBe("default");
   });
 });
@@ -45,7 +45,7 @@ describe("closed lists", () => {
 describe("decide", () => {
   it("US3-1: the first matching rule's chain, in the rule's order, named by the rule", () => {
     const policy = validPolicy(examplePolicyInput());
-    const decision = decide(policy, request({ taskType: "code", size: "long" }));
+    const decision = decideRoute(policy, request({ taskType: "code", size: "long" }));
     expect(decision.ruleId).toBe("code-to-frontier");
     expect(decision.chain.map((target) => target.id)).toEqual([
       "anthropic-sonnet",
@@ -65,14 +65,17 @@ describe("decide", () => {
         route: ["ollama-llama"],
       },
     ];
-    const decision = decide(validPolicy({ ...input, rules }), request({ taskType: "extract" }));
+    const decision = decideRoute(
+      validPolicy({ ...input, rules }),
+      request({ taskType: "extract" }),
+    );
     expect(decision.ruleId).toBe("first");
     expect(decision.chain.map((target) => target.id)).toEqual(["openai-mini"]);
   });
 
   it("US3-3: no matching rule gives the default chain and rule `default`", () => {
     const policy = validPolicy(examplePolicyInput());
-    const decision = decide(policy, request({ taskType: "chat", size: "long" }));
+    const decision = decideRoute(policy, request({ taskType: "chat", size: "long" }));
     expect(decision.ruleId).toBe("default");
     expect(decision.chain.map((target) => target.id)).toEqual([
       "mistral-small",
@@ -85,7 +88,10 @@ describe("decide", () => {
     const policy = validPolicy(examplePolicyInput());
     for (const taskType of ["code", "summarize", "chat"] as const) {
       for (const size of ["short", "long"] as const) {
-        const decision = decide(policy, request({ requestedModel: "tamiz-local", taskType, size }));
+        const decision = decideRoute(
+          policy,
+          request({ requestedModel: "tamiz-local", taskType, size }),
+        );
         expect(decision.ruleId).toBe("pinned-local");
         expect(decision.chain.map((target) => target.id)).toEqual(["ollama-llama"]);
       }
@@ -94,7 +100,7 @@ describe("decide", () => {
 
   it("US3-5: `orderBy: cost` sorts by input + output price ascending", () => {
     const policy = validPolicy(examplePolicyInput());
-    const decision = decide(policy, request({ taskType: "classify", size: "short" }));
+    const decision = decideRoute(policy, request({ taskType: "classify", size: "short" }));
     expect(decision.ruleId).toBe("cheap-short-tasks");
     expect(decision.chain.map((target) => target.id)).toEqual([
       "ollama-llama",
@@ -145,15 +151,18 @@ describe("decide", () => {
     ]);
   });
 
-  it("US3-7: records sensitivity `unknown` and privacy action `allow`", () => {
-    const decision = decide(validPolicy(examplePolicyInput()), request());
-    expect(decision.sensitivity).toBe("unknown");
+  it("US3-7: an uninspected request routes as sensitivity `none` with action `allow`", () => {
+    const decision = decideRoute(validPolicy(examplePolicyInput()), request());
+    expect(decision.sensitivity).toBe("none");
     expect(decision.privacyAction).toBe("allow");
   });
 
   it("US2-5: copies the policy id and version, the task type and the size", () => {
     const input = { ...examplePolicyInput(), id: "acme-v2", version: 7 };
-    const decision = decide(validPolicy(input), request({ taskType: "summarize", size: "medium" }));
+    const decision = decideRoute(
+      validPolicy(input),
+      request({ taskType: "summarize", size: "medium" }),
+    );
     expect(decision).toMatchObject({
       policyId: "acme-v2",
       policyVersion: 7,
@@ -164,20 +173,20 @@ describe("decide", () => {
 
   it("US6-6: copies the matched rule's timeout, and omits it otherwise", () => {
     const policy = validPolicy(examplePolicyInput());
-    const withTimeout = decide(policy, request({ taskType: "translate" }));
+    const withTimeout = decideRoute(policy, request({ taskType: "translate" }));
     expect(withTimeout.ruleId).toBe("cheap-short-tasks");
     expect(withTimeout.ruleTimeoutMs).toBe(20_000);
 
-    const ruleWithout = decide(policy, request({ taskType: "code" }));
+    const ruleWithout = decideRoute(policy, request({ taskType: "code" }));
     expect("ruleTimeoutMs" in ruleWithout).toBe(false);
 
-    const defaultChain = decide(policy, request({ taskType: "chat" }));
+    const defaultChain = decideRoute(policy, request({ taskType: "chat" }));
     expect("ruleTimeoutMs" in defaultChain).toBe(false);
   });
 
   it("a requested model equal to a target id does not pin that target", () => {
     const policy = validPolicy(examplePolicyInput());
-    const decision = decide(policy, request({ requestedModel: "anthropic-sonnet" }));
+    const decision = decideRoute(policy, request({ requestedModel: "anthropic-sonnet" }));
     expect(decision.ruleId).toBe("default");
     expect(decision.chain[0]?.id).toBe("mistral-small");
   });
@@ -191,19 +200,19 @@ describe("decide", () => {
       request({ requestedModel: "tamiz-local" }),
       request({ taskType: "summarize", size: "long" }),
     ]) {
-      expect(decide(policy, req).ruleId).toBe("catch-all");
+      expect(decideRoute(policy, req).ruleId).toBe("catch-all");
     }
   });
 
   it("a policy with zero rules serves everything from the default chain", () => {
     const policy = validPolicy({ ...examplePolicyInput(), rules: [] });
-    expect(decide(policy, request({ taskType: "code" })).ruleId).toBe("default");
+    expect(decideRoute(policy, request({ taskType: "code" })).ruleId).toBe("default");
   });
 
   it("returns full target objects from the policy and does not mutate it", () => {
     const policy = validPolicy(examplePolicyInput());
     const before = structuredClone(policy);
-    const decision = decide(policy, request({ taskType: "classify" }));
+    const decision = decideRoute(policy, request({ taskType: "classify" }));
     for (const target of decision.chain) {
       expect(policy.targets).toContain(target);
     }
@@ -219,7 +228,7 @@ describe("an unvalidated policy", () => {
       rules: [],
       default: { route: [targetIdUnchecked("ghost")] },
     };
-    expect(() => decide(broken, request())).toThrow(/not declared/);
+    expect(() => decideRoute(broken, request())).toThrow(/not declared/);
   });
 });
 
@@ -266,7 +275,11 @@ describe("SC-007: classification plus decision are fast", () => {
     for (let i = 0; i < 1000; i += 1) {
       const start = performance.now();
       const classification = classify(messages);
-      decide(policy, { ...classification, requestedModel: "gpt-4o", sensitivity: "unknown" });
+      decideRoute(policy, {
+        ...classification,
+        requestedModel: "gpt-4o",
+        inspection: NOT_INSPECTED,
+      });
       durations.push(performance.now() - start);
     }
     durations.sort((a, b) => a - b);

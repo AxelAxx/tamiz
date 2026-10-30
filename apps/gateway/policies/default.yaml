@@ -1,10 +1,11 @@
 # Default routing policy for Tamiz, validated at boot against RoutingPolicySchema.
-# Same content as specs/003-resilience/contracts/policy.example.yaml (feature 003 added
-# the resilience section, the residency statements and version 2).
+# Same content as specs/005-privacy-aware-routing/contracts/policy.example.yaml (feature
+# 003 added the resilience section and residency statements; feature 005 the privacy
+# section and version 3).
 # Prices are illustrative USD per million tokens at the time of writing: data, not code.
 
 id: default
-version: 2
+version: 3
 defaultTimeoutMs: 30000
 
 resilience:
@@ -12,6 +13,18 @@ resilience:
   maxAttempts: 2
   backoff: { baseDelayMs: 250, maxDelayMs: 2000 }
   circuitBreaker: { failureThreshold: 5, cooldownMs: 30000 }
+
+# What may happen to a request, by the highest sensitivity found in its messages
+# (spec 005 FR-002, research R-11). Critical data never leaves the machine; names, phones
+# and emails go out only anonymized and only to EU or local targets.
+privacy:
+  onDetectorError: restrict_to_local   # fail closed; `block` also accepted, `allow` is not
+  localRoute: [ollama-llama]
+  levels:
+    none:     { action: allow }
+    low:      { action: allow }
+    high:     { action: anonymize, residency: [local, eu] }
+    critical: { action: restrict_to_local }
 
 targets:
   - id: ollama-llama

@@ -6,3 +6,9 @@ targets:
   - { id: mistral-small, provider: mistral, model: mistral-small-latest, region: eu-west, residency: eu, pricing: { inputUsdPerMillion: 0.1, outputUsdPerMillion: 0.3 } }
 rules: []
 default: { route: [ollama-llama, mistral-small, ollama-llama] }
+
+# Spec 005 FR-002: every policy declares what happens per sensitivity level.
+privacy:
+  onDetectorError: restrict_to_local
+  localRoute: [ollama-llama]
+  levels: { none: { action: allow }, low: { action: allow }, high: { action: allow }, critical: { action: restrict_to_local } }

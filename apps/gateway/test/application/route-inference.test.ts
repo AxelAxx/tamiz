@@ -150,7 +150,7 @@ describe("routeInference", () => {
     expect(result.ok).toBe(true);
     if (!result.ok) return;
     expect(result.value.decision).toEqual(decide(policy, classifyTask(input)));
-    expect(result.value.decision.sensitivity).toBe("unknown");
+    expect(result.value.decision.sensitivity).toBe("none");
   });
 
   it("uses the active policy at call time", async () => {
@@ -246,6 +246,7 @@ describe("routeInference", () => {
           { targetId: "openai-mini", reason: "http_error" },
         ],
       });
+      if (result.error.failure.kind === "blocked") throw new Error("expected a chain failure");
       expect(result.error.failure.target.id).toBe("mistral-small");
     });
 
@@ -298,12 +299,16 @@ describe("routeInference", () => {
     });
   });
 
-  it("throws on an unvalidated policy whose decision has an empty chain", async () => {
+  it("spec 005: an unvalidated policy with an empty chain blocks (no_target) instead of calling a provider", async () => {
     const valid = validPolicy(examplePolicyInput());
     const broken: RoutingPolicy = { ...valid, rules: [], default: { route: [] } };
     const { route, provider } = setup(undefined, broken);
 
-    await expect(route(request("Hola"))).rejects.toThrow(/empty chain/);
+    const result = await route(request("Hola"));
+
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.error.decision).toMatchObject({ kind: "block", reason: "no_target" });
     expect(provider.calls).toHaveLength(0);
   });
 });

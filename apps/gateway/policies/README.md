@@ -24,3 +24,30 @@ Since feature 003 (`specs/003-resilience`), two optional additions:
   (2), the backoff (250 ms base, 2 000 ms cap, full jitter) and the circuit breaker
   (opens after 5 consecutive counted failures, 30 000 ms cool-down). Every field is
   optional; the defaults are filled at load.
+
+Since feature 005 (`specs/005-privacy-aware-routing`), policies are version 3, and a
+`privacy` section is **required**. A policy without it stops boot. The section decides
+what may happen to a request, by the highest sensitivity found in its messages:
+
+```yaml
+privacy:
+  onDetectorError: restrict_to_local   # or block; `allow` is not accepted (fail closed)
+  localRoute: [ollama-llama]           # local targets only
+  levels:
+    none:     { action: allow }
+    low:      { action: allow }
+    high:     { action: anonymize, residency: [local, eu] }
+    critical: { action: restrict_to_local }
+```
+
+The actions:
+
+- `allow` sends the request in clear along the rule's chain, keeping only targets whose
+  residency is allowed by both the rule and the level.
+- `anonymize` does the same, but with personal data replaced by placeholders.
+- `restrict_to_local` uses `localRoute`.
+- `block` refuses the request with `451`.
+
+A chain left empty by the filtering also blocks. Boot rejects `critical: allow` unless the
+level's residency is limited to `local` and `eu`. Until the gateway calls the privacy
+service (`T-005-04`), every request is treated as level `none`.

@@ -3,7 +3,7 @@
 # default). Use it with TAMIZ_POLICY_FILE=policies/local-only.yaml.
 
 id: local-only
-version: 1
+version: 3
 defaultTimeoutMs: 60000
 
 targets:
@@ -13,6 +13,17 @@ targets:
     region: local
     residency: local
     pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+
+# Everything is local already, so every level may route as usual; critical says so
+# explicitly, which is what the boot check requires (spec 005 FR-004).
+privacy:
+  onDetectorError: restrict_to_local
+  localRoute: [ollama-llama]
+  levels:
+    none:     { action: allow }
+    low:      { action: allow }
+    high:     { action: allow }
+    critical: { action: restrict_to_local }
 
 rules: []
 
