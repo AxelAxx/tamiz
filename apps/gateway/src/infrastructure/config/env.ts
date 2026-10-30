@@ -17,7 +17,7 @@ import {
   type ErrorIssue,
 } from "../../domain/errors.js";
 import { err, ok, type Result } from "../../domain/result.js";
-import { type ApiKeyRecord, parseApiKeys } from "../auth/api-keys.js";
+import { ADMIN_API_KEYS_VARIABLE, type ApiKeyRecord, parseApiKeys } from "../auth/api-keys.js";
 import type { KeyedProviderSettings, ProviderSettings } from "../llm/settings.js";
 
 export const LOG_LEVELS = ["fatal", "error", "warn", "info", "debug", "trace"] as const;
@@ -31,6 +31,7 @@ export const DEFAULT_OLLAMA_BASE_URL = "http://localhost:11434/v1";
 
 const HttpUrlSchema = z.url({ protocol: /^https?$/ });
 const RedisUrlSchema = z.url({ protocol: /^rediss?$/ });
+const PostgresUrlSchema = z.url({ protocol: /^postgres(ql)?$/ });
 
 /** An empty value counts as unset, so `MISTRAL_API_KEY=` leaves Mistral unconfigured. */
 function optionalSetting<T extends z.ZodType>(schema: T) {
@@ -60,6 +61,9 @@ export const EnvSchema = z.object({
   TAMIZ_PRIVACY_CACHE_TTL_MS: z.coerce.number().int().min(1_000).default(600_000),
   // Spec 006: keys the audit hash of the messages; unset = an ephemeral key per process.
   TAMIZ_AUDIT_HASH_KEY: optionalSetting(z.string().min(32)),
+  // Spec 006 T-006-03: PostgreSQL for the audit log and API keys; unset = in memory.
+  DATABASE_URL: optionalSetting(PostgresUrlSchema),
+  TAMIZ_ADMIN_API_KEYS: optionalSetting(z.string()),
   TAMIZ_AUDIT_MEMORY_ENTRIES: z.coerce.number().int().min(100).max(1_000_000).default(10_000),
 });
 
@@ -88,6 +92,8 @@ const EXPECTED_FORMAT: Readonly<Record<EnvKey, string>> = {
   TAMIZ_PRIVACY_CACHE_TTL_MS: "an integer of at least 1000",
   TAMIZ_AUDIT_HASH_KEY: "a secret of at least 32 characters",
   TAMIZ_AUDIT_MEMORY_ENTRIES: "an integer between 100 and 1000000",
+  DATABASE_URL: "a postgres:// or postgresql:// URL",
+  TAMIZ_ADMIN_API_KEYS: "comma-separated clientId:sha256hex admin entries",
 };
 
 export interface GatewayConfig {
@@ -108,6 +114,8 @@ export interface GatewayConfig {
   readonly privacy: PrivacyServiceConfig;
   /** The audit log (spec 006). Without a hash key, `main.ts` generates an ephemeral one. */
   readonly audit: { readonly hashKey?: string; readonly memoryEntries: number };
+  /** PostgreSQL for the audit log and API keys (spec 006 FR-005); absent = in memory. */
+  readonly databaseUrl?: string;
 }
 
 export interface PrivacyServiceConfig {
@@ -158,6 +166,24 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
   if (!apiKeys.ok) {
     return err(configurationError("Invalid environment configuration", apiKeys.error.issues));
   }
+  const adminKeys =
+    values.TAMIZ_ADMIN_API_KEYS === undefined
+      ? ok([])
+      : parseApiKeys(values.TAMIZ_ADMIN_API_KEYS, "admin", ADMIN_API_KEYS_VARIABLE);
+  if (!adminKeys.ok) {
+    return err(configurationError("Invalid environment configuration", adminKeys.error.issues));
+  }
+  // Spec 006 FR-003: durable entries must be correlatable across restarts, never readable.
+  if (values.DATABASE_URL !== undefined && values.TAMIZ_AUDIT_HASH_KEY === undefined) {
+    return err(
+      configurationError("Invalid environment configuration", [
+        {
+          path: "TAMIZ_AUDIT_HASH_KEY",
+          message: "expected a secret of at least 32 characters when DATABASE_URL is set",
+        },
+      ]),
+    );
+  }
   const mistral = keyed(values.MISTRAL_API_KEY, values.MISTRAL_BASE_URL);
   const anthropic = keyed(values.ANTHROPIC_API_KEY, values.ANTHROPIC_BASE_URL);
   const openai = keyed(values.OPENAI_API_KEY, values.OPENAI_BASE_URL);
@@ -175,7 +201,8 @@ export function loadConfig(env: Environment): Result<GatewayConfig, Configuratio
         ...(anthropic !== undefined && { anthropic }),
         ...(openai !== undefined && { openai }),
       },
-      apiKeys: apiKeys.value,
+      apiKeys: [...apiKeys.value, ...adminKeys.value],
+      ...(values.DATABASE_URL === undefined ? {} : { databaseUrl: values.DATABASE_URL }),
       ...(values.REDIS_URL === undefined ? {} : { redisUrl: values.REDIS_URL }),
       audit: Object.freeze({
         ...(values.TAMIZ_AUDIT_HASH_KEY === undefined

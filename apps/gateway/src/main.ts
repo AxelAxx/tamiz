@@ -22,7 +22,7 @@ import { streamInference } from "./application/use-cases/stream-inference.js";
 import type { ConfigurationError } from "./domain/errors.js";
 import type { Milliseconds } from "./domain/model/units.js";
 import type { Result } from "./domain/result.js";
-import { verifyApiKey } from "./infrastructure/auth/api-keys.js";
+import { createAuthenticator } from "./infrastructure/auth/api-keys.js";
 import { createInMemoryAuditLog } from "./infrastructure/cache/in-memory-audit-log.js";
 import { createInMemoryCircuitState } from "./infrastructure/cache/in-memory-circuit-state.js";
 import { createInMemoryDetectionCache } from "./infrastructure/cache/in-memory-detection-cache.js";
@@ -32,6 +32,10 @@ import { loadConfig } from "./infrastructure/config/env.js";
 import { checkProviderSettings } from "./infrastructure/config/provider-settings.js";
 import { createProviderRegistry } from "./infrastructure/llm/provider-registry.js";
 import { createLogger } from "./infrastructure/logging/logger.js";
+import { createPostgresApiKeyRepository } from "./infrastructure/persistence/api-key-repository.js";
+import { createAsyncAuditWriter } from "./infrastructure/persistence/async-writer.js";
+import { createPostgresAuditStore } from "./infrastructure/persistence/audit-log-repository.js";
+import { connectDatabase, runMigrations } from "./infrastructure/persistence/db.js";
 import { loadPolicyFile } from "./infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "./infrastructure/policy/in-memory-policy-repository.js";
 import { loadAnonymizationNotice } from "./infrastructure/privacy/anonymization-notice.js";
@@ -99,8 +103,35 @@ if (config.audit.hashKey === undefined) {
     "audit hash key is ephemeral: set TAMIZ_AUDIT_HASH_KEY to correlate across restarts",
   );
 }
-const auditLog = createInMemoryAuditLog(config.audit.memoryEntries);
-logger.info({ entries: config.audit.memoryEntries }, "audit log in memory (bounded)");
+// Spec 006 FR-005: PostgreSQL when DATABASE_URL is set (migrations before listening), else a
+// bounded in-memory log. Never log the URL: errors are reported by their code.
+const database = config.databaseUrl === undefined ? undefined : connectDatabase(config.databaseUrl);
+if (database !== undefined) {
+  try {
+    await runMigrations(database);
+  } catch (error) {
+    const code = (error as { code?: unknown } | null)?.code;
+    process.stderr.write(
+      `Database migration failed (${typeof code === "string" ? code : "unknown"})\n`,
+    );
+    process.exit(1);
+  }
+}
+const auditWriter =
+  database === undefined
+    ? undefined
+    : createAsyncAuditWriter({
+        store: createPostgresAuditStore(database.db),
+        clock: systemClock,
+        events,
+        logger,
+      });
+const auditLog = auditWriter ?? createInMemoryAuditLog(config.audit.memoryEntries);
+if (auditWriter === undefined) {
+  logger.info({ entries: config.audit.memoryEntries }, "audit log in memory (bounded)");
+} else {
+  logger.info({}, "audit log in PostgreSQL");
+}
 const auditDeps = {
   audit: auditLog,
   clock: systemClock,
@@ -121,7 +152,10 @@ const app = createApp({
   routeInference: route,
   streamInference: stream,
   simulatePolicy: simulatePolicy(routing),
-  authenticate: (key) => verifyApiKey(key, config.apiKeys),
+  authenticate: createAuthenticator(
+    config.apiKeys,
+    database === undefined ? undefined : createPostgresApiKeyRepository(database.db),
+  ),
 });
 
 const server = serve({ fetch: app.fetch, port: config.port, hostname: config.host }, (info) => {
@@ -138,10 +172,14 @@ const server = serve({ fetch: app.fetch, port: config.port, hostname: config.hos
   );
 });
 
-/** Closes the HTTP server and the circuit-state connection, then exits. */
+/** Closes the server, flushes the audit writer, closes the connections, then exits. */
 function shutdown(): void {
   server.close();
-  void (redisState?.close() ?? Promise.resolve()).finally(() => process.exit(0));
+  void (async () => {
+    await auditWriter?.close();
+    await database?.close();
+    await redisState?.close();
+  })().finally(() => process.exit(0));
 }
 process.once("SIGINT", shutdown);
 process.once("SIGTERM", shutdown);

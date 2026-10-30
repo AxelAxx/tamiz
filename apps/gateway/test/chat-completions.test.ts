@@ -352,7 +352,8 @@ describe("resilience on the endpoint (spec 003)", () => {
       routeInference: blocked,
       streamInference: () => Promise.reject(new Error("not streamed")),
       simulatePolicy: () => Promise.reject(new Error("not simulated")),
-      authenticate: (key) => (key === DEMO_KEY ? "demo" : undefined),
+      authenticate: (key) =>
+        key === DEMO_KEY ? { clientId: "demo", role: "client" as const } : undefined,
     });
 
     const response = await app.request("/v1/chat/completions", post(VALID));

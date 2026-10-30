@@ -24,7 +24,7 @@ import { streamInference } from "../../src/application/use-cases/stream-inferenc
 import type { ProviderError } from "../../src/domain/errors.js";
 import type { RoutingPolicy } from "../../src/domain/model/routing-policy.js";
 import { ok, type Result } from "../../src/domain/result.js";
-import { hashApiKey, verifyApiKey } from "../../src/infrastructure/auth/api-keys.js";
+import { hashApiKey, verifyPrincipal } from "../../src/infrastructure/auth/api-keys.js";
 import {
   createInMemoryAuditLog,
   type InMemoryAuditLog,
@@ -39,6 +39,10 @@ import { cleanPrivacyDeps } from "./privacy.js";
 export const DEMO_KEY = "tmz_demo-test-key-not-a-secret-000000000000000";
 export const DEMO_KEY_HASH = hashApiKey(DEMO_KEY);
 export const AUTH = { authorization: `Bearer ${DEMO_KEY}` } as const;
+
+/** An admin key (spec 006 FR-008); only its hash is given to the app. */
+export const ADMIN_KEY = "tmz_ops-admin-test-key-not-a-secret-0000000000";
+export const ADMIN_AUTH = { authorization: `Bearer ${ADMIN_KEY}` } as const;
 
 export const START = new Date("2026-05-06T07:08:09.000Z");
 
@@ -121,7 +125,10 @@ export async function createTestApp(
   };
   const route = withAudit(routeInference(deps), auditDeps);
   const stream = withAuditStream(streamInference(deps), auditDeps);
-  const records = [{ clientId: "demo", keyHash: DEMO_KEY_HASH }];
+  const records = [
+    { clientId: "demo", keyHash: DEMO_KEY_HASH },
+    { clientId: "ops", keyHash: hashApiKey(ADMIN_KEY), role: "admin" as const },
+  ];
   const app = createApp({
     clock,
     version: "0.1.0",
@@ -130,7 +137,7 @@ export async function createTestApp(
     routeInference: route,
     streamInference: stream,
     simulatePolicy: simulatePolicy(deps),
-    authenticate: (key) => verifyApiKey(key, records),
+    authenticate: (key) => verifyPrincipal(key, records),
   });
   /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */
   const send = (path: string, init?: RequestInit) =>

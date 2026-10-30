@@ -10,11 +10,17 @@ import type { MiddlewareHandler } from "hono";
 import { httpStatusFor, toErrorEnvelope } from "../mappers/error-envelope.js";
 import type { RequestIdVariables } from "./request-id.js";
 
-/** Returns the client id that owns `key`, or `undefined`. */
-export type Authenticate = (key: string) => string | undefined;
+/** Who owns `key` and with which role (spec 006 FR-008), or `undefined`. */
+export type Authenticate = (
+  key: string,
+) =>
+  | { readonly clientId: string; readonly role: "client" | "admin" }
+  | undefined
+  | Promise<{ readonly clientId: string; readonly role: "client" | "admin" } | undefined>;
 
 export type ClientIdVariables = {
   clientId: string;
+  role: "client" | "admin";
 };
 
 const BEARER = /^Bearer ([^\s]+)$/;
@@ -24,14 +30,15 @@ export function apiKeyAuth(
 ): MiddlewareHandler<{ Variables: RequestIdVariables & ClientIdVariables }> {
   return async (c, next) => {
     const presented = BEARER.exec(c.req.header("authorization") ?? "")?.[1];
-    const clientId = presented === undefined ? undefined : authenticate(presented);
-    if (clientId === undefined) {
+    const principal = presented === undefined ? undefined : await authenticate(presented);
+    if (principal === undefined) {
       return c.json(
         toErrorEnvelope("unauthorized", "Missing or invalid API key", c.get("requestId")),
         httpStatusFor("unauthorized"),
       );
     }
-    c.set("clientId", clientId);
+    c.set("clientId", principal.clientId);
+    c.set("role", principal.role);
     await next();
   };
 }

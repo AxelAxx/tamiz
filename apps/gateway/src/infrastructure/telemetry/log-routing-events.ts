@@ -33,6 +33,7 @@ const FIELDS = [
   "action",
   "ruleId",
   "placeholders",
+  "count",
 ] as const;
 
 function isNotable(event: RoutingEvent): boolean {
@@ -40,6 +41,7 @@ function isNotable(event: RoutingEvent): boolean {
     case "residency.blocked":
     case "stream.failed":
     case "privacy.detector_failed":
+    case "audit.dropped":
       return true;
     case "circuit.changed":
       return event.to === "open";
