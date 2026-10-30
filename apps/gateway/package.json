@@ -17,6 +17,7 @@
     "api-key:add": "tsx scripts/add-api-key.ts"
   },
   "devDependencies": {
+    "@opentelemetry/context-async-hooks": "2.12.0",
     "@tamiz/test-utils": "workspace:*",
     "@tamiz/tsconfig": "workspace:*",
     "@types/node": "catalog:",
@@ -38,6 +39,11 @@
     "@hono/node-server": "^2.1.5",
     "@hono/zod-openapi": "^1.6.3",
     "@hono/zod-validator": "^0.9.1",
+    "@opentelemetry/api": "1.9.1",
+    "@opentelemetry/exporter-trace-otlp-http": "0.223.0",
+    "@opentelemetry/resources": "2.12.0",
+    "@opentelemetry/sdk-trace-base": "2.12.0",
+    "@opentelemetry/sdk-trace-node": "2.12.0",
     "@tamiz/contracts": "workspace:*",
     "ai": "^6.0.319",
     "drizzle-orm": "^0.45.4",

@@ -1,11 +1,12 @@
 # Local stack for Tamiz. Feature 003 (T-003-06) adds the key-value store that shares
 # circuit breaker state between gateway instances; feature 004 adds the privacy service;
-# the OPS task adds the gateway, Postgres, Ollama and Jaeger.
+# feature 006 adds Postgres and Jaeger; the OPS task adds the gateway and Ollama.
 #
 #   docker compose up valkey
 #   REDIS_URL=redis://localhost:6379 pnpm --filter @tamiz/gateway dev
 #   docker compose up privacy
 #   docker compose up postgres   # DATABASE_URL=postgres://tamiz:tamiz@localhost:5432/tamiz (feature 006)
+#   docker compose up jaeger     # OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318, UI http://localhost:16686
 
 services:
   valkey:
@@ -52,6 +53,14 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+    restart: unless-stopped
+
+  # Traces (spec 006 FR-011): OTLP/HTTP on 4318, the UI on 16686. Spans carry no content.
+  jaeger:
+    image: jaegertracing/jaeger:2.22.0
+    ports:
+      - "16686:16686"
+      - "4318:4318"
     restart: unless-stopped
 
 volumes:

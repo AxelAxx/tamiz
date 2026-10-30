@@ -328,6 +328,7 @@ pnpm --filter @tamiz/gateway generate-api-key <client>   # prints a key and its 
 docker compose up valkey     # shared circuit state for REDIS_URL (T-003-06)
 docker compose up privacy    # privacy service for TAMIZ_PRIVACY_URL (required since T-005-03)
 docker compose up postgres   # audit log + API keys for DATABASE_URL (T-006-03)
+docker compose up jaeger     # traces: OTEL_EXPORTER_OTLP_ENDPOINT=http://localhost:4318, UI :16686 (T-006-05)
 pnpm --filter @tamiz/gateway db:generate   # new migration from the Drizzle schema (commit drizzle/)
 pnpm --filter @tamiz/gateway api-key:add <client> [--admin]   # key stored hashed in the database
 docker compose up            # full local stack                   (later: OPS)

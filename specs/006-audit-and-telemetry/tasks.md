@@ -138,28 +138,28 @@ approved by Alex (`T-006-01`).
 
 ### Tests first
 
-- [ ] T024 [P] [US5] `gateway/test/telemetry/spans.test.ts` (in-memory span exporter), for a
+- [x] T024 [P] [US5] `gateway/test/telemetry/spans.test.ts` (in-memory span exporter), for a
   request with one fallback:
   - one `tamiz.request` span with two `chat …` children, the first with an error status;
   - the `gen_ai.*` and `tamiz.*` attributes;
   - the `routing.decision`, `routing.fallback` and `privacy.*` events
   - (US5-1 … US5-3).
-- [ ] T025 [P] [US5] `gateway/test/privacy/no-leak.test.ts` (extended): span names,
+- [x] T025 [P] [US5] `gateway/test/privacy/no-leak.test.ts` (extended): span names,
   attributes and events contain no test value, and no `gen_ai.*message*`, `gen_ai.prompt`
   or `gen_ai.completion` attribute exists (US5-4, FR-010).
-- [ ] T026 [P] [US5] `gateway/test/telemetry/otel-setup.test.ts`: without an endpoint the
+- [x] T026 [P] [US5] `gateway/test/telemetry/otel-setup.test.ts`: without an endpoint the
   tracer is a no-op; with one, the exporter is configured from the OTel variables (US5-5).
 
 ### Implementation
 
-- [ ] T027 Install the OpenTelemetry packages (versions and GenAI names checked with
+- [x] T027 Install the OpenTelemetry packages (versions and GenAI names checked with
   Context7). Add:
   - `application/ports/tracer.port.ts`;
   - `withTracing`, and `tracer.attempt` around attempts in `executeChain`;
   - `infrastructure/telemetry/{otel-setup,otel-tracer,otel-routing-events,fan-out}.ts`.
 
   In `main.ts`, set up the provider and shut it down on exit.
-- [ ] T028 `docker-compose.yml` gains `jaeger`; document the variables; gates; record (with
+- [x] T028 `docker-compose.yml` gains `jaeger`; document the variables; gates; record (with
   a manual Jaeger check, or why it is not possible); backlog row.
 
 ## Phase 5: `T-006-06` — Cost and provider health (US3, US4)

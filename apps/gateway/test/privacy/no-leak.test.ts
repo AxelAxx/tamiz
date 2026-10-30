@@ -2,11 +2,14 @@ import { describe, expect, it } from "vitest";
 import type { Inspection } from "../../src/domain/model/sensitivity.js";
 import { ok } from "../../src/domain/result.js";
 import { createLogger } from "../../src/infrastructure/logging/logger.js";
+import { fanOut } from "../../src/infrastructure/telemetry/fan-out.js";
 import { createLogRoutingEvents } from "../../src/infrastructure/telemetry/log-routing-events.js";
 import { AUTH, createTestApp, defaultPolicy } from "../helpers/app.js";
 import { inspectAs } from "../helpers/privacy.js";
+import { captureSpans } from "../helpers/tracing.js";
 
-// Spec 005 US2-5, SC-006, FR-013 (tasks.md T029); spec 006 FR-015 (audit entries): run the privacy scenarios with the real
+// Spec 005 US2-5, SC-006, FR-013 (tasks.md T029); spec 006 FR-015 (audit entries) and US5-4,
+// FR-010 (spans, tasks.md T025): run the privacy scenarios with the real
 // logger and the log sink of the routing events, and search everything the gateway
 // writes or answers outside the response body for the test values and the mapping.
 
@@ -32,7 +35,14 @@ function capture() {
     level: "debug",
     destination: { write: (c: string) => void chunks.push(c) },
   });
-  return { logger, events: createLogRoutingEvents(logger), raw: () => chunks.join("") };
+  const spans = captureSpans();
+  return {
+    logger,
+    tracer: spans.tracer,
+    events: fanOut(createLogRoutingEvents(logger), spans.events),
+    raw: () => chunks.join(""),
+    spans,
+  };
 }
 
 describe("no request content outside the request (SC-006)", () => {
@@ -42,9 +52,9 @@ describe("no request content outside the request (SC-006)", () => {
     ["block", inspection("critical"), "block" as const],
     ["detector failure", { status: "failed", reason: "contract" } as const, undefined],
   ])(
-    "%s: logs, events and headers contain no value and no mapping",
+    "%s: logs, events, headers, entries and spans contain no value and no mapping",
     async (_name, found, critical) => {
-      const { logger, events, raw } = capture();
+      const { logger, tracer, events, raw, spans } = capture();
       const base = await defaultPolicy();
       const policy =
         critical === undefined
@@ -59,6 +69,7 @@ describe("no request content outside the request (SC-006)", () => {
       const { send, audit } = await createTestApp({
         logger,
         events,
+        tracer,
         policy,
         inspect: inspectAs(found),
         script: (input) =>
@@ -91,6 +102,22 @@ describe("no request content outside the request (SC-006)", () => {
       expect(audit.size()).toBe(1);
       for (const value of VALUES) expect(entries).not.toContain(value);
       expect(entries).not.toMatch(/<PERSON_1>|<EMAIL_1>|Respuesta/);
+      // Spec 006 US5-4, FR-010: spans neither, and no GenAI content attribute is ever set.
+      const traced = spans.dump();
+      expect(spans.spans().length).toBeGreaterThan(0);
+      for (const value of VALUES) expect(traced).not.toContain(value);
+      expect(traced).not.toMatch(/<PERSON_1>|<EMAIL_1>|Respuesta|Soy /);
+      const keys = spans
+        .spans()
+        .flatMap((span) => [
+          ...Object.keys(span.attributes),
+          ...span.events.flatMap((event) => Object.keys(event.attributes ?? {})),
+        ]);
+      expect(
+        keys.filter((key) =>
+          /^gen_ai\.(.*message.*|prompt|completion|system_instructions)$/.test(key),
+        ),
+      ).toEqual([]);
     },
   );
 });
