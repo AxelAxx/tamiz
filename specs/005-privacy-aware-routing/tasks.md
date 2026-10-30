@@ -255,32 +255,32 @@ suites pass.
 
 ### Tests first
 
-- [ ] T038 [P] [US4] `gateway/test/domain/restore-stream.test.ts`:
+- [x] T038 [P] [US4] `gateway/test/domain/restore-stream.test.ts`:
   - US4-1 … US4-4 examples;
   - a `fast-check` property: for random answers built from mapped placeholders, unmapped
     lookalikes and plain text, and every split into up to 3 cuts,
     `concat(push) + flush == restore(full)` (US4-5, SC-003);
   - held text never exceeds `MAX_PLACEHOLDER_LENGTH`.
-- [ ] T039 [P] [US4] `gateway/test/application/stream-inference-privacy.test.ts`:
+- [x] T039 [P] [US4] `gateway/test/application/stream-inference-privacy.test.ts`:
   - inspection and actions happen before the first token;
   - `block` gives a JSON error with no stream;
   - an anonymized stream is restored;
   - the flush happens before the usage chunk (US4-4) and on a mid-stream error.
-- [ ] T040 [P] `gateway/test/chat-completions-stream.test.ts` (extended):
+- [x] T040 [P] `gateway/test/chat-completions-stream.test.ts` (extended):
   - SSE chunks of an anonymized request contain restored values;
   - headers are present on the stream response.
 
 ### Implementation
 
-- [ ] T041 `gateway/src/domain/model/restore-stream.ts` (research R-07).
-- [ ] T042 `gateway/src/application/use-cases/stream-inference.ts`:
+- [x] T041 `gateway/src/domain/model/restore-stream.ts` (research R-07).
+- [x] T042 `gateway/src/application/use-cases/stream-inference.ts`:
   - same inspection and actions as T033;
   - text parts go through `createRestorer`;
   - `flush` happens before usage and on error.
 
 ### Verification
 
-- [ ] T043 Run the gates. Write `docs/tasks/done/T-005-05-streaming-restoration.md` and
+- [x] T043 Run the gates. Write `docs/tasks/done/T-005-05-streaming-restoration.md` and
   flip the backlog row.
 
 ---

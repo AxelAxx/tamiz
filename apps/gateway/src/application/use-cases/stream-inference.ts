@@ -11,15 +11,17 @@
  * text) and its cost (FR-026). The client's signal reaches the provider (FR-027).
  *
  * Spec 005: the same inspection and privacy actions as `routeInference` happen before the
- * stream starts; for `anonymize` each streamed text is restored. Placeholders split
- * across chunks are handled by the restoring buffer of `T-005-05`; until then a split
- * placeholder reaches the client as placeholder text, never as a leaked value.
+ * stream starts. For `anonymize` the streamed text goes through a placeholder-safe
+ * restorer (FR-016, FR-017): a placeholder split across chunks is held until complete and
+ * restored once; plain text passes at once; what is held is flushed before the finish or
+ * the error part.
  */
 import type { ProviderError } from "../../domain/errors.js";
 import { computeCost, type Usage } from "../../domain/model/cost.js";
 import type { Abandoned } from "../../domain/model/fallback.js";
 import type { InferenceRequest } from "../../domain/model/inference-request.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
+import type { StreamRestorer } from "../../domain/model/restore-stream.js";
 import type { RoutingDecision } from "../../domain/model/routing-decision.js";
 import type { RoutingPolicy } from "../../domain/model/routing-policy.js";
 import type { Usd } from "../../domain/model/units.js";
@@ -84,15 +86,20 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
     target: ModelTarget,
     started: StartedStream,
     sent: ProtectedMessages,
+    restorer: StreamRestorer,
   ): AsyncGenerator<RoutedStreamPart> {
     let text = started.first;
     for await (const part of started.rest) {
       switch (part.type) {
-        case "delta":
+        case "delta": {
           text += part.text;
-          yield { type: "delta", text: sent.restore(part.text) };
+          const restored = restorer.push(part.text);
+          if (restored !== "") yield { type: "delta", text: restored };
           break;
+        }
         case "finish": {
+          const held = restorer.flush();
+          if (held !== "") yield { type: "delta", text: held };
           const usage = resolveUsage(
             {
               text,
@@ -110,12 +117,15 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
           };
           return;
         }
-        case "error":
+        case "error": {
+          const held = restorer.flush();
+          if (held !== "") yield { type: "delta", text: held };
           // A client that went away is not a provider failure.
           if (part.error.cause !== "aborted")
             await recordFailure(request, policy, target, part.error);
           yield part;
           return;
+        }
       }
     }
   }
@@ -172,13 +182,14 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
     if (!served.ok) return err({ decision, failure: served.error });
 
     const { target, value: started, abandoned } = served.value;
+    const restorer = sent.streamRestorer();
     return ok({
       decision,
       target,
       abandoned,
       modelName: started.modelName,
-      first: sent.restore(started.first),
-      parts: routedParts(request, policy, target, started, sent),
+      first: restorer.push(started.first),
+      parts: routedParts(request, policy, target, started, sent, restorer),
       createdAt: deps.clock.now(),
       ...(sent.noticeVersion === undefined ? {} : { noticeVersion: sent.noticeVersion }),
     });

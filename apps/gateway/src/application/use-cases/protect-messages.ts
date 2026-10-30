@@ -10,6 +10,7 @@
  */
 import type { Message } from "../../domain/model/inference-request.js";
 import { anonymizeMessages, restore } from "../../domain/model/placeholders.js";
+import { createStreamRestorer, type StreamRestorer } from "../../domain/model/restore-stream.js";
 import type { RoutingDecision } from "../../domain/model/routing-decision.js";
 import type { Inspection } from "../../domain/model/sensitivity.js";
 
@@ -22,6 +23,8 @@ export interface AnonymizationNotice {
 export interface ProtectedMessages {
   readonly providerMessages: ReadonlyArray<Message>;
   readonly restore: (text: string) => string;
+  /** A fresh placeholder-safe restorer for one streamed answer (spec 005 FR-016). */
+  readonly streamRestorer: () => StreamRestorer;
   /** How many distinct values were replaced; `0` when not anonymized. */
   readonly placeholders: number;
   /** Set when the notice was added. */
@@ -29,6 +32,7 @@ export interface ProtectedMessages {
 }
 
 const identity = (text: string): string => text;
+const passThrough = (): StreamRestorer => ({ push: identity, flush: () => "" });
 
 export function protectMessages(
   decision: RoutingDecision,
@@ -37,7 +41,12 @@ export function protectMessages(
   notice: AnonymizationNotice,
 ): ProtectedMessages {
   if (decision.privacyAction !== "anonymize" || inspection.status !== "ok") {
-    return { providerMessages: messages, restore: identity, placeholders: 0 };
+    return {
+      providerMessages: messages,
+      restore: identity,
+      streamRestorer: passThrough,
+      placeholders: 0,
+    };
   }
   const anonymized = anonymizeMessages(
     messages.map((message) => message.content),
@@ -53,6 +62,7 @@ export function protectMessages(
       })),
     ],
     restore: (text) => restore(text, mapping),
+    streamRestorer: () => createStreamRestorer(mapping),
     placeholders: mapping.length,
     noticeVersion: notice.version,
   };
