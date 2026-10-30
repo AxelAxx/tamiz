@@ -114,25 +114,25 @@ approved by Alex (`T-006-01`).
 
 ### Tests first
 
-- [ ] T019 [P] [US2] `gateway/test/persistence/audit-query.test.ts` (Testcontainers):
+- [x] T019 [P] [US2] `gateway/test/persistence/audit-query.test.ts` (Testcontainers):
   - every filter;
   - the entity filter on `jsonb` (US2-4);
   - keyset pages with no repeats or skips while rows are being inserted (US2-3);
   - 100 000 rows, page p95 < 200 ms (SC-004).
-- [ ] T020 [P] [US2] `gateway/test/admin/audit-route.test.ts` (in-memory log):
+- [x] T020 [P] [US2] `gateway/test/admin/audit-route.test.ts` (in-memory log):
   - query validation errors;
   - default and maximum `limit`;
   - newest first (US2-2);
   - OpenAPI component.
-- [ ] T021 [P] [US2] `gateway/test/admin/admin-only.test.ts`: a client key → 403, none → 401,
+- [x] T021 [P] [US2] `gateway/test/admin/admin-only.test.ts`: a client key → 403, none → 401,
   admin → 200 on every `/v1/admin/*` (US2-5).
 
 ### Implementation
 
-- [ ] T022 `contracts/src/admin.ts` (audit query and page);
+- [x] T022 `contracts/src/admin.ts` (audit query and page);
   `application/use-cases/query-audit-log.ts`; `presentation/middlewares/admin-only.ts`;
   `routes/admin/audit.ts`.
-- [ ] T023 Gates; record; backlog row.
+- [x] T023 Gates; record; backlog row.
 
 ## Phase 4: `T-006-05` — OpenTelemetry and Jaeger (US5)
 

@@ -15,6 +15,7 @@ import type {
 import type { LoggerPort } from "../../src/application/ports/logger.port.js";
 import type { RoutingEventsPort } from "../../src/application/ports/routing-events.port.js";
 import type { InspectSensitivity } from "../../src/application/use-cases/inspect-sensitivity.js";
+import { queryAuditLog } from "../../src/application/use-cases/query-audit-log.js";
 import {
   type RouteInferenceDeps,
   routeInference,
@@ -62,6 +63,7 @@ export const NO_CHAT = {
   routeInference: () => Promise.reject(new Error("routeInference must not be called")),
   streamInference: () => Promise.reject(new Error("streamInference must not be called")),
   simulatePolicy: () => Promise.reject(new Error("simulatePolicy must not be called")),
+  queryAuditLog: () => Promise.reject(new Error("queryAuditLog must not be called")),
   authenticate: () => undefined,
 } as const;
 
@@ -137,6 +139,7 @@ export async function createTestApp(
     routeInference: route,
     streamInference: stream,
     simulatePolicy: simulatePolicy(deps),
+    queryAuditLog: queryAuditLog(audit),
     authenticate: (key) => verifyPrincipal(key, records),
   });
   /** `app.request` with the fake clock driven, for paths that retry or wait (spec 003). */

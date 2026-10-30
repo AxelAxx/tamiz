@@ -9,6 +9,9 @@
  * validates exactly like the contract schema.
  */
 import {
+  AuditEntrySchema,
+  AuditPageSchema,
+  AuditQuerySchema,
   ChatCompletionChunkSchema,
   ChatCompletionRequestSchema,
   ChatCompletionResponseSchema,
@@ -29,3 +32,6 @@ export const ChatCompletionChunkBody = ChatCompletionChunkSchema.meta({
 export const ErrorEnvelopeBody = ErrorEnvelopeSchema.meta({ id: "ErrorEnvelope" });
 export const HealthResponseBody = HealthResponseSchema.meta({ id: "HealthResponse" });
 export const SimulateResponseBody = SimulateResponseSchema.meta({ id: "SimulateResponse" });
+export const AuditEntryBody = AuditEntrySchema.meta({ id: "AuditEntry" });
+export const AuditPageBody = AuditPageSchema.meta({ id: "AuditPage" });
+export const AuditQueryParams = AuditQuerySchema;
