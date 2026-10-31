@@ -11,14 +11,20 @@
  *
  * Spec 005 (FR-011 … FR-013): before deciding, the request's messages are inspected by the
  * privacy service; the decision applies the policy's privacy action. A block never calls a
- * provider; `anonymize` sends placeholders and restores the answer (`protectMessages`).
+ * provider; `anonymize` sends placeholders and restores the answer (`protectRequest`).
  * Usage and cost are those of the exchange the provider billed (US2-6).
+ *
+ * Tool calling (009 tool-calling FR-006 … FR-016): every text the provider reads is
+ * inspected (contents, tool-call arguments, tool results, tool definitions); a request whose
+ * values cannot be anonymized safely stays local (`privacy.not_anonymizable`); every attempt
+ * gets the same tools and tool choice; the answer's tool-call arguments are restored too.
  */
 
 import { type PrivacyBlockedError, privacyBlockedError } from "../../domain/errors.js";
 import { computeCost, type Usage } from "../../domain/model/cost.js";
 import type { Abandoned } from "../../domain/model/fallback.js";
 import type { InferenceRequest, Message } from "../../domain/model/inference-request.js";
+import { inspectedTexts, notAnonymizableReason } from "../../domain/model/inspected-text.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
 import {
   type BlockDecision,
@@ -33,7 +39,7 @@ import type { Milliseconds, Usd } from "../../domain/model/units.js";
 import { err, ok, type Result } from "../../domain/result.js";
 import type { CircuitStatePort } from "../ports/circuit-state.port.js";
 import type { ClockPort } from "../ports/clock.port.js";
-import type { ProviderCompletion } from "../ports/llm-provider.port.js";
+import type { ProviderCompletion, ProviderCompletionInput } from "../ports/llm-provider.port.js";
 import type { PolicyRepositoryPort } from "../ports/policy-repository.port.js";
 import type { RoutingEventsPort } from "../ports/routing-events.port.js";
 import type { TracerPort } from "../ports/tracer.port.js";
@@ -42,10 +48,10 @@ import { type ChainFailure, executeChain } from "../resilience/execute-chain.js"
 import { classifyTask } from "./classify-task.js";
 import type { InspectSensitivity } from "./inspect-sensitivity.js";
 import {
-  type AnonymizationNotice,
-  type ProtectedMessages,
-  protectMessages,
-} from "./protect-messages.js";
+  type AnonymizationNotices,
+  type ProtectedRequest,
+  protectRequest,
+} from "./protect-request.js";
 
 export interface RouteInferenceDeps {
   readonly policies: PolicyRepositoryPort;
@@ -57,8 +63,8 @@ export interface RouteInferenceDeps {
   readonly random: () => number;
   /** Where the request's personal data is (spec 005 FR-011). */
   readonly inspect: InspectSensitivity;
-  /** Added as a system message when anonymizing (spec 005 research R-06). */
-  readonly anonymizationNotice: AnonymizationNotice;
+  /** Added as a system message when anonymizing (spec 005 research R-06; v2 with tools). */
+  readonly anonymizationNotices: AnonymizationNotices;
   /** Attempt spans (spec 006 FR-009); none when absent. */
   readonly tracer?: TracerPort;
 }
@@ -117,9 +123,11 @@ export function resolveUsage(
   messages: ReadonlyArray<Message>,
 ): Usage {
   if (completion.usage !== undefined) return { ...completion.usage, estimated: false };
+  const sent = inspectedTexts({ messages }).map(({ text }) => text);
+  const calls = (completion.toolCalls ?? []).map((call) => call.name + call.arguments);
   return {
-    promptTokens: estimateTokens(messages.map((message) => message.content).join("")),
-    completionTokens: estimateTokens(completion.text),
+    promptTokens: estimateTokens(sent.join("")),
+    completionTokens: estimateTokens(completion.text + calls.join("")),
     estimated: true,
   };
 }
@@ -134,15 +142,28 @@ export async function decideWithPrivacy(
   readonly inspection: Inspection;
   readonly decision: Decision;
 }> {
+  const located = inspectedTexts(request);
   const [inspection, policy] = await Promise.all([
     deps.inspect({
       requestId: request.requestId,
-      messages: request.messages.map((message) => message.content),
+      messages: located.map(({ text }) => text),
       ...(signal === undefined ? {} : { signal }),
     }),
     deps.policies.getActive(),
   ]);
-  const decision = decide(policy, classifyTask(request, inspection));
+  const notAnonymizable = notAnonymizableReason(located, inspection);
+  const decision = decide(policy, {
+    ...classifyTask(request, inspection),
+    ...(notAnonymizable === undefined ? {} : { notAnonymizable }),
+  });
+  if (decision.kind === "route" && decision.notAnonymizable !== undefined) {
+    deps.events.emit({
+      type: "privacy.not_anonymizable",
+      requestId: request.requestId,
+      reason: decision.notAnonymizable,
+      at: deps.clock.now().toISOString(),
+    });
+  }
   deps.events.emit({
     type: "privacy.action",
     requestId: request.requestId,
@@ -160,8 +181,8 @@ export function protectForProvider(
   request: InferenceRequest,
   decision: RoutingDecision,
   inspection: Inspection,
-): ProtectedMessages {
-  const sent = protectMessages(decision, inspection, request.messages, deps.anonymizationNotice);
+): ProtectedRequest {
+  const sent = protectRequest(decision, inspection, request, deps.anonymizationNotices);
   if (sent.noticeVersion !== undefined) {
     deps.events.emit({
       type: "privacy.anonymized",
@@ -171,6 +192,16 @@ export function protectForProvider(
     });
   }
   return sent;
+}
+
+/** The request's tools and tool choice, passed unchanged to every attempt (FR-016). */
+export function toolOptions(
+  request: InferenceRequest,
+): Pick<ProviderCompletionInput, "tools" | "toolChoice"> {
+  return {
+    ...(request.tools === undefined ? {} : { tools: request.tools }),
+    ...(request.toolChoice === undefined ? {} : { toolChoice: request.toolChoice }),
+  };
 }
 
 export function routeInference(deps: RouteInferenceDeps): RouteInference {
@@ -198,6 +229,7 @@ export function routeInference(deps: RouteInferenceDeps): RouteInference {
         deps.providers.resolve(target.provider).complete({
           target,
           messages: sent.providerMessages,
+          ...toolOptions(request),
           ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
           ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
           timeoutMs,
@@ -222,7 +254,18 @@ export function routeInference(deps: RouteInferenceDeps): RouteInference {
     return ok({
       decision,
       target,
-      completion: { ...completion, text: sent.restore(completion.text) },
+      completion: {
+        ...completion,
+        text: sent.restore(completion.text),
+        ...(completion.toolCalls === undefined
+          ? {}
+          : {
+              toolCalls: completion.toolCalls.map((call) => ({
+                ...call,
+                arguments: sent.restoreArguments(call.arguments),
+              })),
+            }),
+      },
       usage,
       cost: computeCost(usage, target.pricing),
       abandoned,

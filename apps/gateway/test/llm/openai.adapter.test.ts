@@ -28,7 +28,7 @@ describeAdapterScenarios({
     ["stop", "stop"],
     ["length", "length"],
     ["content_filter", "content_filter"],
-    ["tool_calls", "stop"],
+    ["tool_calls", "tool_calls"],
   ],
   maxTokensField: "max_tokens",
   rejected: { status: 401, cause: "authentication" },

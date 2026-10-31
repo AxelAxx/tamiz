@@ -85,16 +85,16 @@ export function createHttpPiiDetector(options: HttpPiiDetectorOptions): PiiDetec
         const start = utf16[finding.start];
         const end = utf16[finding.end];
         if (start === undefined || end === undefined || end <= start) return failed("contract");
-        let messageIndex = 0;
-        while (messageIndex + 1 < starts.length && (starts[messageIndex + 1] ?? 0) <= start) {
-          messageIndex += 1;
+        let textIndex = 0;
+        while (textIndex + 1 < starts.length && (starts[textIndex + 1] ?? 0) <= start) {
+          textIndex += 1;
         }
-        const messageStart = starts[messageIndex];
-        const message = messages[messageIndex];
+        const messageStart = starts[textIndex];
+        const message = messages[textIndex];
         if (messageStart === undefined || message === undefined) return failed("contract");
         if (end > messageStart + message.length) return failed("contract");
         entities.push({
-          messageIndex,
+          textIndex,
           kind: finding.kind,
           start: start - messageStart,
           end: end - messageStart,

@@ -7,7 +7,9 @@
 import {
   ChatCompletionResponseSchema,
   HealthResponseSchema,
+  type ChatMessage as RequestMessage,
   SimulateResponseSchema,
+  type ToolDefinition,
 } from "@tamiz/contracts";
 import type { z } from "zod";
 import { ServiceError } from "../eval.js";
@@ -28,7 +30,12 @@ export interface ChatAnswer {
 }
 
 export interface GatewayClient {
-  simulate(messages: ReadonlyArray<ChatMessage>, model?: string): Promise<SimulateResponse>;
+  /** Any request messages, tool calls and results included (009 tool-calling FR-022). */
+  simulate(
+    messages: ReadonlyArray<RequestMessage>,
+    model?: string,
+    tools?: ReadonlyArray<ToolDefinition>,
+  ): Promise<SimulateResponse>;
   /** A real completion through the gateway (the quality eval's arms). */
   chat(messages: ReadonlyArray<ChatMessage>, model: string, maxTokens: number): Promise<ChatAnswer>;
   version(): Promise<string | undefined>;
@@ -63,14 +70,14 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
   }
 
   return {
-    simulate: (messages, model = "tamiz-auto") =>
+    simulate: (messages, model = "tamiz-auto", tools) =>
       call("/v1/simulate", SimulateResponseSchema, {
         method: "POST",
         headers: {
           authorization: `Bearer ${options.apiKey}`,
           "content-type": "application/json",
         },
-        body: JSON.stringify({ model, messages }),
+        body: JSON.stringify({ model, messages, ...(tools === undefined ? {} : { tools }) }),
       }),
     async chat(messages, model, maxTokens) {
       const body = await call("/v1/chat/completions", ChatCompletionResponseSchema, {

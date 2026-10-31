@@ -136,7 +136,7 @@ describe("createAiSdkProvider edge cases (R-05, R-06)", () => {
       messages: [
         { role: "system", content: "S" },
         { role: "user", content: "U" },
-        { role: "assistant", content: "A" },
+        { role: "assistant", content: "A", toolCalls: [] },
         { role: "user", content: "U2" },
       ],
     });

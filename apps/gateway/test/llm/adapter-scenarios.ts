@@ -265,13 +265,16 @@ export function describeAdapterScenarios(config: AdapterScenarioConfig): void {
       expect(seen.body).not.toHaveProperty("temperature");
     });
 
-    it.each(config.finishReasons)("maps finish reason %s to %s (FR-016)", async (raw, expected) => {
-      answer(() => HttpResponse.json(config.withFinishReason(raw)));
+    it.each(config.finishReasons)(
+      "maps finish reason %s to %s (FR-016; tool_calls since the 009 tool-calling addendum)",
+      async (raw, expected) => {
+        answer(() => HttpResponse.json(config.withFinishReason(raw)));
 
-      const result = await config.createAdapter().complete(inputFor(config));
+        const result = await config.createAdapter().complete(inputFor(config));
 
-      expect(result.ok && result.value.finishReason).toBe(expected);
-    });
+        expect(result.ok && result.value.finishReason).toBe(expected);
+      },
+    );
 
     const { twoChoices, withoutUsage } = config;
     if (twoChoices !== undefined) {

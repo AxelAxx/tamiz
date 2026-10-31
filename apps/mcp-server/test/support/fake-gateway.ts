@@ -36,9 +36,10 @@ export type ScriptedFailure =
   | { kind: "delay"; ms: number }
   | { kind: "body"; body: unknown };
 
-/** One model reply: its text, or a gateway error for that call. */
+/** One model reply: its text, native tool calls (009 tool-calling), or a gateway error. */
 export type ScriptedReply =
   | string
+  | { toolCalls: ReadonlyArray<{ name: string; arguments: Record<string, unknown> }> }
   | { status: 451 | 502; type: "policy_blocked" | "provider_error"; message?: string };
 
 export interface FakeGatewayOptions {
@@ -147,17 +148,31 @@ export function createFakeGateway(options: FakeGatewayOptions = {}): FakeGateway
     if (reply === undefined) {
       return c.json(chatError("internal", "the script has no reply left", requestId), 500);
     }
-    if (typeof reply !== "string") {
+    if (typeof reply !== "string" && !("toolCalls" in reply)) {
       return c.json(chatError(reply.type, reply.message ?? "scripted", requestId), reply.status);
     }
+    const choice =
+      typeof reply === "string"
+        ? { index: 0, message: { role: "assistant", content: reply }, finish_reason: "stop" }
+        : {
+            index: 0,
+            message: {
+              role: "assistant",
+              content: null,
+              tool_calls: reply.toolCalls.map((call, index) => ({
+                id: `call_${requestId}_${index + 1}`,
+                type: "function",
+                function: { name: call.name, arguments: JSON.stringify(call.arguments) },
+              })),
+            },
+            finish_reason: "tool_calls",
+          };
     const answer: ChatCompletionResponse = ChatCompletionResponseSchema.parse({
       id: `chatcmpl-${requestId}`,
       object: "chat.completion",
       created: 1_793_000_000,
       model: "llama3.1:8b",
-      choices: [
-        { index: 0, message: { role: "assistant", content: reply }, finish_reason: "stop" },
-      ],
+      choices: [choice],
       usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120, cost_usd: 0 },
     });
     return c.json(answer);

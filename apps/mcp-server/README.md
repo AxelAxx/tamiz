@@ -152,19 +152,24 @@ TAMIZ_AGENT_API_KEY=<client key> TAMIZ_AGENT_MCP_KEY=<admin key>   pnpm --filter
 | `TAMIZ_AGENT_GATEWAY_URL` | `http://localhost:3000` | Where the model calls go. |
 | `TAMIZ_AGENT_API_KEY` | — | Required: a client key for the model calls. |
 | `TAMIZ_AGENT_MODEL` | `tamiz-local` | The requested model. |
+| `TAMIZ_AGENT_TOOL_PROTOCOL` | `native` | `native` tool calls, or `text` for models without tool support. |
 | `TAMIZ_AGENT_MCP_URL` | `http://127.0.0.1:3100/mcp` | The server's HTTP transport. |
 | `TAMIZ_AGENT_MCP_KEY` | — | Required: an admin key, sent as the bearer to the MCP server. |
 
-**Tool protocol.** The gateway's chat contract carries no `tools`, so the agent uses a text
-protocol (`specs/009-mcp-agent/contracts/agent-protocol.md`):
+**Tool protocol.** Two protocols, chosen by `TAMIZ_AGENT_TOOL_PROTOCOL`; in both a run stops
+after at most 6 model calls:
 
-- each model reply is one JSON object, either `{"tool", "arguments"}` or `{"answer"}`;
-- tool results and errors go back as `Observation …` messages;
-- a run stops after at most 6 model calls.
+- `native` (default, `T-009-05`, `specs/009-mcp-agent/tool-calling/`): the MCP tools are
+  declared as OpenAI `tools`, the model answers with `tool_calls`, every call of an answer
+  runs in order and goes back as a `tool` message, and a reply without tool calls is the
+  answer. The gateway inspects the tool results like any other text.
+- `text` (spec 009 R-10, `specs/009-mcp-agent/contracts/agent-protocol.md`): each model
+  reply is one JSON object, either `{"tool", "arguments"}` or `{"answer"}`; tool results
+  and errors go back as `Observation …` messages. Use it for models without tool support.
 
 The demo prints the answer and a run record with:
 
-- the prompt version (`prompts/system.v1.md`);
+- the protocol and the prompt version (`prompts/system.v2.md` native, `system.v1.md` text);
 - the UTC date;
 - the tools called, with their arguments;
 - the gateway request id of every model call.

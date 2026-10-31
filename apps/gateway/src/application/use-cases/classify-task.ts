@@ -9,5 +9,5 @@ import type { Inspection } from "../../domain/model/sensitivity.js";
 import { type ClassifiedRequest, classify } from "../../domain/model/task-classifier.js";
 
 export function classifyTask(request: InferenceRequest, inspection: Inspection): ClassifiedRequest {
-  return { ...request, ...classify(request.messages), inspection };
+  return { ...request, ...classify(request.messages, request.tools), inspection };
 }

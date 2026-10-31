@@ -18,8 +18,8 @@ const INSPECTION: Inspection = {
   status: "ok",
   level: "high",
   entities: [
-    { messageIndex: 0, kind: "PERSON", start: 10, end: 18, score: 0.85 },
-    { messageIndex: 0, kind: "EMAIL", start: 20, end: 35, score: 1 },
+    { textIndex: 0, kind: "PERSON", start: 10, end: 18, score: 0.85 },
+    { textIndex: 0, kind: "EMAIL", start: 20, end: 35, score: 1 },
   ],
 };
 

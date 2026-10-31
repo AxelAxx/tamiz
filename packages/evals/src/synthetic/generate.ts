@@ -491,9 +491,202 @@ function header(dataset: string, extra: Record<string, unknown> = {}): string {
 
 const pad = (n: number) => String(n).padStart(4, "0");
 
+// --- leak through tool messages (009 tool-calling FR-021, contracts/leak-eval-tools.md) ----
+
+export const LEAK_TOOL_CASES = 40;
+
+interface ToolCallSpec {
+  readonly name: string;
+  readonly args: Text;
+}
+type ToolMessage =
+  | Message
+  | { readonly role: "assistant"; readonly calls: ReadonlyArray<ToolCallSpec> }
+  | { readonly role: "tool"; readonly text: Text };
+type ToolTemplate = (g: Gen) => { messages: ToolMessage[]; tools: string[]; tags: string[] };
+
+const calling = (name: string, args: Text): ToolMessage => ({
+  role: "assistant",
+  calls: [{ name, args }],
+});
+const result = (text: Text): ToolMessage => ({ role: "tool", text });
+const ask = (text: string): ToolMessage => user(new Text().t(text));
+const expediente = (g: Gen) => `{"expediente":"${g.r.digits(6)}"}`;
+
+const LEAK_TOOLS: ReadonlyArray<ToolTemplate> = [
+  (g) => ({
+    messages: [
+      ask("¿Cuándo es la próxima cita del paciente?"),
+      calling("get_patient", new Text().t(expediente(g))),
+      result(
+        new Text()
+          .t("Paciente: ")
+          .e("PERSON", person(g.r))
+          .t(". DNI ")
+          .e("DNI", g.id.dni())
+          .t(". Próxima cita: 4 de noviembre."),
+      ),
+    ],
+    tools: ["get_patient"],
+    tags: ["tool-result", "clinic"],
+  }),
+  (g) => ({
+    messages: [
+      ask("Comprueba la nómina de este mes del empleado."),
+      calling("get_payroll", new Text().t(expediente(g))),
+      result(
+        new Text()
+          .t("Nómina de ")
+          .e("PERSON", person(g.r))
+          .t(": IBAN ")
+          .e("IBAN", g.id.iban())
+          .t(", NSS ")
+          .e("NSS", g.id.nss())
+          .t(", importe 2.140 euros."),
+      ),
+    ],
+    tools: ["get_payroll"],
+    tags: ["tool-result", "hr"],
+  }),
+  (g) => ({
+    messages: [
+      ask("¿Por qué se ha rechazado el último pago del cliente?"),
+      calling("get_card_status", new Text().t(expediente(g))),
+      result(
+        new Text()
+          .t("La tarjeta ")
+          .e("CREDIT_CARD", g.id.card())
+          .t(" del titular con NIE ")
+          .e("NIE", g.id.nie())
+          .t(" está bloqueada por seguridad."),
+      ),
+    ],
+    tools: ["get_card_status"],
+    tags: ["tool-result", "fintech"],
+  }),
+  (g) => {
+    const name = person(g.r);
+    return {
+      messages: [
+        ask("Envía el recordatorio de la cita."),
+        calling(
+          "send_email",
+          new Text()
+            .t('{"para":"')
+            .e("EMAIL", email(g.r, name))
+            .t('","asunto":"Recordatorio de su cita"}'),
+        ),
+        result(new Text().t("Correo enviado.")),
+      ],
+      tools: ["send_email"],
+      tags: ["tool-arguments", "clinic"],
+    };
+  },
+  (g) => ({
+    messages: [
+      ask("Programa una llamada con el cliente."),
+      calling(
+        "schedule_call",
+        new Text()
+          .t('{"telefono":"')
+          .e("PHONE", g.id.phone())
+          .t('","dni":"')
+          .e("DNI", g.id.dni())
+          .t('"}'),
+      ),
+      result(new Text().t("Llamada programada para mañana a las 10:00.")),
+    ],
+    tools: ["schedule_call"],
+    tags: ["tool-arguments", "fintech"],
+  }),
+  (g) => {
+    const nie = g.id.nie();
+    return {
+      messages: [
+        ask("Archiva el expediente del cliente."),
+        calling("archive_case", new Text().t('{"nie":"').e("NIE", nie).t('"}')),
+        result(
+          new Text()
+            .t("Expediente de ")
+            .e("PERSON", person(g.r))
+            .t(" con NIE ")
+            .e("NIE", nie)
+            .t(" archivado."),
+        ),
+      ],
+      tools: ["archive_case"],
+      tags: ["tool-both", "legal"],
+    };
+  },
+];
+
+const TOOL_DESCRIPTIONS: Readonly<Record<string, string>> = {
+  get_patient: "Busca un paciente por número de expediente",
+  get_payroll: "Devuelve la nómina del mes de un empleado",
+  get_card_status: "Estado de la tarjeta de un cliente",
+  send_email: "Envía un correo",
+  schedule_call: "Programa una llamada",
+  archive_case: "Archiva un expediente",
+};
+
+function toolCase(index: number, made: ReturnType<ToolTemplate>): string {
+  const messages: unknown[] = [];
+  const values: unknown[] = [];
+  let calls = 0;
+  made.messages.forEach((message, messageIndex) => {
+    if ("calls" in message) {
+      messages.push({
+        role: "assistant",
+        content: null,
+        tool_calls: message.calls.map((call, toolCallIndex) => {
+          for (const span of call.args.spans) {
+            const location = { kind: "arguments", messageIndex, toolCallIndex };
+            values.push({ ...span, messageIndex, location });
+          }
+          calls += 1;
+          return {
+            id: `call_${pad(index)}_${calls}`,
+            type: "function",
+            function: { name: call.name, arguments: call.args.text },
+          };
+        }),
+      });
+      return;
+    }
+    if (message.role === "tool") {
+      messages.push({
+        role: "tool",
+        tool_call_id: `call_${pad(index)}_${calls}`,
+        content: message.text.text,
+      });
+    } else {
+      messages.push({ role: message.role, content: message.text.text });
+    }
+    for (const span of message.text.spans) values.push({ ...span, messageIndex });
+  });
+  return JSON.stringify({
+    id: `pii-leak-tool-${pad(index)}`,
+    model: "tamiz-auto",
+    tags: made.tags,
+    messages,
+    tools: made.tools.map((name) => ({
+      type: "function",
+      function: {
+        name,
+        description: TOOL_DESCRIPTIONS[name] ?? name,
+        parameters: { type: "object" },
+      },
+    })),
+    values,
+  });
+}
+
+/** v1's cases, unchanged (same seeds), then the tool cases from their own seed. */
 export function generateLeak(seed = SEED): string {
   const g = { r: seeded(seed), id: identifiers(seeded(seed + 1)) };
-  const lines = [header("pii-leak-es", { policy: "apps/gateway/policies/default.yaml" })];
+  const lines = [
+    header("pii-leak-es", { version: 2, policy: "apps/gateway/policies/default.yaml" }),
+  ];
   for (let i = 0; i < LEAK_CASES; i += 1) {
     const template = LEAK[i % LEAK.length];
     if (template === undefined) throw new Error("no template");
@@ -509,6 +702,12 @@ export function generateLeak(seed = SEED): string {
         ),
       }),
     );
+  }
+  const t = { r: seeded(seed + 4), id: identifiers(seeded(seed + 5)) };
+  for (let i = 0; i < LEAK_TOOL_CASES; i += 1) {
+    const template = LEAK_TOOLS[i % LEAK_TOOLS.length];
+    if (template === undefined) throw new Error("no template");
+    lines.push(toolCase(i + 1, template(t)));
   }
   return `${lines.join("\n")}\n`;
 }
@@ -537,6 +736,6 @@ export function generateDetection(seed = SEED): string {
 }
 
 export const GENERATED = {
-  "pii-leak-es.v1.jsonl": generateLeak,
+  "pii-leak-es.v2.jsonl": generateLeak,
   "pii-detection-es.v1.jsonl": generateDetection,
 } as const;

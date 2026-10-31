@@ -127,7 +127,7 @@ export interface ProviderCompletionInput {
 
 export interface ProviderCompletion {
   readonly text: string;                             // "" when the answer is only calls
-  readonly toolCalls: ReadonlyArray<ToolCall>;       // empty when none
+  readonly toolCalls?: ReadonlyArray<ToolCall>;      // absent or empty when none
   // … finishReason (now may be "tool_calls"), usage, modelName …
 }
 
@@ -140,7 +140,7 @@ export type ContentPart =
 export type StreamPart = ContentPart | /* finish */ … | /* error */ …;
 
 export interface StartedStream {
-  readonly first: ContentPart;          // was: string
+  readonly first: string;   // "" when the stream starts with a tool call: rest begins with its start
   readonly modelName: string;
   readonly rest: AsyncIterable<StreamPart>;
 }
@@ -162,7 +162,7 @@ export interface StartedStream {
 
 ## 4. Storage
 
-Migration `apps/gateway/drizzle/0002_*`: `ALTER TABLE audit_entries ADD COLUMN tools jsonb`
+Migration `apps/gateway/drizzle/0001_audit_tools`: `ALTER TABLE audit_entries ADD COLUMN tools jsonb`
 (nullable). The repository maps `null` ↔ absent.
 
 ## 5. Contracts (`packages/contracts`)

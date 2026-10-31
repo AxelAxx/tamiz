@@ -120,6 +120,8 @@ export type PrivacyOutcome =
       readonly action: RouteAction;
       readonly chain: ReadonlyArray<ModelTarget>;
       readonly allowedResidencies: ReadonlyArray<Residency>;
+      /** Set when `anonymize` became `restrict_to_local` (009 tool-calling FR-011). */
+      readonly notAnonymizable?: NotAnonymizableReason;
     }
   | { readonly kind: "block"; readonly reason: BlockReason };
 
@@ -132,7 +134,16 @@ export interface PrivacyStepInput {
   /** `privacy.localRoute` resolved to targets. */
   readonly localChain: ReadonlyArray<ModelTarget>;
   readonly inspection: Inspection;
+  /**
+   * Set when a detected value cannot be replaced safely (009 tool-calling FR-011): an
+   * `anonymize` action then keeps the request on the local route instead.
+   */
+  readonly notAnonymizable?: NotAnonymizableReason;
 }
+
+/** Why anonymizing a request would not be safe (009 tool-calling research T-R06). */
+export const NOT_ANONYMIZABLE_REASONS = ["json_structure", "tool_definition"] as const;
+export type NotAnonymizableReason = (typeof NOT_ANONYMIZABLE_REASONS)[number];
 
 const LOCAL_ONLY: ReadonlyArray<Residency> = ["local"];
 
@@ -152,6 +163,9 @@ export function applyPrivacy(input: PrivacyStepInput): PrivacyOutcome {
       return localOutcome(input.localChain);
     case "allow":
     case "anonymize": {
+      if (level.action === "anonymize" && input.notAnonymizable !== undefined) {
+        return { ...localOutcome(input.localChain), notAnonymizable: input.notAnonymizable };
+      }
       const ruleAllowed = input.ruleResidency ?? RESIDENCIES;
       const allowed = ruleAllowed.filter((r) => level.residency?.includes(r) ?? true);
       const chain = input.chain.filter((target) => allowed.includes(target.residency));
@@ -161,7 +175,9 @@ export function applyPrivacy(input: PrivacyStepInput): PrivacyOutcome {
   }
 }
 
-function localOutcome(localChain: ReadonlyArray<ModelTarget>): PrivacyOutcome {
+function localOutcome(
+  localChain: ReadonlyArray<ModelTarget>,
+): Extract<PrivacyOutcome, { kind: "route" }> {
   return {
     kind: "route",
     action: "restrict_to_local",

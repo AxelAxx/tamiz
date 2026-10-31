@@ -28,7 +28,7 @@ a native protocol, on by default.
 already pinned, no new dependency); Zod 4 in `packages/contracts`; Drizzle for one
 migration.
 
-**Storage**: PostgreSQL 17, `audit_entries.tools jsonb` nullable (migration `0002_*`).
+**Storage**: PostgreSQL 17, `audit_entries.tools jsonb` nullable (migration `0001_audit_tools`).
 
 **Testing**: Vitest; MSW for adapter upstream shapes (four providers, completion and
 stream); in-process `app.request()` with fakes; property tests (fast-check, already used
@@ -116,7 +116,7 @@ apps/gateway/
 │   └── persistence/schema.ts, audit-log-repository.ts
 ├── src/presentation/mappers/    # request, response, chunk, simulate
 ├── prompts/anonymization-notice.v2.md
-└── drizzle/0002_*.sql
+└── drizzle/0001_audit_tools.sql
 packages/evals/src/
 ├── datasets.ts, synthetic/generate.ts   # v2 cases with tools
 ├── evals/leak.ts                        # texts sent, tool metric

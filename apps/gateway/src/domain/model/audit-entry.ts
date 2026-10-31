@@ -5,10 +5,14 @@
  * for content: the request is identified by a keyed hash of its messages (computed outside
  * the domain), detection by kinds and counts only. Mirrored by `AuditEntrySchema` in
  * `@tamiz/contracts`.
+ *
+ * Tool use (009 tool-calling FR-018) is counts and called tool names only: never
+ * arguments, results, descriptions or schemas.
  */
 import { baselineCost } from "./baseline.js";
 import type { Usage } from "./cost.js";
 import type { Abandoned } from "./fallback.js";
+import type { InferenceRequest } from "./inference-request.js";
 import type { ModelTarget, ProviderName, Residency } from "./model-target.js";
 import type { BlockReason, PrivacyAction } from "./privacy-policy.js";
 import type { Decision } from "./routing-decision.js";
@@ -28,6 +32,32 @@ export type AuditErrorType =
   | "provider_unavailable"
   | "privacy_unavailable"
   | "policy_blocked";
+
+/** How many called tool names an entry keeps (research T-R11). */
+export const AUDIT_TOOL_CALLS_MAX = 32;
+
+export interface AuditTools {
+  readonly declared: number;
+  readonly toolMessages: number;
+  /** Names of the tools the model called, in order, at most `AUDIT_TOOL_CALLS_MAX`. */
+  readonly called: ReadonlyArray<string>;
+}
+
+/** The tool summary of a request, or nothing when it used no tools. */
+export function auditTools(
+  request: Pick<InferenceRequest, "messages" | "tools">,
+  called: ReadonlyArray<string>,
+): AuditTools | undefined {
+  const declared = request.tools?.length ?? 0;
+  const toolMessages = request.messages.filter((message) => message.role === "tool").length;
+  const calledInHistory = request.messages.some(
+    (message) => message.role === "assistant" && message.toolCalls.length > 0,
+  );
+  if (declared === 0 && toolMessages === 0 && !calledInHistory && called.length === 0) {
+    return undefined;
+  }
+  return { declared, toolMessages, called: called.slice(0, AUDIT_TOOL_CALLS_MAX) };
+}
 
 export interface AuditTarget {
   readonly id: string;
@@ -57,6 +87,7 @@ export interface AuditEntry {
   readonly outcome: AuditOutcome;
   readonly errorType?: AuditErrorType;
   readonly streamed: boolean;
+  readonly tools?: AuditTools;
   readonly target?: AuditTarget;
   readonly abandoned: ReadonlyArray<{
     readonly targetId: string;
@@ -109,6 +140,7 @@ export interface AuditInput {
   readonly decision: Decision;
   readonly streamed: boolean;
   readonly result: AuditResult;
+  readonly tools?: AuditTools;
   /** The policy's baseline target, when it has a priced one. */
   readonly baseline?: ModelTarget;
 }
@@ -149,6 +181,7 @@ export function auditEntry(input: AuditInput): AuditEntry {
     outcome: result.kind,
     ...("errorType" in result ? { errorType: result.errorType } : {}),
     streamed: input.streamed,
+    ...(input.tools === undefined ? {} : { tools: input.tools }),
     ...(result.target === undefined ? {} : { target: toTarget(result.target) }),
     abandoned: result.abandoned.map((a) => ({ targetId: a.targetId, reason: a.reason })),
     ...(usage === undefined

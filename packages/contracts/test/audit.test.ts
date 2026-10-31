@@ -38,3 +38,23 @@ describe("AuditEntrySchema", () => {
     );
   });
 });
+
+describe("AuditEntrySchema tools summary (009 tool-calling FR-018, US6-1)", () => {
+  const tools = { declared: 3, toolMessages: 1, called: ["get_patient"] };
+
+  it("accepts counts and called tool names", () => {
+    expect(AuditEntrySchema.safeParse({ ...example, tools }).success).toBe(true);
+  });
+
+  it.each(["arguments", "results", "definitions"])("has no place for tool %s", (field) => {
+    const withContent = { ...example, tools: { ...tools, [field]: "x" } };
+    expect(AuditEntrySchema.safeParse(withContent).success).toBe(false);
+  });
+
+  it("keeps at most 32 names, each a tool-name identifier", () => {
+    const many = { ...tools, called: Array.from({ length: 33 }, () => "t") };
+    expect(AuditEntrySchema.safeParse({ ...example, tools: many }).success).toBe(false);
+    const prose = { ...tools, called: ["Ana Ruiz Gil"] };
+    expect(AuditEntrySchema.safeParse({ ...example, tools: prose }).success).toBe(false);
+  });
+});

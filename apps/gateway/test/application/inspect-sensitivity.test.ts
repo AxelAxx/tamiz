@@ -17,7 +17,7 @@ const sha256 = (text: string) => createHash("sha256").update(text).digest("hex")
 const CRITICAL: Inspection = {
   status: "ok",
   level: "critical",
-  entities: [{ messageIndex: 0, kind: "DNI", start: 9, end: 18, score: 1 }],
+  entities: [{ textIndex: 0, kind: "DNI", start: 9, end: 18, score: 1 }],
 };
 const MESSAGES = ["Mi DNI es 12345678Z"];
 const REQUEST_ID = requestIdUnchecked("req-1");

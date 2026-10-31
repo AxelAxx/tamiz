@@ -9,9 +9,13 @@
  * open until its last part, an error part or the client going away.
  *
  * Every value set here is an id, an enum, a count, a cost or a duration: the request's
- * messages and the answer never reach this module's outputs.
+ * messages and the answer never reach this module's outputs. Tool use (009 tool-calling
+ * FR-019) adds the declared-tool count and the called tool names; the GenAI content
+ * attributes for tool arguments, results and definitions are never set.
  */
+import { auditTools } from "../../domain/model/audit-entry.js";
 import type { Abandoned } from "../../domain/model/fallback.js";
+import type { InferenceRequest } from "../../domain/model/inference-request.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
 import type { Decision } from "../../domain/model/routing-decision.js";
 import { failureResult } from "../audit/with-audit.js";
@@ -59,6 +63,20 @@ function servedAttributes(target: ModelTarget, abandoned: ReadonlyArray<Abandone
   };
 }
 
+/** Tool counts and called names; nothing for a request that used no tools. */
+function toolAttributes(
+  request: Pick<InferenceRequest, "messages" | "tools">,
+  called: ReadonlyArray<string>,
+): SpanAttributes {
+  const tools = auditTools(request, called);
+  if (tools === undefined) return {};
+  return {
+    "tamiz.tools.declared": tools.declared,
+    "tamiz.tools.messages": tools.toolMessages,
+    "tamiz.tools.called": [...tools.called],
+  };
+}
+
 export function withTracing(route: RouteInference, tracer: TracerPort): RouteInference {
   return async (request) => {
     const span = tracer.startRequest();
@@ -70,12 +88,17 @@ export function withTracing(route: RouteInference, tracer: TracerPort): RouteInf
         recordDecision(span, decision);
         span.set({
           ...servedAttributes(target, abandoned),
+          ...toolAttributes(
+            request,
+            (result.value.completion.toolCalls ?? []).map((call) => call.name),
+          ),
           "tamiz.usage.input_tokens": usage.promptTokens,
           "tamiz.usage.output_tokens": usage.completionTokens,
           "tamiz.cost_usd": cost,
         });
       } else {
         recordDecision(span, result.error.decision);
+        span.set(toolAttributes(request, []));
         const failed = failureResult(result.error);
         if (failed.target !== undefined)
           span.set(servedAttributes(failed.target, failed.abandoned));
@@ -105,6 +128,7 @@ export function withTracingStream(stream: StreamInference, tracer: TracerPort): 
     }
     if (!result.ok) {
       recordDecision(span, result.error.decision);
+      span.set(toolAttributes(request, []));
       const failed = failureResult(result.error);
       if (failed.target !== undefined) span.set(servedAttributes(failed.target, failed.abandoned));
       span.fail("errorType" in failed ? failed.errorType : "internal_error");
@@ -119,6 +143,7 @@ export function withTracingStream(stream: StreamInference, tracer: TracerPort): 
       const iterator = routed.parts[Symbol.asyncIterator]();
       let done = false;
       let ended = false;
+      const called: string[] = [];
       try {
         while (true) {
           // Each step runs with the span active, so mid-stream events attach to it.
@@ -128,7 +153,9 @@ export function withTracingStream(stream: StreamInference, tracer: TracerPort): 
             break;
           }
           const part = next.value;
-          if (part.type === "finish") {
+          if (part.type === "tool-call-start") {
+            called.push(part.name);
+          } else if (part.type === "finish") {
             ended = true;
             span.set({
               "tamiz.usage.input_tokens": part.usage.promptTokens,
@@ -145,6 +172,7 @@ export function withTracingStream(stream: StreamInference, tracer: TracerPort): 
       } finally {
         if (!done) await iterator.return?.();
         if (!ended) span.set({ "tamiz.cancelled": true });
+        span.set(toolAttributes(request, called));
         span.end();
       }
     }

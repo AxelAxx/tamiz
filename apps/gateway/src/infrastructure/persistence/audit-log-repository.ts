@@ -55,6 +55,7 @@ export function toRow(entry: AuditEntry): AuditInsert {
     outcome: entry.outcome,
     errorType: entry.errorType ?? null,
     streamed: entry.streamed,
+    tools: entry.tools === undefined ? null : { ...entry.tools, called: [...entry.tools.called] },
     targetId: entry.target?.id ?? null,
     targetProvider: entry.target?.provider ?? null,
     targetModel: entry.target?.model ?? null,
@@ -92,6 +93,7 @@ export function fromRow(row: AuditRow): AuditEntry {
     outcome: row.outcome as AuditOutcome,
     ...(row.errorType === null ? {} : { errorType: row.errorType as AuditErrorType }),
     streamed: row.streamed,
+    ...(row.tools === null ? {} : { tools: row.tools }),
     ...(row.targetId === null
       ? {}
       : {

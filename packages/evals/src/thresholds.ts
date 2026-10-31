@@ -37,6 +37,8 @@ export const THRESHOLDS: ReadonlyArray<Threshold> = [
     comparison: "gte" as const,
     bound: 0.95,
   })),
+  // 009 tool-calling FR-024: the tool-message cases cannot silently disappear.
+  { eval: "leak", metric: "values.tool_messages", comparison: "gte", bound: 40 },
   { eval: "detection", metric: "recall.PERSON", comparison: "gte", bound: 0.8 },
   { eval: "routing", metric: "route_accuracy", comparison: "gte", bound: 0.95 },
   { eval: "quality", metric: "relative_score", comparison: "gte", bound: 0.95 },

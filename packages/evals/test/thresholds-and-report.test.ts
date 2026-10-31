@@ -39,6 +39,13 @@ describe("thresholds", () => {
     expect(bar("route_accuracy")).toMatchObject({ comparison: "gte", bound: 0.95 });
     expect(bar("relative_score")).toMatchObject({ comparison: "gte", bound: 0.95 });
     expect(thresholdsFor("cost")).toEqual([]);
+  });
+
+  it("009 tool-calling US7-2: fewer than 40 values in tool messages fails the leak gate", () => {
+    const bar = THRESHOLDS.find((t) => t.metric === "values.tool_messages");
+    expect(bar).toMatchObject({ eval: "leak", comparison: "gte", bound: 40 });
+    expect(meets(39, "gte", bar?.bound ?? 0)).toBe(false);
+    expect(meets(0, "gte", bar?.bound ?? 0)).toBe(false);
     expect(thresholdsFor("leak").some((t) => t.metric === "leak_rate.LOCATION")).toBe(false);
   });
 });

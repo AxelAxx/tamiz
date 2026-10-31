@@ -11,12 +11,14 @@
 import { createMCPClient } from "@ai-sdk/mcp";
 import { z } from "zod";
 import { createGatewayModel, DEFAULT_AGENT_MODEL } from "./gateway-model.js";
-import { runAgent } from "./run-agent.js";
+import { DEFAULT_TOOL_PROTOCOL, runAgent, TOOL_PROTOCOLS } from "./run-agent.js";
 
 const EnvSchema = z.object({
   TAMIZ_AGENT_GATEWAY_URL: z.url().default("http://localhost:3000"),
   TAMIZ_AGENT_API_KEY: z.string().min(1, "a client key for the model calls is required"),
   TAMIZ_AGENT_MODEL: z.string().min(1).default(DEFAULT_AGENT_MODEL),
+  /** `native` tool calls (009 tool-calling FR-025) or the `text` protocol of R-10. */
+  TAMIZ_AGENT_TOOL_PROTOCOL: z.enum(TOOL_PROTOCOLS).default(DEFAULT_TOOL_PROTOCOL),
   TAMIZ_AGENT_MCP_URL: z.url().default("http://127.0.0.1:3100/mcp"),
   TAMIZ_AGENT_MCP_KEY: z.string().min(1, "an admin key for the MCP server is required"),
 });
@@ -52,6 +54,7 @@ async function main(): Promise<number> {
         model: env.data.TAMIZ_AGENT_MODEL,
       }),
       mcp,
+      protocol: env.data.TAMIZ_AGENT_TOOL_PROTOCOL,
       now: () => new Date(),
     });
     process.stdout.write(`${run.answer ?? `(no answer: ${run.stopReason})`}\n\n`);

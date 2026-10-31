@@ -6,6 +6,7 @@
  * request is identified by a keyed hash of its messages, and detection by kinds and counts.
  */
 import { z } from "zod";
+import { ToolNameSchema } from "./chat-completion.js";
 import { ErrorTypeSchema } from "./error.js";
 import { PrivacyEntityKindSchema } from "./privacy-service.js";
 import {
@@ -38,6 +39,19 @@ export const AuditAbandonedSchema = z.strictObject({
   ]),
 });
 
+/** How many called tool names an entry keeps (009 tool-calling research T-R11). */
+export const AUDIT_TOOL_CALLS_MAX = 32;
+
+/**
+ * Tool use of a request (009 tool-calling FR-018): counts and the names the model called,
+ * never arguments, results, descriptions or schemas. Absent without tools and tool messages.
+ */
+export const AuditToolsSchema = z.strictObject({
+  declared: z.int().min(0),
+  toolMessages: z.int().min(0),
+  called: z.array(ToolNameSchema).max(AUDIT_TOOL_CALLS_MAX),
+});
+
 export const AuditEntrySchema = z.strictObject({
   id: z.uuid(),
   requestId: z.string().min(1),
@@ -61,6 +75,7 @@ export const AuditEntrySchema = z.strictObject({
   outcome: AuditOutcomeSchema,
   errorType: ErrorTypeSchema.optional(),
   streamed: z.boolean(),
+  tools: AuditToolsSchema.optional(),
   /** The target that answered, or the last one reached. */
   target: AuditTargetSchema.optional(),
   abandoned: z.array(AuditAbandonedSchema),
@@ -77,4 +92,5 @@ export const AuditEntrySchema = z.strictObject({
 });
 
 export type AuditEntryDto = z.infer<typeof AuditEntrySchema>;
+export type AuditToolsDto = z.infer<typeof AuditToolsSchema>;
 export type AuditOutcomeDto = z.infer<typeof AuditOutcomeSchema>;

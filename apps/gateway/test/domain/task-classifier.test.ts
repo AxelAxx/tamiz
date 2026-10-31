@@ -21,12 +21,12 @@ function system(content: string): Message {
 }
 
 function assistant(content: string): Message {
-  return { role: "assistant", content };
+  return { role: "assistant", content, toolCalls: [] };
 }
 
 describe("closed lists and constants", () => {
   it("declares the message roles of the contract", () => {
-    expect(MESSAGE_ROLES).toEqual(["system", "user", "assistant"]);
+    expect(MESSAGE_ROLES).toEqual(["system", "user", "assistant", "tool"]);
   });
 
   it("declares the task types, sizes, thresholds and precedence of R-07", () => {

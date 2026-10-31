@@ -46,7 +46,7 @@ describe("ChatCompletionChunkSchema", () => {
     ["another object", { ...base, object: "chat.completion", choices: [] }, ["object"]],
     [
       "an unknown finish reason",
-      { ...base, choices: [{ index: 0, delta: {}, finish_reason: "tool_calls" }] },
+      { ...base, choices: [{ index: 0, delta: {}, finish_reason: "function_call" }] },
       ["choices", 0, "finish_reason"],
     ],
     [

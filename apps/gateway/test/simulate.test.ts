@@ -14,14 +14,14 @@ const NAMES_TEXT = "Resume el informe de Lucía Fernández Ruiz (lucia@example.c
 const CRITICAL: Inspection = {
   status: "ok",
   level: "critical",
-  entities: [{ messageIndex: 0, kind: "DNI", start: 10, end: 19, score: 1 }],
+  entities: [{ textIndex: 0, kind: "DNI", start: 10, end: 19, score: 1 }],
 };
 const HIGH: Inspection = {
   status: "ok",
   level: "high",
   entities: [
-    { messageIndex: 0, kind: "PERSON", start: 21, end: 41, score: 0.85 },
-    { messageIndex: 0, kind: "EMAIL", start: 43, end: 60, score: 1 },
+    { textIndex: 0, kind: "PERSON", start: 21, end: 41, score: 0.85 },
+    { textIndex: 0, kind: "EMAIL", start: 43, end: 60, score: 1 },
   ],
 };
 
@@ -59,7 +59,16 @@ describe("POST /v1/simulate", () => {
     expect(json).toMatchObject({
       sensitivity: "critical",
       detector: "ok",
-      entities: [{ messageIndex: 0, kind: "DNI", start: 10, end: 19, score: 1 }],
+      entities: [
+        {
+          messageIndex: 0,
+          location: { kind: "content", messageIndex: 0 },
+          kind: "DNI",
+          start: 10,
+          end: 19,
+          score: 1,
+        },
+      ],
       decision: "route",
       privacyAction: "restrict_to_local",
       chain: [{ id: "ollama-llama", provider: "ollama", residency: "local" }],
@@ -155,5 +164,111 @@ describe("POST /v1/simulate", () => {
 
     expect(doc.paths["/v1/simulate"]).toBeDefined();
     expect(doc.components.schemas["SimulateResponse"]).toBeDefined();
+  });
+});
+
+// 009 tool-calling FR-015, US2-1, US3-1, US3-6 (tasks.md T024): tool-calling requests in
+// the simulator, with each entity's location and the messages a provider would receive.
+describe("POST /v1/simulate with tools", () => {
+  const ARGS = '{"name":"Ana Ruiz Gil"}';
+  const body = (result: string, args = ARGS) => ({
+    model: "tamiz-auto",
+    messages: [
+      { role: "user", content: "Recuérdaselo." },
+      {
+        role: "assistant",
+        content: null,
+        tool_calls: [
+          { id: "c1", type: "function", function: { name: "send_reminder", arguments: args } },
+        ],
+      },
+      { role: "tool", tool_call_id: "c1", content: result },
+    ],
+    tools: [{ type: "function", function: { name: "send_reminder", description: "Send" } }],
+  });
+  const run = async (inspection: Inspection, payload: unknown) => {
+    const { send } = await createTestApp({
+      inspect: inspectAs(inspection),
+      script: noProvider,
+      streamScript: noProvider,
+    });
+    const response = await send("/v1/simulate", {
+      method: "POST",
+      headers: { ...AUTH, "content-type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    const json = (await response.json()) as Record<string, unknown>;
+    expect(SimulateResponseSchema.safeParse(json).success).toBe(true);
+    return json;
+  };
+
+  it("a DNI in a tool result: located in that message, critical, local chain", async () => {
+    // Inspected texts: 0 user, 1 arguments, 2 tool result, 3 tool definition.
+    const json = await run(
+      {
+        status: "ok",
+        level: "critical",
+        entities: [{ textIndex: 2, kind: "DNI", start: 4, end: 13, score: 1 }],
+      },
+      body("DNI 12345678Z"),
+    );
+    expect(json).toMatchObject({
+      entities: [{ messageIndex: 2, location: { kind: "content", messageIndex: 2 }, kind: "DNI" }],
+      sensitivity: "critical",
+      privacyAction: "restrict_to_local",
+      chain: [{ id: "ollama-llama" }],
+    });
+  });
+
+  it("a name in arguments and a result: providerMessages hold placeholders in both", async () => {
+    const json = await run(
+      {
+        status: "ok",
+        level: "high",
+        entities: [
+          { textIndex: 1, kind: "PERSON", start: 9, end: 21, score: 0.9 },
+          { textIndex: 2, kind: "PERSON", start: 0, end: 12, score: 0.9 },
+        ],
+      },
+      body("Ana Ruiz Gil confirmada"),
+    );
+    expect(json["entities"]).toMatchObject([
+      { messageIndex: 1, location: { kind: "arguments", messageIndex: 1, toolCallIndex: 0 } },
+      { messageIndex: 2, location: { kind: "content", messageIndex: 2 } },
+    ]);
+    expect(json["notice"]).toBe("v2");
+    const messages = json["providerMessages"] as Array<Record<string, unknown>>;
+    expect(messages.slice(2)).toEqual([
+      {
+        role: "assistant",
+        content: null,
+        tool_calls: [
+          {
+            id: "c1",
+            type: "function",
+            function: { name: "send_reminder", arguments: '{"name":"<PERSON_1>"}' },
+          },
+        ],
+      },
+      { role: "tool", tool_call_id: "c1", content: "<PERSON_1> confirmada" },
+    ]);
+    expect(JSON.stringify(json)).not.toContain("Ana Ruiz Gil");
+  });
+
+  it("a name in a tool definition: located there, kept local, notAnonymizable", async () => {
+    const json = await run(
+      {
+        status: "ok",
+        level: "high",
+        entities: [{ textIndex: 3, kind: "PERSON", start: 0, end: 4, score: 0.9 }],
+      },
+      body("ok"),
+    );
+    expect(json).toMatchObject({
+      entities: [{ location: { kind: "tool_definition", toolIndex: 0 }, kind: "PERSON" }],
+      privacyAction: "restrict_to_local",
+      notAnonymizable: "tool_definition",
+    });
+    expect((json["entities"] as unknown[])[0]).not.toHaveProperty("messageIndex");
   });
 });

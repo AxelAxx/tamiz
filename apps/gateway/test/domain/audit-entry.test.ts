@@ -19,9 +19,9 @@ const HIGH: Inspection = {
   status: "ok",
   level: "high",
   entities: [
-    { messageIndex: 0, kind: "PERSON", start: 3, end: 11, score: 0.85 },
-    { messageIndex: 0, kind: "PERSON", start: 20, end: 25, score: 0.85 },
-    { messageIndex: 1, kind: "EMAIL", start: 0, end: 15, score: 1 },
+    { textIndex: 0, kind: "PERSON", start: 3, end: 11, score: 0.85 },
+    { textIndex: 0, kind: "PERSON", start: 20, end: 25, score: 0.85 },
+    { textIndex: 1, kind: "EMAIL", start: 0, end: 15, score: 1 },
   ],
 };
 const decision = decide(policy, {
@@ -133,7 +133,7 @@ describe("auditEntry", () => {
     const entry = auditEntry(input());
     const serialized = JSON.stringify(entry);
 
-    expect(serialized).not.toMatch(/"start"|"end"|"messageIndex"|"score"/);
+    expect(serialized).not.toMatch(/"start"|"end"|"textIndex"|"score"/);
     expect(AuditEntrySchema.strict().safeParse(entry).success).toBe(true);
   });
 });

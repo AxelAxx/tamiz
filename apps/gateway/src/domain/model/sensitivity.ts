@@ -30,7 +30,7 @@ export type EntityKind = (typeof ENTITY_KINDS)[number];
 
 /** Where one piece of personal data is: UTF-16 offsets into one message's content. */
 export interface DetectedEntity {
-  readonly messageIndex: number;
+  readonly textIndex: number;
   readonly kind: EntityKind;
   readonly start: number;
   readonly end: number;

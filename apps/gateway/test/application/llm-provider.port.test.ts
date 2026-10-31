@@ -6,6 +6,6 @@ import { FINISH_REASONS } from "../../src/application/ports/llm-provider.port.js
 
 describe("FINISH_REASONS", () => {
   it("is the contract's closed list", () => {
-    expect(FINISH_REASONS).toEqual(["stop", "length", "content_filter"]);
+    expect(FINISH_REASONS).toEqual(["stop", "length", "content_filter", "tool_calls"]);
   });
 });

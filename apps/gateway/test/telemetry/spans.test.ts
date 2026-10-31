@@ -114,7 +114,7 @@ describe("spans of a request (spec 006 US5)", () => {
       inspect: inspectAs({
         status: "ok",
         level: "low",
-        entities: [{ messageIndex: 0, kind: "PHONE", start: 0, end: 4, score: 0.9 }],
+        entities: [{ textIndex: 0, kind: "PHONE", start: 0, end: 4, score: 0.9 }],
       }),
     });
     const root = split(capture.spans()).request[0];

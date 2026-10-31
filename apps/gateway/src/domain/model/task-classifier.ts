@@ -11,7 +11,13 @@
  * Pure and deterministic: no clock, no randomness, no I/O. A learned classifier may
  * replace `classify` later behind the same signature.
  */
-import type { InferenceRequest, Message } from "./inference-request.js";
+import {
+  contentOf,
+  type InferenceRequest,
+  type Message,
+  type ToolDefinition,
+} from "./inference-request.js";
+import { inspectedTexts } from "./inspected-text.js";
 import type { Inspection } from "./sensitivity.js";
 
 export const TASK_TYPES = [
@@ -159,7 +165,7 @@ function inspectedText(messages: ReadonlyArray<Message>): string {
   const lastUser = messages.filter((message) => message.role === "user").at(-1);
   return messages
     .filter((message) => message.role === "system" || message === lastUser)
-    .map((message) => normalize(message.content))
+    .map((message) => normalize(contentOf(message)))
     .join("\n");
 }
 
@@ -188,9 +194,16 @@ function tokensForLength(characters: number): number {
   return Math.ceil(characters / 4);
 }
 
-/** Classifies the messages by task type and size. */
-export function classify(messages: ReadonlyArray<Message>): Classification {
-  const characters = messages.reduce((total, message) => total + message.content.length, 0);
+/**
+ * Classifies the messages by task type and size. The size counts every text the provider
+ * reads: tool-call arguments, tool results and tool definitions too (009 tool-calling FR-008).
+ */
+export function classify(
+  messages: ReadonlyArray<Message>,
+  tools?: ReadonlyArray<ToolDefinition>,
+): Classification {
+  const texts = inspectedTexts(tools === undefined ? { messages } : { messages, tools });
+  const characters = texts.reduce((total, { text }) => total + text.length, 0);
   const estimatedInputTokens = tokensForLength(characters);
   return {
     taskType: taskTypeOf(messages),
