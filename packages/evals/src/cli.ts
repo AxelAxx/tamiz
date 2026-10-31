@@ -13,6 +13,8 @@ import { parseArgs } from "node:util";
 import { EVAL_IDS, type EvalId, type EvalReport } from "@tamiz/contracts";
 import { createGatewayClient } from "./clients/gateway.js";
 import { loadConfig } from "./config.js";
+import { detectionEval } from "./evals/detection.js";
+import { leakEval } from "./evals/leak.js";
 import { routingEval } from "./evals/routing.js";
 import { formatThreshold, formatValue } from "./report/markdown.js";
 import { writeReports } from "./report/write.js";
@@ -21,8 +23,12 @@ import { exitCode, type RegisteredEval, register, runEvals } from "./runner.js";
 const PACKAGE_ROOT = fileURLToPath(new URL("..", import.meta.url));
 const REPO_ROOT = resolve(PACKAGE_ROOT, "../..");
 
-/** The evals implemented so far; the others arrive with T-007-03 … T-007-05. */
-export const REGISTRY: ReadonlyArray<RegisteredEval> = [register(routingEval)];
+/** The evals implemented so far; quality and cost arrive with T-007-05. */
+export const REGISTRY: ReadonlyArray<RegisteredEval> = [
+  register(leakEval),
+  register(detectionEval),
+  register(routingEval),
+];
 
 export interface CliIo {
   readonly out: (line: string) => void;

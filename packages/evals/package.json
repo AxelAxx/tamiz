@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json",
-    "evals": "node dist/cli.js"
+    "evals": "node dist/cli.js",
+    "generate:datasets": "node dist/generate-datasets.js"
   },
   "devDependencies": {
     "@tamiz/tsconfig": "workspace:*",

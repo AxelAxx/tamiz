@@ -19,6 +19,7 @@ app code.
 ```bash
 export TAMIZ_EVAL_GATEWAY_URL=http://localhost:3000   # gateway with the policy under test
 export TAMIZ_EVAL_API_KEY=<client key>
+export TAMIZ_EVAL_PRIVACY_URL=http://localhost:8001  # detection
 pnpm evals                       # every implemented eval
 pnpm evals -- --only routing     # a selection
 pnpm evals -- --report-dir out   # default: packages/evals/reports/ (git-ignored)
@@ -43,7 +44,8 @@ Full contract: `specs/007-evals-gate/contracts/cli.md`.
 | Eval | Dataset | Gate | Since |
 |---|---|---|---|
 | routing | `routing.v1.jsonl` via `POST /v1/simulate` (real inspection) | ≥ 95 % expected first route | `T-007-02` |
-| leak, detection | `pii-leak-es`, `pii-detection-es` | 0 % critical, < 2 % names/emails/phones; recall ≥ 0.95 structured, ≥ 0.80 names | `T-007-03` |
+| leak | `pii-leak-es.v1.jsonl` via `POST /v1/simulate` (160 requests, 380 values) | 0 % critical (DNI, NIE, NSS, IBAN, card); < 2 % names, emails, phones | `T-007-03` |
+| detection | `pii-detection-es.v1.jsonl` via the privacy service's `POST /analyze` (160 sentences, 271 spans) | recall ≥ 0.95 structured, ≥ 0.80 names | `T-007-03` |
 | quality, cost | `quality-es` | ≤ 5 % below the comparison; cost reported | `T-007-05` |
 
 ## Datasets
@@ -62,3 +64,12 @@ and the expected `taskType`, `size` and `route`. Two checks read it:
 
 Changing the default policy or the cue table means editing the expectations, in the same
 pull request.
+
+`pii-leak-es.v1.jsonl` and `pii-detection-es.v1.jsonl` (`T-007-03`) are **generated** by
+`src/synthetic/generate.ts` from a fixed seed. Never edit them by hand.
+- Regenerate with `pnpm --filter @tamiz/evals generate:datasets` after a build.
+- `generate:datasets -- --check` (also part of `pnpm test`) fails when a committed file
+  differs.
+- Identifiers carry valid control characters.
+- Names and places are invented and disjoint from the privacy service's development
+  corpus; a test checks this.
