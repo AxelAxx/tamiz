@@ -29,6 +29,8 @@ function simulated(route: string) {
     detector: "ok",
     entities: [],
     ruleId: "default",
+    taskType: "chat",
+    size: "short",
     decision: "route",
     privacyAction: "allow",
     chain: [{ id: route, provider: "ollama", model: "m", residency: "local" }],

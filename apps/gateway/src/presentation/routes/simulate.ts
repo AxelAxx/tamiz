@@ -58,6 +58,8 @@ export function toSimulateResponse(result: SimulationResult): SimulateResponse {
       score: e.score,
     })),
     ruleId: decision.ruleId,
+    taskType: decision.taskType,
+    size: decision.size,
     privacyAction: decision.privacyAction,
   };
   if (decision.kind === "block") {

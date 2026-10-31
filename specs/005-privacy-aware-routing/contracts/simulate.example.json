@@ -32,6 +32,8 @@
       }
     ],
     "ruleId": "cheap-short-tasks",
+    "taskType": "summarize",
+    "size": "short",
     "decision": "route",
     "privacyAction": "anonymize",
     "chain": [
