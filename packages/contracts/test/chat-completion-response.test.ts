@@ -16,7 +16,7 @@ describe("ChatCompletionResponseSchema (spec US2-5, SC-004)", () => {
     expectTypeOf(result.data).toEqualTypeOf<ChatCompletionResponse>();
     expectTypeOf(result.data.object).toEqualTypeOf<"chat.completion">();
     expectTypeOf(result.data.choices[0]?.finish_reason).toEqualTypeOf<
-      "stop" | "length" | "content_filter" | undefined
+      "stop" | "length" | "content_filter" | "tool_calls" | undefined
     >();
     expectTypeOf(result.data.usage.total_tokens).toEqualTypeOf<number>();
   });
@@ -72,7 +72,7 @@ describe("ChatCompletionResponseSchema (spec US2-5, SC-004)", () => {
   it("rejects an unknown finish_reason", () => {
     const result = ChatCompletionResponseSchema.safeParse({
       ...validResponse,
-      choices: [{ ...validResponse.choices[0], finish_reason: "tool_calls" }],
+      choices: [{ ...validResponse.choices[0], finish_reason: "function_call" }],
     });
     expect(result.success).toBe(false);
     if (result.success) return;

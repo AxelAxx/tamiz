@@ -171,6 +171,8 @@ export function registerChatCompletions<S extends Schema, B extends string>(
         for await (const part of routed.parts) {
           if (part.type === "delta") {
             await send(chunks.delta(part.text));
+          } else if (part.type === "tool-call-start" || part.type === "tool-call-delta") {
+            await send(chunks.toolCall(part));
           } else if (part.type === "finish") {
             for (const chunk of chunks.finish(part)) await send(chunk);
             await sse.writeSSE({ data: "[DONE]" });

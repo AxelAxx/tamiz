@@ -15,11 +15,16 @@
  * restorer (FR-016, FR-017): a placeholder split across chunks is held until complete and
  * restored once; plain text passes at once; what is held is flushed before the finish or
  * the error part.
+ *
+ * Tool calling (009 tool-calling FR-013, FR-017, research T-R07, T-R08): tool-call starts
+ * and argument pieces pass through with one JSON-escaping restorer per call index; held
+ * text is flushed before a call starts, and every call's held arguments are flushed in index
+ * order before the finish or the error part.
  */
 import type { ProviderError } from "../../domain/errors.js";
 import { computeCost, type Usage } from "../../domain/model/cost.js";
 import type { Abandoned } from "../../domain/model/fallback.js";
-import type { InferenceRequest } from "../../domain/model/inference-request.js";
+import type { InferenceRequest, ToolCall } from "../../domain/model/inference-request.js";
 import type { ModelTarget } from "../../domain/model/model-target.js";
 import type { StreamRestorer } from "../../domain/model/restore-stream.js";
 import type { RoutingDecision } from "../../domain/model/routing-decision.js";
@@ -29,7 +34,7 @@ import { err, ok, type Result } from "../../domain/result.js";
 import type { FinishReason, StartedStream } from "../ports/llm-provider.port.js";
 import { createCircuitBreaker } from "../resilience/circuit-breaker.js";
 import { executeChain } from "../resilience/execute-chain.js";
-import type { ProtectedMessages } from "./protect-messages.js";
+import type { ProtectedRequest } from "./protect-request.js";
 import {
   blocked,
   decideWithPrivacy,
@@ -38,10 +43,18 @@ import {
   type RouteInferenceDeps,
   type RoutingFailure,
   resolveUsage,
+  toolOptions,
 } from "./route-inference.js";
 
 export type RoutedStreamPart =
   | { readonly type: "delta"; readonly text: string }
+  | {
+      readonly type: "tool-call-start";
+      readonly index: number;
+      readonly id: string;
+      readonly name: string;
+    }
+  | { readonly type: "tool-call-delta"; readonly index: number; readonly arguments: string }
   | {
       readonly type: "finish";
       readonly finishReason: FinishReason;
@@ -86,10 +99,21 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
     policy: RoutingPolicy,
     target: ModelTarget,
     started: StartedStream,
-    sent: ProtectedMessages,
+    sent: ProtectedRequest,
     restorer: StreamRestorer,
   ): AsyncGenerator<RoutedStreamPart> {
     let text = started.first;
+    const calls: Array<{ id: string; name: string; arguments: string }> = [];
+    const argumentRestorers: StreamRestorer[] = [];
+    /** Everything still held, text first, then each call's arguments in index order. */
+    function* flushAll(): Generator<RoutedStreamPart> {
+      const held = restorer.flush();
+      if (held !== "") yield { type: "delta", text: held };
+      for (const [index, argumentRestorer] of argumentRestorers.entries()) {
+        const rest = argumentRestorer.flush();
+        if (rest !== "") yield { type: "tool-call-delta", index, arguments: rest };
+      }
+    }
     for await (const part of started.rest) {
       switch (part.type) {
         case "delta": {
@@ -98,12 +122,31 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
           if (restored !== "") yield { type: "delta", text: restored };
           break;
         }
-        case "finish": {
+        case "tool-call-start": {
           const held = restorer.flush();
           if (held !== "") yield { type: "delta", text: held };
+          calls[part.index] = { id: part.id, name: part.name, arguments: "" };
+          argumentRestorers[part.index] = sent.argumentsRestorer();
+          yield part;
+          break;
+        }
+        case "tool-call-delta": {
+          const call = calls[part.index];
+          const argumentRestorer = argumentRestorers[part.index];
+          if (call === undefined || argumentRestorer === undefined) break;
+          call.arguments += part.arguments;
+          const restored = argumentRestorer.push(part.arguments);
+          if (restored !== "")
+            yield { type: "tool-call-delta", index: part.index, arguments: restored };
+          break;
+        }
+        case "finish": {
+          yield* flushAll();
+          const toolCalls: ReadonlyArray<ToolCall> = calls.filter((call) => call !== undefined);
           const usage = resolveUsage(
             {
               text,
+              toolCalls,
               finishReason: part.finishReason,
               modelName: started.modelName,
               ...(part.usage === undefined ? {} : { usage: part.usage }),
@@ -119,8 +162,7 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
           return;
         }
         case "error": {
-          const held = restorer.flush();
-          if (held !== "") yield { type: "delta", text: held };
+          yield* flushAll();
           // A client that went away is not a provider failure.
           if (part.error.cause !== "aborted")
             await recordFailure(request, policy, target, part.error);
@@ -172,6 +214,7 @@ export function streamInference(deps: RouteInferenceDeps): StreamInference {
         deps.providers.resolve(target.provider).stream({
           target,
           messages: sent.providerMessages,
+          ...toolOptions(request),
           ...(request.temperature === undefined ? {} : { temperature: request.temperature }),
           ...(request.maxTokens === undefined ? {} : { maxTokens: request.maxTokens }),
           timeoutMs,

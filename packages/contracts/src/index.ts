@@ -21,12 +21,15 @@ export {
   ProvidersReportSchema,
 } from "./admin.js";
 export {
+  AUDIT_TOOL_CALLS_MAX,
   AuditAbandonedSchema,
   type AuditEntryDto,
   AuditEntrySchema,
   type AuditOutcomeDto,
   AuditOutcomeSchema,
   AuditTargetSchema,
+  type AuditToolsDto,
+  AuditToolsSchema,
 } from "./audit.js";
 export {
   type Milliseconds,
@@ -59,8 +62,22 @@ export {
   ChatCompletionUsageSchema,
   type ChatMessage,
   ChatMessageSchema,
+  isJsonObjectText,
+  MAX_TOOLS,
+  type ResponseMessage,
+  ResponseMessageSchema,
   type StreamErrorEvent,
   StreamErrorEventSchema,
+  TOOL_NAME_PATTERN,
+  type ToolCall,
+  type ToolCallDelta,
+  ToolCallDeltaSchema,
+  ToolCallSchema,
+  type ToolChoice,
+  ToolChoiceSchema,
+  type ToolDefinition,
+  ToolDefinitionSchema,
+  ToolNameSchema,
 } from "./chat-completion.js";
 export {
   type ErrorEnvelope,
@@ -162,4 +179,6 @@ export {
   SimulatedTargetSchema,
   type SimulateResponse,
   SimulateResponseSchema,
+  type TextLocation,
+  TextLocationSchema,
 } from "./simulate.js";

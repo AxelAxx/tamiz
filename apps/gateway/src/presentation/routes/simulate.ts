@@ -2,7 +2,8 @@
  * `POST /v1/simulate` (spec 005 US5, FR-018, FR-019): a dry run of inspection, routing
  * and privacy for a chat completion request. No provider is called, and the answer holds
  * positions, never values (except, for `anonymize`, the placeholder messages a provider
- * would receive, which contain none by construction).
+ * would receive, which contain none by construction). Each entity says where its text is
+ * (009 tool-calling FR-015).
  */
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import type { SimulateResponse } from "@tamiz/contracts";
@@ -11,7 +12,7 @@ import type {
   SimulatePolicy,
   SimulationResult,
 } from "../../application/use-cases/simulate-policy.js";
-import { toInferenceRequest } from "../mappers/inference-request.js";
+import { toChatMessages, toInferenceRequest } from "../mappers/inference-request.js";
 import {
   ChatCompletionRequestBody,
   ErrorEnvelopeBody,
@@ -51,13 +52,17 @@ export function toSimulateResponse(result: SimulationResult): SimulateResponse {
   const common = {
     sensitivity: decision.sensitivity,
     detector: inspection.status === "ok" ? ("ok" as const) : inspection.reason,
-    entities: entities.map((e) => ({
-      messageIndex: e.messageIndex,
-      kind: e.kind,
-      start: e.start,
-      end: e.end,
-      score: e.score,
-    })),
+    entities: entities.map((e) => {
+      const location = result.locations[e.textIndex] ?? { kind: "content", messageIndex: 0 };
+      return {
+        ...(location.kind === "tool_definition" ? {} : { messageIndex: location.messageIndex }),
+        location,
+        kind: e.kind,
+        start: e.start,
+        end: e.end,
+        score: e.score,
+      };
+    }),
     ruleId: decision.ruleId,
     taskType: decision.taskType,
     size: decision.size,
@@ -84,13 +89,11 @@ export function toSimulateResponse(result: SimulationResult): SimulateResponse {
     allowedResidencies: [...decision.allowedResidencies],
     ...(result.providerMessages === undefined
       ? {}
-      : {
-          providerMessages: result.providerMessages.map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
-        }),
+      : { providerMessages: toChatMessages(result.providerMessages) }),
     ...(result.noticeVersion === undefined ? {} : { notice: result.noticeVersion }),
+    ...(decision.notAnonymizable === undefined
+      ? {}
+      : { notAnonymizable: decision.notAnonymizable }),
   };
 }
 

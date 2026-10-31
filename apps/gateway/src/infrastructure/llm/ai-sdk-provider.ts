@@ -9,13 +9,21 @@
  * at its first token; afterwards `timeoutMs` bounds every gap between parts. Errors carry
  * fixed messages: never the credential, the request messages, the upstream URL or the
  * upstream body.
+ *
+ * Tool calling (009 tool-calling FR-006, FR-017, research T-R02, T-R08): tools are passed
+ * without `execute`, so the SDK never runs one; the answer's calls come back as the
+ * port's `toolCalls` with their arguments as JSON text. In a stream, a tool call is
+ * "started" at its first input part: `first` is then `""` and `rest` begins with the
+ * call's start.
  */
 import {
   type FinishReason as AiFinishReason,
+  type ToolChoice as AiToolChoice,
   APICallError,
   generateText,
   InvalidResponseDataError,
   JSONParseError,
+  jsonSchema,
   type LanguageModel,
   type ModelMessage,
   NoContentGeneratedError,
@@ -23,6 +31,7 @@ import {
   type TextStreamPart,
   type ToolSet,
   TypeValidationError,
+  tool,
 } from "ai";
 import type {
   FinishReason,
@@ -33,7 +42,12 @@ import type {
   StreamPart,
 } from "../../application/ports/llm-provider.port.js";
 import { type ProviderError, type ProviderErrorCause, providerError } from "../../domain/errors.js";
-import type { Message } from "../../domain/model/inference-request.js";
+import type {
+  Message,
+  ToolCall,
+  ToolChoice,
+  ToolDefinition,
+} from "../../domain/model/inference-request.js";
 import type { ModelTarget, ProviderName } from "../../domain/model/model-target.js";
 import type { Milliseconds } from "../../domain/model/units.js";
 import { err, ok, type Result } from "../../domain/result.js";
@@ -84,6 +98,47 @@ function callSignal(timeoutMs: number, outer?: AbortSignal) {
 type CallSignal = ReturnType<typeof callSignal>;
 type FullStreamIterator = AsyncIterator<TextStreamPart<ToolSet>>;
 
+/** The tool calls of one stream: index by call id, and whether its input streamed. */
+interface ToolStreamState {
+  readonly indexById: Map<string, number>;
+  readonly streamedInput: Set<string>;
+}
+
+const newToolStreamState = (): ToolStreamState => ({
+  indexById: new Map(),
+  streamedInput: new Set(),
+});
+
+/** The port parts for one SDK tool part; empty for any other part. */
+function toolParts(part: TextStreamPart<ToolSet>, state: ToolStreamState): StreamPart[] {
+  const start = (id: string, name: string): StreamPart[] => {
+    if (state.indexById.has(id)) return [];
+    const index = state.indexById.size;
+    state.indexById.set(id, index);
+    return [{ type: "tool-call-start", index, id, name }];
+  };
+  switch (part.type) {
+    case "tool-input-start":
+      return start(part.id, part.toolName);
+    case "tool-input-delta": {
+      const index = state.indexById.get(part.id);
+      if (index === undefined || part.delta === "") return [];
+      state.streamedInput.add(part.id);
+      return [{ type: "tool-call-delta", index, arguments: part.delta }];
+    }
+    case "tool-call": {
+      // A provider that sends a call in one piece: start it and send its whole input.
+      const started = start(part.toolCallId, part.toolName);
+      if (state.streamedInput.has(part.toolCallId)) return started;
+      state.streamedInput.add(part.toolCallId);
+      const index = state.indexById.get(part.toolCallId) ?? 0;
+      return [...started, { type: "tool-call-delta", index, arguments: argumentsText(part.input) }];
+    }
+    default:
+      return [];
+  }
+}
+
 /**
  * The next stream part, or `"aborted"` as soon as our signal fires. The transport does
  * not always end a body read on abort (a mocked or stalled body keeps waiting), so the
@@ -127,6 +182,8 @@ export function createAiSdkProvider(options: AiSdkProviderOptions): LlmProviderP
   const settings = (input: ProviderCompletionInput, call: CallSignal) => ({
     model: options.languageModel(input.target.model),
     messages: input.messages.map(toModelMessage),
+    ...(input.tools !== undefined && { tools: toToolSet(input.tools) }),
+    ...(input.toolChoice !== undefined && { toolChoice: toToolChoice(input.toolChoice) }),
     ...(input.temperature !== undefined && { temperature: input.temperature }),
     ...(input.maxTokens !== undefined && { maxOutputTokens: input.maxTokens }),
     abortSignal: call.signal,
@@ -138,6 +195,8 @@ export function createAiSdkProvider(options: AiSdkProviderOptions): LlmProviderP
     input: ProviderCompletionInput,
     call: CallSignal,
     iterator: FullStreamIterator,
+    tools: ToolStreamState,
+    pending: ReadonlyArray<StreamPart> = [],
   ): AsyncGenerator<StreamPart> {
     let ended = false;
     const end = (part: StreamPart) => {
@@ -145,6 +204,7 @@ export function createAiSdkProvider(options: AiSdkProviderOptions): LlmProviderP
       return part;
     };
     try {
+      yield* pending;
       for (;;) {
         let next: IteratorResult<TextStreamPart<ToolSet>> | "aborted";
         try {
@@ -167,8 +227,13 @@ export function createAiSdkProvider(options: AiSdkProviderOptions): LlmProviderP
           case "text-delta":
             if (part.text !== "") yield { type: "delta", text: part.text };
             break;
+          case "tool-input-start":
+          case "tool-input-delta":
+          case "tool-call":
+            yield* toolParts(part, tools);
+            break;
           case "finish":
-            yield end(toFinishPart(part, input, options.provider));
+            yield end(toFinishPart(part, input, options.provider, tools.indexById.size > 0));
             return;
           case "error":
             yield end({ type: "error", error: failure(input, call, part.error) });
@@ -204,6 +269,7 @@ export function createAiSdkProvider(options: AiSdkProviderOptions): LlmProviderP
       const call = callSignal(input.timeoutMs, input.signal);
       try {
         const iterator = streamText(settings(input, call)).fullStream[Symbol.asyncIterator]();
+        const tools = newToolStreamState();
         for (;;) {
           const next = await nextPart(iterator, call.signal);
           if (next === "aborted") {
@@ -222,12 +288,23 @@ export function createAiSdkProvider(options: AiSdkProviderOptions): LlmProviderP
               return ok({
                 first: part.text,
                 modelName: input.target.model,
-                rest: rest(input, call, iterator),
+                rest: rest(input, call, iterator, tools),
               });
+            case "tool-input-start":
+            case "tool-call": {
+              // The stream starts with a tool call: that is its first token (FR-017).
+              const pending = toolParts(part, tools);
+              call.arm();
+              return ok({
+                first: "",
+                modelName: input.target.model,
+                rest: rest(input, call, iterator, tools, pending),
+              });
+            }
             case "finish": {
               // A complete answer with no text at all.
               call.dispose();
-              const finish = toFinishPart(part, input, options.provider);
+              const finish = toFinishPart(part, input, options.provider, false);
               if (finish.type === "error") return err(finish.error);
               return ok({ first: "", modelName: input.target.model, rest: once(finish) });
             }
@@ -262,6 +339,7 @@ function toFinishPart(
   part: Extract<TextStreamPart<ToolSet>, { type: "finish" }>,
   input: ProviderCompletionInput,
   provider: ProviderName,
+  calledTools: boolean,
 ): StreamPart {
   if (part.finishReason === "error" || part.rawFinishReason === undefined) {
     return { type: "error", error: malformedError(input, provider) };
@@ -269,7 +347,7 @@ function toFinishPart(
   const { inputTokens, outputTokens } = part.totalUsage;
   return {
     type: "finish",
-    finishReason: toFinishReason(part.finishReason),
+    finishReason: toFinishReason(part.finishReason, calledTools),
     ...(inputTokens !== undefined &&
       outputTokens !== undefined && {
         usage: { promptTokens: inputTokens, completionTokens: outputTokens },
@@ -288,12 +366,79 @@ function toModelMessage(message: Message): ModelMessage {
     case "user":
       return { role: "user", content: message.content };
     case "assistant":
-      return { role: "assistant", content: message.content };
+      if (message.toolCalls.length === 0) {
+        return { role: "assistant", content: message.content ?? "" };
+      }
+      return {
+        role: "assistant",
+        content: [
+          ...(message.content === null || message.content === ""
+            ? []
+            : [{ type: "text" as const, text: message.content }]),
+          ...message.toolCalls.map((toolCall) => ({
+            type: "tool-call" as const,
+            toolCallId: toolCall.id,
+            toolName: toolCall.name,
+            // The edge checked that arguments are a JSON object; anonymizing keeps them so.
+            input: JSON.parse(toolCall.arguments) as unknown,
+          })),
+        ],
+      };
+    case "tool":
+      return {
+        role: "tool",
+        content: [
+          {
+            type: "tool-result",
+            toolCallId: message.toolCallId,
+            toolName: message.toolName,
+            output: { type: "text", value: message.content },
+          },
+        ],
+      };
   }
+}
+
+/** Tools without `execute`: the SDK returns the calls and never runs anything. */
+function toToolSet(tools: ReadonlyArray<ToolDefinition>): ToolSet {
+  return Object.fromEntries(
+    tools.map((definition) => [
+      definition.name,
+      tool({
+        ...(definition.description !== undefined && { description: definition.description }),
+        inputSchema: jsonSchema(definition.parameters ?? { type: "object", properties: {} }),
+        ...(definition.strict !== undefined && { strict: definition.strict }),
+      }),
+    ]),
+  );
+}
+
+function toToolChoice(choice: ToolChoice): AiToolChoice<ToolSet> {
+  return typeof choice === "string" ? choice : { type: "tool", toolName: choice.name };
+}
+
+/** A call's input as JSON text; an unparsable call keeps the model's raw text. */
+function argumentsText(input: unknown): string {
+  return typeof input === "string" ? input : JSON.stringify(input ?? {});
+}
+
+interface SdkToolCall {
+  readonly toolCallId: string;
+  readonly toolName: string;
+  readonly input: unknown;
+}
+
+function toToolCalls(calls: ReadonlyArray<SdkToolCall>): ReadonlyArray<ToolCall> {
+  return calls.map((call) => ({
+    id: call.toolCallId,
+    name: call.toolName,
+    arguments: argumentsText(call.input),
+  }));
 }
 
 interface GenerateTextOutcome {
   readonly text: string;
+  readonly toolCalls: ReadonlyArray<SdkToolCall>;
   readonly finishReason: AiFinishReason;
   readonly usage: {
     readonly inputTokens: number | undefined;
@@ -318,9 +463,11 @@ function toCompletion(
     );
   }
   const { inputTokens, outputTokens } = result.usage;
+  const toolCalls = toToolCalls(result.toolCalls);
   return ok({
     text: result.text,
-    finishReason: toFinishReason(result.finishReason),
+    ...(toolCalls.length > 0 && { toolCalls }),
+    finishReason: toFinishReason(result.finishReason, toolCalls.length > 0),
     ...(inputTokens !== undefined &&
       outputTokens !== undefined && {
         usage: { promptTokens: inputTokens, completionTokens: outputTokens },
@@ -329,17 +476,24 @@ function toCompletion(
   });
 }
 
-/** R-06: the contract list is closed; tool calls and unknown reasons end as `stop`. */
-function toFinishReason(reason: Exclude<AiFinishReason, "error">): FinishReason {
+/**
+ * R-06: the contract list is closed; unknown reasons end as `stop`. An answer with tool
+ * calls ends as `tool_calls` even when the provider said `stop` (OpenAI's meaning).
+ */
+function toFinishReason(
+  reason: Exclude<AiFinishReason, "error">,
+  calledTools: boolean,
+): FinishReason {
   switch (reason) {
     case "length":
       return "length";
     case "content-filter":
       return "content_filter";
-    case "stop":
     case "tool-calls":
+      return "tool_calls";
+    case "stop":
     case "other":
-      return "stop";
+      return calledTools ? "tool_calls" : "stop";
   }
 }
 

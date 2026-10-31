@@ -9,7 +9,7 @@ import {
 } from "@tamiz/contracts";
 import { afterEach, describe, expect, it } from "vitest";
 import { createGatewayModel } from "../src/agent/gateway-model.js";
-import { runAgent } from "../src/agent/run-agent.js";
+import { MAX_STEPS, runAgent } from "../src/agent/run-agent.js";
 import { createGatewayClient } from "../src/gateway-client.js";
 import { createMcpServer } from "../src/server.js";
 import { selectTools } from "../src/tools/registry.js";
@@ -156,7 +156,9 @@ function chatRequests(fake: FakeGateway) {
 
 /** The messages the model received on its n-th call (1-based). */
 function messagesOf(fake: FakeGateway, n: number): { role: string; content: string }[] {
-  return ChatCompletionRequestSchema.parse(chatRequests(fake)[n - 1]?.body).messages;
+  return ChatCompletionRequestSchema.parse(chatRequests(fake)[n - 1]?.body).messages.map(
+    (message) => ({ role: message.role, content: message.content ?? "" }),
+  );
 }
 
 describe("US5 the agent answers through Tamiz", () => {
@@ -165,6 +167,7 @@ describe("US5 the agent answers through Tamiz", () => {
     harness.fake.script(SPEND_SCRIPT);
 
     const run = await runAgent({
+      protocol: "text",
       question: QUESTION,
       model: model(harness),
       mcp: harness.mcp,
@@ -198,7 +201,13 @@ describe("US5 the agent answers through Tamiz", () => {
   it("US5-2 makes every model call to the gateway with the client key, tamiz-local and a valid body", async () => {
     const harness = await setup({ cost: spendScenario });
     harness.fake.script(SPEND_SCRIPT);
-    await runAgent({ question: QUESTION, model: model(harness), mcp: harness.mcp, now: () => NOW });
+    await runAgent({
+      protocol: "text",
+      question: QUESTION,
+      model: model(harness),
+      mcp: harness.mcp,
+      now: () => NOW,
+    });
 
     const chats = chatRequests(harness.fake);
     expect(chats).toHaveLength(4);
@@ -226,6 +235,7 @@ describe("US5 the agent answers through Tamiz", () => {
     ]);
 
     const run = await runAgent({
+      protocol: "text",
       question: QUESTION,
       model: model(harness),
       mcp: harness.mcp,
@@ -268,6 +278,7 @@ describe("US5 the agent answers through Tamiz", () => {
       JSON.stringify({ answer: "ok" }),
     ]);
     await runAgent({
+      protocol: "text",
       question: QUESTION,
       model: model(harness),
       mcp: harness.mcp,
@@ -292,6 +303,7 @@ describe("US5 the agent answers through Tamiz", () => {
     ]);
 
     const run = await runAgent({
+      protocol: "text",
       question: QUESTION,
       model: model(harness),
       mcp: harness.mcp,
@@ -310,6 +322,7 @@ describe("US5 the agent answers through Tamiz", () => {
     harness.fake.script(SPEND_SCRIPT);
 
     const run = await runAgent({
+      protocol: "text",
       question: QUESTION,
       model: model(harness),
       mcp: harness.mcp,
@@ -318,6 +331,7 @@ describe("US5 the agent answers through Tamiz", () => {
 
     expect(run).toEqual({
       question: QUESTION,
+      protocol: "text",
       promptVersion: "system.v1",
       model: "tamiz-local",
       today: "2026-10-31",
@@ -357,5 +371,108 @@ describe("US5 the agent answers through Tamiz", () => {
     expect(system?.content).not.toContain("{{");
     for (const name of MCP_TOOL_NAMES) expect(system?.content).toContain(`- ${name}: `);
     expect(user).toEqual({ role: "user", content: QUESTION });
+  });
+});
+
+// 009 tool-calling US8-1 … US8-3 (tasks.md T028): native tool calls through the gateway.
+describe("US8 the agent with native tools", () => {
+  const costCall = (from: string, to: string, groupBy: "day" | "route") => ({
+    name: "get_cost_report",
+    arguments: { from, to, groupBy },
+  });
+
+  it("US8-1 declares the MCP tools, sends results as tool messages, and answers", async () => {
+    const harness = await setup({ cost: spendScenario });
+    harness.fake.script([
+      { toolCalls: [costCall(DAY_BEFORE, TODAY, "day")] },
+      { toolCalls: [costCall(YESTERDAY, TODAY, "route")] },
+      { toolCalls: [costCall(DAY_BEFORE, YESTERDAY, "route")] },
+      ANSWER,
+    ]);
+
+    const run = await runAgent({
+      question: QUESTION,
+      model: model(harness),
+      mcp: harness.mcp,
+      now: () => NOW,
+    });
+
+    expect(run).toMatchObject({
+      protocol: "native",
+      promptVersion: "system.v2",
+      stopReason: "answered",
+      answer: ANSWER,
+      requestIds: ["req-1", "req-2", "req-3", "req-4"],
+    });
+    expect(run.steps.map((s) => s.kind)).toEqual(["tool", "tool", "tool", "answer"]);
+    expect(run.steps[0]).toMatchObject({
+      tool: "get_cost_report",
+      ok: true,
+      callId: "call_req-1_1",
+    });
+    const chats = chatRequests(harness.fake).map((r) => ChatCompletionRequestSchema.parse(r.body));
+    for (const body of chats) {
+      expect(body.tools?.map((t) => t.function.name).sort()).toEqual([...MCP_TOOL_NAMES].sort());
+      expect(body.messages.every((m) => !m.content?.includes("input JSON Schema"))).toBe(true);
+    }
+    const last = chats[3]?.messages ?? [];
+    const results = last.filter((m) => m.role === "tool");
+    expect(results.map((m) => m.tool_call_id)).toEqual([
+      "call_req-1_1",
+      "call_req-2_1",
+      "call_req-3_1",
+    ]);
+    expect(results[1]?.content).toContain('"costUsd":0.73');
+    expect(
+      last.filter((m) => m.role === "assistant").every((m) => m.tool_calls?.length === 1),
+    ).toBe(true);
+  });
+
+  it("US8-2 runs two calls of one answer in order, both results before the next model call", async () => {
+    const harness = await setup({ cost: spendScenario });
+    harness.fake.script([
+      {
+        toolCalls: [costCall(YESTERDAY, TODAY, "route"), costCall(DAY_BEFORE, YESTERDAY, "route")],
+      },
+      ANSWER,
+    ]);
+
+    const run = await runAgent({
+      question: QUESTION,
+      model: model(harness),
+      mcp: harness.mcp,
+      now: () => NOW,
+    });
+
+    expect(run.stopReason).toBe("answered");
+    const costCalls = harness.fake.requests.filter((r) => r.path === "/v1/admin/cost");
+    expect(costCalls.map((r) => r.query["from"])).toEqual([YESTERDAY, DAY_BEFORE]);
+    const second = ChatCompletionRequestSchema.parse(chatRequests(harness.fake)[1]?.body);
+    expect(second.messages.filter((m) => m.role === "tool")).toHaveLength(2);
+    expect(run.requestIds).toHaveLength(2);
+  });
+
+  it("US8-2 an unknown tool goes back as an error result, and the step limit counts model calls", async () => {
+    const harness = await setup();
+    harness.fake.script(
+      Array.from({ length: 7 }, () => ({
+        toolCalls: [{ name: "delete_everything", arguments: {} }],
+      })),
+    );
+
+    const run = await runAgent({
+      question: QUESTION,
+      model: model(harness),
+      mcp: harness.mcp,
+      now: () => NOW,
+    });
+
+    expect(run.stopReason).toBe("step_limit");
+    expect(run.requestIds).toHaveLength(MAX_STEPS);
+    expect(run.steps.every((s) => s.kind === "observation_error")).toBe(true);
+    const sixth = ChatCompletionRequestSchema.parse(chatRequests(harness.fake)[5]?.body);
+    expect(sixth.messages.filter((m) => m.role === "tool")[0]?.content).toContain(
+      "unavailable tool",
+    );
   });
 });

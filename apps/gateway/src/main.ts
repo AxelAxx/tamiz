@@ -48,7 +48,7 @@ import {
 import { connectDatabase, runMigrations } from "./infrastructure/persistence/db.js";
 import { loadPolicyFile } from "./infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "./infrastructure/policy/in-memory-policy-repository.js";
-import { loadAnonymizationNotice } from "./infrastructure/privacy/anonymization-notice.js";
+import { loadAnonymizationNotices } from "./infrastructure/privacy/anonymization-notice.js";
 import { createHttpPiiDetector } from "./infrastructure/privacy/http-pii-detector.js";
 import { fanOut } from "./infrastructure/telemetry/fan-out.js";
 import { createLogRoutingEvents } from "./infrastructure/telemetry/log-routing-events.js";
@@ -70,7 +70,7 @@ function orExit<T>(result: Result<T, ConfigurationError>): T {
 const config = orExit(loadConfig(process.env));
 const policy = orExit(await loadPolicyFile(config.policyFile));
 orExit(checkProviderSettings(policy, config));
-const anonymizationNotice = orExit(loadAnonymizationNotice());
+const anonymizationNotices = orExit(loadAnonymizationNotices());
 
 const logger = createLogger({ level: config.logLevel });
 
@@ -111,7 +111,7 @@ const routing: RouteInferenceDeps = {
   events,
   random: Math.random,
   inspect,
-  anonymizationNotice,
+  anonymizationNotices,
   tracer,
 };
 // Spec 006: one content-free audit entry per request. The messages are identified by an

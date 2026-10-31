@@ -22,7 +22,7 @@ const MESSAGES = [{ role: "user", content: TEXT }];
 const HIGH: Inspection = {
   status: "ok",
   level: "high",
-  entities: [{ messageIndex: 0, kind: "PERSON", start: 10, end: 18, score: 0.85 }],
+  entities: [{ textIndex: 0, kind: "PERSON", start: 10, end: 18, score: 0.85 }],
 };
 
 function post(extra: Record<string, unknown> = {}, auth: Record<string, string> = AUTH) {

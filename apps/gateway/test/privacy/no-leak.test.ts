@@ -19,7 +19,7 @@ const TEXT = `Soy ${VALUES[0]}, escribe a ${VALUES[1]}; mi DNI es ${VALUES[2]}.`
 function inspection(level: "high" | "critical"): Inspection {
   const found = (kind: "PERSON" | "EMAIL" | "DNI", value: string) => {
     const start = TEXT.indexOf(value);
-    return { messageIndex: 0, kind, start, end: start + value.length, score: 0.9 };
+    return { textIndex: 0, kind, start, end: start + value.length, score: 0.9 };
   };
   const entities = [found("PERSON", VALUES[0]), found("EMAIL", VALUES[1])];
   return {

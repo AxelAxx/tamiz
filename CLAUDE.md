@@ -129,8 +129,10 @@ Note: Presidio moved from Microsoft to the Data Privacy Stack organization in Ju
 System view, request flow and layer diagram: `docs/architecture.md` (Mermaid) and
 `docs/tamiz-project.md` section 4. Decisions: `docs/adr/`.
 
-**Request flow (gateway).** `POST /v1/chat/completions` (OpenAI-compatible) → Zod
-validation → `ClassifyTask` → `InspectSensitivity` (privacy service) →
+**Request flow (gateway).** `POST /v1/chat/completions` (OpenAI-compatible, function
+tools included since `T-009-05`) → Zod validation → `ClassifyTask` → `InspectSensitivity`
+(privacy service, over every text the provider reads: contents, tool-call arguments, tool
+results, tool definitions) →
 `RoutingPolicy.decide()` (pure domain, returns a `RoutingDecision` with an ordered
 fallback chain and a privacy action: `allow` | `anonymize` | `restrict_to_local` |
 `block`) → resilient execution (timeout → retry → circuit breaker → next target; a
@@ -339,7 +341,7 @@ pnpm --filter @tamiz/gateway db:generate   # new migration from the Drizzle sche
 pnpm --filter @tamiz/gateway api-key:add <client> [--admin]   # key stored hashed in the database
 pnpm --filter @tamiz/mcp-server start:http   # MCP server on http://127.0.0.1:3100/mcp (bearer = Tamiz key); stdio: node apps/mcp-server/dist/main.js
 npx @modelcontextprotocol/inspector node apps/mcp-server/dist/main.js   # try the MCP tools by hand (TAMIZ_MCP_GATEWAY_URL/KEY in its env panel)
-pnpm --filter @tamiz/mcp-server agent:demo -- "why did spend rise yesterday?"   # agent: TAMIZ_AGENT_API_KEY (client) + TAMIZ_AGENT_MCP_KEY (admin), server on start:http
+pnpm --filter @tamiz/mcp-server agent:demo -- "why did spend rise yesterday?"   # agent: TAMIZ_AGENT_API_KEY (client) + TAMIZ_AGENT_MCP_KEY (admin), server on start:http; TAMIZ_AGENT_TOOL_PROTOCOL=native (default) | text
 docker compose up            # full local stack                   (later: OPS)
 ```
 

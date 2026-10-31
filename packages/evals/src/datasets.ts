@@ -7,7 +7,12 @@
  */
 import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
-import { ChatMessageSchema, PrivacyEntityKindSchema } from "@tamiz/contracts";
+import {
+  ChatMessageSchema,
+  PrivacyEntityKindSchema,
+  TextLocationSchema,
+  ToolDefinitionSchema,
+} from "@tamiz/contracts";
 import { z } from "zod";
 
 export const HeaderSchema = z.strictObject({
@@ -23,7 +28,12 @@ export const HeaderSchema = z.strictObject({
 });
 export type DatasetHeader = z.infer<typeof HeaderSchema>;
 
-const Messages = z.array(ChatMessageSchema).min(1);
+/** Plain text conversations (routing, quality): no tool calls. */
+const Messages = z
+  .array(z.strictObject({ role: z.enum(["system", "user", "assistant"]), content: z.string() }))
+  .min(1);
+/** Any request messages, tool calls and results included (leak, v2). */
+const RequestMessages = z.array(ChatMessageSchema).min(1);
 const Span = z.strictObject({
   kind: PrivacyEntityKindSchema,
   start: z.int().min(0),
@@ -41,12 +51,19 @@ export const RoutingCaseSchema = z.strictObject({
   }),
 });
 
+/**
+ * A leak case (spec 007; v2 adds tool calling, 009 tool-calling FR-021, FR-022): a value
+ * is in a message's content unless `location` says it is in a tool call's arguments.
+ */
 export const LeakCaseSchema = z.strictObject({
-  id: z.string().regex(/^pii-leak-\d{3,4}$/),
-  messages: Messages,
+  id: z.string().regex(/^pii-leak-(tool-)?\d{3,4}$/),
+  messages: RequestMessages,
+  tools: z.array(ToolDefinitionSchema).min(1).optional(),
   model: z.string().min(1).optional(),
   tags: z.array(z.string().min(1)),
-  values: z.array(Span.extend({ messageIndex: z.int().min(0) })),
+  values: z.array(
+    Span.extend({ messageIndex: z.int().min(0), location: TextLocationSchema.optional() }),
+  ),
 });
 
 export const DetectionCaseSchema = z.strictObject({
@@ -98,9 +115,14 @@ function checkOffsets(c: unknown): string | undefined {
   const leak = LeakCaseSchema.safeParse(c);
   if (leak.success) {
     for (const v of leak.data.values) {
-      const content = leak.data.messages[v.messageIndex]?.content;
-      if (content === undefined) return "values: messageIndex outside the messages";
-      if (v.end <= v.start || v.end > content.length) return "values: offsets outside the message";
+      const message = leak.data.messages[v.messageIndex];
+      if (message === undefined) return "values: messageIndex outside the messages";
+      const text =
+        v.location?.kind === "arguments" && message.role === "assistant"
+          ? message.tool_calls?.[v.location.toolCallIndex]?.function.arguments
+          : message.content;
+      if (text === undefined || text === null) return "values: location outside the message";
+      if (v.end <= v.start || v.end > text.length) return "values: offsets outside the message";
     }
   }
   const detection = DetectionCaseSchema.safeParse(c);

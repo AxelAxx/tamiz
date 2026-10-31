@@ -15,7 +15,7 @@ import type { ProviderErrorCause } from "../../domain/errors.js";
 import type { CircuitState } from "../../domain/model/circuit.js";
 import type { FallbackReason } from "../../domain/model/fallback.js";
 import type { ProviderName, Residency } from "../../domain/model/model-target.js";
-import type { PrivacyAction } from "../../domain/model/privacy-policy.js";
+import type { NotAnonymizableReason, PrivacyAction } from "../../domain/model/privacy-policy.js";
 import type {
   DetectorFailure,
   EntityKind,
@@ -38,6 +38,7 @@ export const ROUTING_EVENT_TYPES = [
   "privacy.detector_failed",
   "privacy.action",
   "privacy.anonymized",
+  "privacy.not_anonymizable",
   "audit.dropped",
 ] as const;
 export type RoutingEventType = (typeof ROUTING_EVENT_TYPES)[number];
@@ -67,6 +68,8 @@ export type PrivacyEvent = { readonly requestId: RequestId; readonly at: string 
       readonly ruleId: string;
     }
   | { readonly type: "privacy.anonymized"; readonly placeholders: number }
+  /** Anonymizing was not safe, so the request stays local (009 tool-calling FR-011). */
+  | { readonly type: "privacy.not_anonymizable"; readonly reason: NotAnonymizableReason }
 );
 
 /** Audit entries that could not be stored (spec 006 FR-004, research R-02). */

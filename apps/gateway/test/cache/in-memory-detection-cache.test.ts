@@ -8,7 +8,7 @@ import { createInMemoryDetectionCache } from "../../src/infrastructure/cache/in-
 const INSPECTION: SuccessfulInspection = {
   status: "ok",
   level: "critical",
-  entities: [{ messageIndex: 0, kind: "DNI", start: 4, end: 13, score: 1 }],
+  entities: [{ textIndex: 0, kind: "DNI", start: 4, end: 13, score: 1 }],
 };
 
 function setup(maxEntries = 3, ttlMs = 1_000) {
@@ -65,7 +65,7 @@ describe("createInMemoryDetectionCache", () => {
       return value;
     });
     expect([...keys].sort()).toEqual(
-      ["end", "entities", "kind", "level", "messageIndex", "score", "start", "status"].sort(),
+      ["end", "entities", "kind", "level", "textIndex", "score", "start", "status"].sort(),
     );
   });
 });

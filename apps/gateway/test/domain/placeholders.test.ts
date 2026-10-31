@@ -29,8 +29,8 @@ const vectors = (
   ) as { vectors: Vector[] }
 ).vectors;
 
-const entitiesOf = (findings: Vector["findings"], messageIndex = 0): DetectedEntity[] =>
-  findings.map((f) => ({ messageIndex, kind: f.kind, start: f.start, end: f.end, score: 1 }));
+const entitiesOf = (findings: Vector["findings"], textIndex = 0): DetectedEntity[] =>
+  findings.map((f) => ({ textIndex, kind: f.kind, start: f.start, end: f.end, score: 1 }));
 
 describe("shared placeholder vectors (Python reference = TypeScript port)", () => {
   it.each(vectors.map((v) => [v.name, v] as const))("%s", (_name, vector) => {
@@ -64,9 +64,9 @@ describe("anonymizeMessages across messages", () => {
   it("US2-2: the same value in two messages gets one placeholder; numbering continues", () => {
     const messages = ["Soy Ana Ruiz.", "Ana Ruiz y Pedro Gil firman."];
     const result = anonymizeMessages(messages, [
-      { messageIndex: 0, kind: "PERSON", start: 4, end: 12, score: 0.85 },
-      { messageIndex: 1, kind: "PERSON", start: 0, end: 8, score: 0.85 },
-      { messageIndex: 1, kind: "PERSON", start: 11, end: 20, score: 0.85 },
+      { textIndex: 0, kind: "PERSON", start: 4, end: 12, score: 0.85 },
+      { textIndex: 1, kind: "PERSON", start: 0, end: 8, score: 0.85 },
+      { textIndex: 1, kind: "PERSON", start: 11, end: 20, score: 0.85 },
     ]);
     expect(result.messages).toEqual(["Soy <PERSON_1>.", "<PERSON_1> y <PERSON_2> firman."]);
     expect(result.mapping.map((e) => e.placeholder)).toEqual(["<PERSON_1>", "<PERSON_2>"]);
@@ -75,7 +75,7 @@ describe("anonymizeMessages across messages", () => {
   it("numbering skips placeholders already present in any message", () => {
     const result = anonymizeMessages(
       ["Plantilla <DNI_2>.", "DNI 12345678Z"],
-      [{ messageIndex: 1, kind: "DNI", start: 4, end: 13, score: 1 }],
+      [{ textIndex: 1, kind: "DNI", start: 4, end: 13, score: 1 }],
     );
     expect(result.messages[1]).toBe("DNI <DNI_3>");
   });
@@ -84,9 +84,9 @@ describe("anonymizeMessages across messages", () => {
     const result = anonymizeMessages(
       ["Ana Ruiz"],
       [
-        { messageIndex: 0, kind: "PERSON", start: 0, end: 8, score: 0.85 },
-        { messageIndex: 0, kind: "LOCATION", start: 4, end: 8, score: 0.85 },
-        { messageIndex: 0, kind: "PERSON", start: 5, end: 99, score: 0.85 },
+        { textIndex: 0, kind: "PERSON", start: 0, end: 8, score: 0.85 },
+        { textIndex: 0, kind: "LOCATION", start: 4, end: 8, score: 0.85 },
+        { textIndex: 0, kind: "PERSON", start: 5, end: 99, score: 0.85 },
       ],
     );
     expect(result.messages).toEqual(["<PERSON_1>"]);
@@ -117,11 +117,11 @@ describe("restore", () => {
     fc.assert(
       fc.property(fc.array(textArb, { minLength: 1, maxLength: 3 }), fc.nat(), (texts, seed) => {
         const entities: DetectedEntity[] = [];
-        texts.forEach((text, messageIndex) => {
+        texts.forEach((text, textIndex) => {
           let cursor = seed % 3;
           while (cursor + 2 <= text.length) {
             entities.push({
-              messageIndex,
+              textIndex,
               kind: "PERSON",
               start: cursor,
               end: cursor + 2,

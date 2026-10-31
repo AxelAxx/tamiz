@@ -16,7 +16,7 @@ describe("ChatCompletionRequestSchema (spec US2-1 … US2-4, SC-004)", () => {
     expectTypeOf(result.data.stream).toEqualTypeOf<boolean | undefined>();
     expectTypeOf(result.data.user).toEqualTypeOf<string | undefined>();
     expectTypeOf(result.data.messages[0]?.role).toEqualTypeOf<
-      "system" | "user" | "assistant" | undefined
+      "system" | "user" | "assistant" | "tool" | undefined
     >();
   });
 
@@ -25,14 +25,17 @@ describe("ChatCompletionRequestSchema (spec US2-1 … US2-4, SC-004)", () => {
   });
 
   it("US2-2: rejects an unknown top-level field and names it", () => {
-    const result = ChatCompletionRequestSchema.safeParse({ ...minimalRequest, tools: [] });
+    const result = ChatCompletionRequestSchema.safeParse({
+      ...minimalRequest,
+      parallel_tool_calls: false,
+    });
 
     expect(result.success).toBe(false);
     if (result.success) return;
     const issue = result.error.issues.find((i) => i.code === "unrecognized_keys");
     expect(issue).toBeDefined();
-    expect(issue?.code === "unrecognized_keys" && issue.keys).toEqual(["tools"]);
-    expect(issue?.message).toContain("tools");
+    expect(issue?.code === "unrecognized_keys" && issue.keys).toEqual(["parallel_tool_calls"]);
+    expect(issue?.message).toContain("parallel_tool_calls");
   });
 
   it("US2-2: rejects an unknown field nested inside a message", () => {
@@ -113,10 +116,10 @@ describe("ChatCompletionRequestSchema (spec US2-1 … US2-4, SC-004)", () => {
       expect(result.error.issues[0]?.path).toEqual(["messages"]);
     });
 
-    it('rejects an unknown role ("tool")', () => {
+    it('rejects an unknown role ("function")', () => {
       const result = ChatCompletionRequestSchema.safeParse({
         ...minimalRequest,
-        messages: [{ role: "tool", content: "x" }],
+        messages: [{ role: "function", content: "x" }],
       });
       expect(result.success).toBe(false);
       if (result.success) return;

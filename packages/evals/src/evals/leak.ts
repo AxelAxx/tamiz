@@ -7,9 +7,14 @@
  * it appears verbatim (NFC) in any of those messages and the decided chain has a target
  * outside `local` residency, fallbacks included. Blocked requests leak nothing.
  *
+ * Tool calling (009 tool-calling FR-021 … FR-024): what is sent also includes every tool
+ * call's arguments and every tool result; a value may sit in a call's arguments
+ * (`location`). Values in tool messages are counted apart (`values.tool_messages`, gated)
+ * and their leak rate reported (`leak_rate.tool_messages`).
+ *
  * The observation keeps one boolean per value: the texts never leave `observe`.
  */
-import type { EvalFailingCase, PrivacyEntityKindDto } from "@tamiz/contracts";
+import type { ChatMessage, EvalFailingCase, PrivacyEntityKindDto } from "@tamiz/contracts";
 import { createGatewayClient, type SimulateResponse } from "../clients/gateway.js";
 import { type LeakCase, LeakCaseSchema } from "../datasets.js";
 import { type Eval, ServiceError } from "../eval.js";
@@ -31,9 +36,33 @@ export interface LeakOutcome {
 
 const nfc = (text: string) => text.normalize("NFC");
 
+/** Every text of a message a provider reads: its content and its tool calls' arguments. */
+function textsOf(message: ChatMessage): string[] {
+  const content = message.content ?? "";
+  if (message.role !== "assistant") return [content];
+  return [content, ...(message.tool_calls ?? []).map((call) => call.function.arguments)];
+}
+
+type LeakValue = LeakCase["values"][number];
+
+/** The text a value is annotated in: a message's content or a tool call's arguments. */
+function locatedText(c: LeakCase, value: LeakValue): string {
+  const message = c.messages[value.messageIndex];
+  if (message === undefined) return "";
+  if (value.location?.kind === "arguments" && message.role === "assistant") {
+    return message.tool_calls?.[value.location.toolCallIndex]?.function.arguments ?? "";
+  }
+  return message.content ?? "";
+}
+
+/** True when the value is in a tool call's arguments or in a tool result. */
+export function inToolMessage(c: LeakCase, value: LeakValue): boolean {
+  return value.location?.kind === "arguments" || c.messages[value.messageIndex]?.role === "tool";
+}
+
 /** Pure: what a provider would receive and whether each value is in it. */
 export function observeSimulation(c: LeakCase, simulated: SimulateResponse): LeakObservation {
-  const sent = (simulated.providerMessages ?? c.messages).map((m) => nfc(m.content));
+  const sent = (simulated.providerMessages ?? c.messages).flatMap(textsOf).map(nfc);
   return {
     decision: simulated.decision,
     privacyAction: simulated.privacyAction,
@@ -41,7 +70,7 @@ export function observeSimulation(c: LeakCase, simulated: SimulateResponse): Lea
     chain: simulated.chain.map((t) => t.id).join(","),
     nonLocal: simulated.chain.some((t) => t.residency !== "local"),
     sentVerbatim: c.values.map((v) => {
-      const value = nfc(c.messages[v.messageIndex]?.content.slice(v.start, v.end) ?? "");
+      const value = nfc(locatedText(c, v).slice(v.start, v.end));
       return value !== "" && sent.some((text) => text.includes(value));
     }),
   };
@@ -54,7 +83,7 @@ export function scoreLeak(observation: LeakObservation): LeakOutcome {
 
 export const leakEval: Eval<LeakCase, LeakObservation, LeakOutcome> = {
   id: "leak",
-  dataset: { file: "pii-leak-es.v1.jsonl", name: "pii-leak-es", schema: LeakCaseSchema },
+  dataset: { file: "pii-leak-es.v2.jsonl", name: "pii-leak-es", schema: LeakCaseSchema },
   requires: ["TAMIZ_EVAL_GATEWAY_URL", "TAMIZ_EVAL_API_KEY"],
 
   prepare({ config, fetch }) {
@@ -65,7 +94,7 @@ export const leakEval: Eval<LeakCase, LeakObservation, LeakOutcome> = {
     });
     return {
       async observe(c) {
-        const simulated = await gateway.simulate(c.messages, c.model);
+        const simulated = await gateway.simulate(c.messages, c.model, c.tools);
         // A fail-closed route would hide a detection gap: the run did not measure detection.
         if (simulated.detector !== "ok") throw new ServiceError("privacy", "detector_failed");
         return observeSimulation(c, simulated);
@@ -77,12 +106,17 @@ export const leakEval: Eval<LeakCase, LeakObservation, LeakOutcome> = {
 
   summarize(results) {
     const totals = new Map<PrivacyEntityKindDto, { values: number; leaked: number }>();
+    const tools = { values: 0, leaked: 0 };
     const failing: EvalFailingCase[] = [];
     for (const { c, result } of results) {
       c.values.forEach((v, i) => {
         const t = totals.get(v.kind) ?? { values: 0, leaked: 0 };
         const leaked = result.leaked[i] === true;
         totals.set(v.kind, { values: t.values + 1, leaked: t.leaked + (leaked ? 1 : 0) });
+        if (inToolMessage(c, v)) {
+          tools.values += 1;
+          tools.leaked += leaked ? 1 : 0;
+        }
         if (leaked) {
           failing.push({
             id: c.id,
@@ -109,6 +143,16 @@ export const leakEval: Eval<LeakCase, LeakObservation, LeakOutcome> = {
           value: totals.get(kind)?.values ?? 0,
           unit: "count" as const,
         })),
+        { name: "values.tool_messages", value: tools.values, unit: "count" },
+        ...(tools.values === 0
+          ? []
+          : [
+              {
+                name: "leak_rate.tool_messages",
+                value: tools.leaked / tools.values,
+                unit: "ratio" as const,
+              },
+            ]),
         { name: "cases", value: results.length, unit: "count" },
       ],
       failing,

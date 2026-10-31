@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { z } from "zod";
 import { classifyTask } from "../../src/application/use-cases/classify-task.js";
-import { MESSAGE_ROLES } from "../../src/domain/model/inference-request.js";
+import { textMessage } from "../../src/domain/model/inference-request.js";
 import { CLEAN_INSPECTION } from "../../src/domain/model/sensitivity.js";
 import { TASK_SIZES, TASK_TYPES } from "../../src/domain/model/task-classifier.js";
 import { clientIdUnchecked, requestIdUnchecked } from "../../src/domain/model/units.js";
@@ -30,7 +30,9 @@ const HeaderSchema = z.strictObject({
 
 const CaseSchema = z.strictObject({
   id: z.string().regex(/^routing-\d{3}$/),
-  messages: z.array(z.strictObject({ role: z.enum(MESSAGE_ROLES), content: z.string() })).min(1),
+  messages: z
+    .array(z.strictObject({ role: z.enum(["system", "user", "assistant"]), content: z.string() }))
+    .min(1),
   model: z.string().min(1).optional(),
   expected: z.strictObject({
     taskType: z.enum(TASK_TYPES),
@@ -77,7 +79,7 @@ describe("routing gate (US8-1, US8-2, US8-4, FR-037)", () => {
           requestId: requestIdUnchecked(c.id),
           clientId: clientIdUnchecked("routing-eval"),
           requestedModel: c.model ?? "tamiz-auto",
-          messages: c.messages,
+          messages: c.messages.map((m) => textMessage(m.role, m.content)),
         },
         CLEAN_INSPECTION,
       );

@@ -48,7 +48,7 @@ export interface InvalidSample {
 export const invalidRequests: readonly InvalidSample[] = [
   {
     name: "unknown top-level field",
-    payload: { ...minimalRequest, tools: [] },
+    payload: { ...minimalRequest, parallel_tool_calls: true },
     path: [],
   },
   {
@@ -67,8 +67,8 @@ export const invalidRequests: readonly InvalidSample[] = [
     path: ["messages"],
   },
   {
-    name: 'role "tool"',
-    payload: { ...minimalRequest, messages: [{ role: "tool", content: "x" }] },
+    name: 'role "function"',
+    payload: { ...minimalRequest, messages: [{ role: "function", content: "x" }] },
     path: ["messages", 0, "role"],
   },
   {

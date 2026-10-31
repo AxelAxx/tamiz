@@ -52,8 +52,8 @@ describe("createHttpPiiDetector", () => {
       status: "ok",
       level: "critical",
       entities: [
-        { messageIndex: 1, kind: "PERSON", start: 4, end: 12, score: 0.85 },
-        { messageIndex: 1, kind: "DNI", start: 18, end: 27, score: 1 },
+        { textIndex: 1, kind: "PERSON", start: 4, end: 12, score: 0.85 },
+        { textIndex: 1, kind: "DNI", start: 18, end: 27, score: 1 },
       ],
     });
   });

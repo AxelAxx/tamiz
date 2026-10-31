@@ -43,3 +43,26 @@ describe("SimulateResponseSchema", () => {
     ).toBe(false);
   });
 });
+
+describe("SimulateResponseSchema with tool calling (009 tool-calling FR-015)", () => {
+  const entity = { kind: "DNI", start: 1, end: 10, score: 0.99 };
+
+  it("accepts every entity location and the notAnonymizable reason", () => {
+    const entities = [
+      { ...entity, messageIndex: 2, location: { kind: "content", messageIndex: 2 } },
+      {
+        ...entity,
+        messageIndex: 1,
+        location: { kind: "arguments", messageIndex: 1, toolCallIndex: 0 },
+      },
+      { ...entity, location: { kind: "tool_definition", toolIndex: 0 } },
+    ];
+    const response = { ...example.response, entities, notAnonymizable: "json_structure" };
+    expect(SimulateResponseSchema.safeParse(response).success).toBe(true);
+  });
+
+  it("rejects an unknown location kind", () => {
+    const entities = [{ ...entity, location: { kind: "schema", toolIndex: 0 } }];
+    expect(SimulateResponseSchema.safeParse({ ...example.response, entities }).success).toBe(false);
+  });
+});

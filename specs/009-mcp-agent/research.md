@@ -221,6 +221,10 @@ stays on AI SDK.
 
 ## R-10 The agent's tool protocol is text **(review)**
 
+> **Superseded as the default by `T-009-05`** (`specs/009-mcp-agent/tool-calling/`, research
+> T-R14): the gateway now carries OpenAI function tools, and the agent uses them natively by
+> default. This text protocol stays available with `TAMIZ_AGENT_TOOL_PROTOCOL=text`.
+
 **Decision**: the gateway's chat completion contract rejects `tools`, `tool_choice`, tool
 messages and `response_format` (`packages/contracts/src/chat-completion.ts`). So the agent
 uses a prompted protocol:

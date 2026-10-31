@@ -18,9 +18,9 @@ import { failure } from "./resilience/helpers.js";
 const DNI_TEXT = "Mi DNI es 12345678Z, ¿qué trámites necesito?";
 const NAMES_TEXT = "Escribe a Ana Ruiz (ana@example.com) sobre el contrato.";
 
-function entity(messageIndex: number, text: string, kind: DetectedEntity["kind"], value: string) {
+function entity(textIndex: number, text: string, kind: DetectedEntity["kind"], value: string) {
   const start = text.indexOf(value);
-  return { messageIndex, kind, start, end: start + value.length, score: 0.9 };
+  return { textIndex, kind, start, end: start + value.length, score: 0.9 };
 }
 
 const CRITICAL: Inspection = {

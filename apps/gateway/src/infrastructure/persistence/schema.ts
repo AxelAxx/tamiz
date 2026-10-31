@@ -42,6 +42,8 @@ export const auditEntries = pgTable(
     outcome: text("outcome").notNull(),
     errorType: text("error_type"),
     streamed: boolean("streamed").notNull(),
+    /** Counts and called tool names only (009 tool-calling FR-018); null without tools. */
+    tools: jsonb("tools").$type<{ declared: number; toolMessages: number; called: string[] }>(),
     targetId: text("target_id"),
     targetProvider: text("target_provider"),
     targetModel: text("target_model"),

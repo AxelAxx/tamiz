@@ -18,10 +18,24 @@ import {
   TaskTypeSchema,
 } from "./routing-policy.js";
 
+/** Where a piece of inspected text is (009 tool-calling FR-015, research T-R04). */
+export const TextLocationSchema = z.discriminatedUnion("kind", [
+  z.strictObject({ kind: z.literal("content"), messageIndex: z.int().min(0) }),
+  z.strictObject({
+    kind: z.literal("arguments"),
+    messageIndex: z.int().min(0),
+    toolCallIndex: z.int().min(0),
+  }),
+  z.strictObject({ kind: z.literal("tool_definition"), toolIndex: z.int().min(0) }),
+]);
+
 export const SimulatedEntitySchema = z.strictObject({
-  messageIndex: z.int().min(0),
+  /** The message, for content and arguments locations; absent for tool definitions. */
+  messageIndex: z.int().min(0).optional(),
+  /** Always set by the gateway since the 009 tool-calling addendum (FR-015). */
+  location: TextLocationSchema.optional(),
   kind: PrivacyEntityKindSchema,
-  /** UTF-16 offsets into that message's content; `end` is exclusive. */
+  /** UTF-16 offsets into the located text; `end` is exclusive. */
   start: z.int().min(0),
   end: z.int().positive(),
   score: z.number().min(0).max(1),
@@ -52,6 +66,8 @@ export const SimulateResponseSchema = z
     /** Only for `anonymize`: what the provider would receive (placeholders, notice). */
     providerMessages: z.array(ChatMessageSchema).optional(),
     notice: z.string().optional(),
+    /** Set when anonymizing was not safe and the request was kept local (FR-011). */
+    notAnonymizable: z.enum(["json_structure", "tool_definition"]).optional(),
   })
   .refine((body) => (body.decision === "block") === (body.blockReason !== undefined), {
     message: "blockReason is present exactly when the decision is block",
@@ -59,3 +75,4 @@ export const SimulateResponseSchema = z
   });
 
 export type SimulateResponse = z.infer<typeof SimulateResponseSchema>;
+export type TextLocation = z.infer<typeof TextLocationSchema>;

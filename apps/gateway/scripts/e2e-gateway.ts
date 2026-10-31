@@ -50,7 +50,7 @@ import { createInMemoryCircuitState } from "../src/infrastructure/cache/in-memor
 import { systemClock } from "../src/infrastructure/clock/system-clock.js";
 import { loadPolicyFile } from "../src/infrastructure/policy/file-policy-loader.js";
 import { createInMemoryPolicyRepository } from "../src/infrastructure/policy/in-memory-policy-repository.js";
-import { loadAnonymizationNotice } from "../src/infrastructure/privacy/anonymization-notice.js";
+import { loadAnonymizationNotices } from "../src/infrastructure/privacy/anonymization-notice.js";
 import { createApp } from "../src/presentation/app.js";
 
 const {
@@ -98,12 +98,12 @@ function scriptedDetector(isDown: () => boolean): PiiDetectorPort {
       if (isDown()) return { status: "failed", reason: "unavailable" };
       const entities: DetectedEntity[] = [];
       let level: SensitivityLevel = "none";
-      messages.forEach((content, messageIndex) => {
+      messages.forEach((content, textIndex) => {
         for (const marker of MARKERS) {
           let start = content.indexOf(marker.text);
           while (start !== -1) {
             entities.push({
-              messageIndex,
+              textIndex,
               kind: marker.kind,
               start,
               end: start + marker.text.length,
@@ -116,7 +116,7 @@ function scriptedDetector(isDown: () => boolean): PiiDetectorPort {
           }
         }
       });
-      entities.sort((a, b) => a.messageIndex - b.messageIndex || a.start - b.start);
+      entities.sort((a, b) => a.textIndex - b.textIndex || a.start - b.start);
       return { status: "ok", level, entities } satisfies Inspection;
     },
   };
@@ -128,9 +128,9 @@ const neverCalled = () =>
 const policyResult = await loadPolicyFile(resolve(import.meta.dirname, "../policies/default.yaml"));
 if (!policyResult.ok) throw new Error("the default policy must load");
 const policy = policyResult.value;
-const noticeResult = loadAnonymizationNotice();
+const noticeResult = loadAnonymizationNotices();
 if (!noticeResult.ok) throw new Error("the anonymization notice must load");
-const anonymizationNotice = noticeResult.value;
+const anonymizationNotices = noticeResult.value;
 
 const keys = [
   { clientId: "dashboard", keyHash: hashApiKey(ADMIN_KEY), role: "admin" as const },
@@ -157,7 +157,7 @@ function buildState() {
       hash: (text) => createHash("sha256").update(text).digest("hex"),
       timeoutMs: 2_000 as Milliseconds,
     }),
-    anonymizationNotice,
+    anonymizationNotices,
   };
   const auditDeps = {
     audit,

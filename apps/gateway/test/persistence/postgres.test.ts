@@ -95,6 +95,20 @@ describe.skipIf(!docker)("PostgreSQL persistence (Testcontainers)", () => {
     expect(AuditEntrySchema.safeParse(back).success).toBe(true);
   });
 
+  it("009 tool-calling FR-018: stores the tools summary and reads it back", async () => {
+    const withTools = {
+      ...ENTRY,
+      id: "6f1c2b3a-0d4e-4f5a-8b6c-7d8e9f0a1b2c",
+      tools: { declared: 2, toolMessages: 1, called: ["get_patient", "send_reminder"] },
+    };
+    await createPostgresAuditStore(database.db).insertBatch([withTools]);
+    const rows = await database.db.select().from(auditEntries);
+    const row = rows.find((candidate) => candidate.id === withTools.id);
+    if (row === undefined) throw new Error("expected a row");
+    expect(fromRow(row)).toEqual(withTools);
+    expect(rows.find((candidate) => candidate.id === ENTRY.id)?.tools).toBeNull();
+  });
+
   it("FR-006: finds a key by hash with its role, and refuses it once revoked", async () => {
     const keys = createPostgresApiKeyRepository(database.db);
     const keyHash = hashApiKey("tmz_db-key");

@@ -136,6 +136,89 @@ describe("leak scorer", () => {
   });
 });
 
+// 009 tool-calling US7-1 … US7-3 (tasks.md T026).
+describe("leak scorer with tool messages", () => {
+  const ARGS = '{"nombre":"Edurne Zubiri"}';
+  const RESULT = "DNI 06324134P confirmado.";
+  const TOOL_CASE: LeakCase = {
+    id: "pii-leak-tool-0001",
+    tags: ["tool-both"],
+    messages: [
+      { role: "user", content: "Busca a la paciente." },
+      {
+        role: "assistant",
+        content: null,
+        tool_calls: [{ id: "c1", type: "function", function: { name: "find", arguments: ARGS } }],
+      },
+      { role: "tool", tool_call_id: "c1", content: RESULT },
+    ],
+    values: [
+      {
+        kind: "PERSON",
+        messageIndex: 1,
+        start: 11,
+        end: 24,
+        location: { kind: "arguments", messageIndex: 1, toolCallIndex: 0 },
+      },
+      { kind: "DNI", messageIndex: 2, start: 4, end: 13 },
+    ],
+  };
+  const eu = [target("mistral-small", "eu")];
+
+  it("US7-1: values in arguments and in tool results count when sent to a non-local target", () => {
+    const s = simulated({ privacyAction: "allow", sensitivity: "none", chain: eu });
+    expect(leaked(s, TOOL_CASE)).toEqual([true, true]);
+  });
+
+  it("US7-1: anonymized arguments and results leak nothing", () => {
+    const s = simulated({
+      privacyAction: "anonymize",
+      chain: eu,
+      providerMessages: [
+        { role: "system", content: "notice" },
+        TOOL_CASE.messages[0] ?? { role: "user", content: "" },
+        {
+          role: "assistant",
+          content: null,
+          tool_calls: [
+            {
+              id: "c1",
+              type: "function",
+              function: { name: "find", arguments: '{"nombre":"<PERSON_1>"}' },
+            },
+          ],
+        },
+        { role: "tool", tool_call_id: "c1", content: "DNI <DNI_1> confirmado." },
+      ],
+    });
+    expect(leaked(s, TOOL_CASE)).toEqual([false, false]);
+  });
+
+  it("US7-3: a DNI left in a tool result with a non-local chain is a leak", () => {
+    const s = simulated({
+      privacyAction: "anonymize",
+      chain: eu,
+      providerMessages: [
+        { role: "user", content: "Busca a la paciente." },
+        { role: "tool", tool_call_id: "c1", content: RESULT },
+      ],
+    });
+    expect(leaked(s, TOOL_CASE)).toEqual([false, true]);
+  });
+
+  it("counts values in tool messages apart and reports their leak rate", () => {
+    const s = simulated({ privacyAction: "allow", sensitivity: "none", chain: eu });
+    const result = scoreLeak(observeSimulation(TOOL_CASE, s));
+    const summary = leakEval.summarize([
+      { c: TOOL_CASE, result },
+      { c: CASE, result: scoreLeak(observeSimulation(CASE, simulated())) },
+    ]);
+    const metric = (name: string) => summary.metrics.find((m) => m.name === name)?.value;
+    expect(metric("values.tool_messages")).toBe(2);
+    expect(metric("leak_rate.tool_messages")).toBe(1);
+  });
+});
+
 describe("detection scorer", () => {
   it("US3-1: structured kinds need exact offsets; names and places overlap", () => {
     const labels = [

@@ -46,7 +46,7 @@ Full contract: `specs/007-evals-gate/contracts/cli.md`.
 | Eval | Dataset | Gate | Since |
 |---|---|---|---|
 | routing | `routing.v1.jsonl` via `POST /v1/simulate` (real inspection) | ≥ 95 % expected first route | `T-007-02` |
-| leak | `pii-leak-es.v1.jsonl` via `POST /v1/simulate` (160 requests, 380 values) | 0 % critical (DNI, NIE, NSS, IBAN, card); < 2 % names, emails, phones | `T-007-03` |
+| leak | `pii-leak-es.v2.jsonl` via `POST /v1/simulate` (160 text requests and 40 tool-calling requests whose values sit in tool-call arguments and tool results) | 0 % critical (DNI, NIE, NSS, IBAN, card); < 2 % names, emails, phones; at least 40 values in tool messages | `T-007-03`, `T-009-05` |
 | detection | `pii-detection-es.v1.jsonl` via the privacy service's `POST /analyze` (160 sentences, 271 spans) | recall ≥ 0.95 structured, ≥ 0.80 names | `T-007-03` |
 | quality | `quality-es.v1.jsonl` (24 requests with references), answered on `tamiz-local`, graded by a blind judge (`prompts/judge.v1.md`) | `relative_score ≥ 0.95` against the frontier arm (`TAMIZ_EVAL_FRONTIER=on`) or the accepted baseline (`baselines/quality.json`) | `T-007-05` |
 | cost | `routing.v1.jsonl` via `POST /v1/simulate`, priced from `apps/gateway/policies/default.yaml` | reported: routed vs baseline target, saving | `T-007-05` |
@@ -68,7 +68,7 @@ and the expected `taskType`, `size` and `route`. Two checks read it:
 Changing the default policy or the cue table means editing the expectations, in the same
 pull request.
 
-`pii-leak-es.v1.jsonl` and `pii-detection-es.v1.jsonl` (`T-007-03`) are **generated** by
+`pii-leak-es.v2.jsonl` and `pii-detection-es.v1.jsonl` (`T-007-03`, tool cases `T-009-05`) are **generated** by
 `src/synthetic/generate.ts` from a fixed seed. Never edit them by hand.
 - Regenerate with `pnpm --filter @tamiz/evals generate:datasets` after a build.
 - `generate:datasets -- --check` (also part of `pnpm test`) fails when a committed file

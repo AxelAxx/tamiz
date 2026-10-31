@@ -106,14 +106,14 @@ describe("generated datasets", () => {
   it("--check reports a changed file", async () => {
     const dir = await mkdtemp(join(tmpdir(), "tamiz-gen-"));
     expect(await generateDatasets(false, dir)).toEqual([]);
-    const file = join(dir, "pii-leak-es.v1.jsonl");
+    const file = join(dir, "pii-leak-es.v2.jsonl");
     await writeFile(file, `${await readFile(file, "utf8")}\n`, "utf8");
-    expect(await generateDatasets(true, dir)).toEqual(["pii-leak-es.v1.jsonl"]);
+    expect(await generateDatasets(true, dir)).toEqual(["pii-leak-es.v2.jsonl"]);
   });
 
   it("FR-009: sizes and coverage of the gated kinds", async () => {
     const leak = await loadDataset(
-      join(DATASETS, "pii-leak-es.v1.jsonl"),
+      join(DATASETS, "pii-leak-es.v2.jsonl"),
       "pii-leak-es",
       LeakCaseSchema,
     );
@@ -135,6 +135,36 @@ describe("generated datasets", () => {
       true,
     );
     expect(leak.header.synthetic).toBe(true);
-    expect(Object.keys(GENERATED)).toEqual(["pii-leak-es.v1.jsonl", "pii-detection-es.v1.jsonl"]);
+    expect(Object.keys(GENERATED)).toEqual(["pii-leak-es.v2.jsonl", "pii-detection-es.v1.jsonl"]);
+  });
+
+  it("009 tool-calling FR-021: tool cases cover results, arguments and both", async () => {
+    const leak = await loadDataset(
+      join(DATASETS, "pii-leak-es.v2.jsonl"),
+      "pii-leak-es",
+      LeakCaseSchema,
+    );
+    const tool = leak.cases.filter((c) => c.id.startsWith("pii-leak-tool-"));
+    expect(leak.header.version).toBe(2);
+    expect(tool.length).toBeGreaterThanOrEqual(40);
+    for (const tag of ["tool-result", "tool-arguments", "tool-both"]) {
+      expect(tool.filter((c) => c.tags.includes(tag)).length).toBeGreaterThanOrEqual(6);
+    }
+    const inTools = tool.flatMap((c) =>
+      c.values.filter(
+        (v) => v.location?.kind === "arguments" || c.messages[v.messageIndex]?.role === "tool",
+      ),
+    );
+    expect(inTools.length).toBeGreaterThanOrEqual(60);
+    const kinds = new Set<string>(inTools.map((v) => v.kind));
+    for (const kind of [...GATED, "EMAIL", "PHONE"]) expect(kinds.has(kind)).toBe(true);
+    for (const c of tool) {
+      for (const message of c.messages) {
+        if (message.role !== "assistant") continue;
+        for (const call of message.tool_calls ?? []) {
+          expect(() => JSON.parse(call.function.arguments)).not.toThrow();
+        }
+      }
+    }
   });
 });

@@ -7,9 +7,16 @@
  * match falls back to the default chain. Then the privacy step (`applyPrivacy`) turns the
  * request's inspection into an action: the chain is kept, filtered by residency, replaced
  * by the local route, or the request is blocked. A blocked request has no chain at all.
+ * A request whose values cannot be anonymized safely goes local instead of anonymized
+ * (009 tool-calling FR-011).
  */
 import { type ModelTarget, RESIDENCIES, type Residency } from "./model-target.js";
-import { applyPrivacy, type BlockReason, type RouteAction } from "./privacy-policy.js";
+import {
+  applyPrivacy,
+  type BlockReason,
+  type NotAnonymizableReason,
+  type RouteAction,
+} from "./privacy-policy.js";
 import {
   DEFAULT_RULE_ID,
   type RoutingPolicy,
@@ -26,7 +33,10 @@ export { PRIVACY_ACTIONS, type PrivacyAction } from "./privacy-policy.js";
 export type DecisionInput = Pick<
   ClassifiedRequest,
   "requestedModel" | "taskType" | "size" | "inspection"
->;
+> & {
+  /** Set when anonymizing would not be safe (009 tool-calling FR-011). */
+  readonly notAnonymizable?: NotAnonymizableReason;
+};
 
 /** The request goes to `chain`, in order (feature 003 executes it). */
 export interface RoutingDecision {
@@ -50,6 +60,11 @@ export interface RoutingDecision {
    * `restrict_to_local`.
    */
   readonly allowedResidencies: ReadonlyArray<Residency>;
+  /**
+   * Set when the level asked for `anonymize` but a value could not be replaced safely, so
+   * the request was kept on the local route (009 tool-calling FR-011).
+   */
+  readonly notAnonymizable?: NotAnonymizableReason;
 }
 
 /** No provider may be called (spec 005 FR-003, FR-011). */
@@ -116,6 +131,7 @@ export function decide(policy: RoutingPolicy, request: DecisionInput): Decision 
     privacy: policy.privacy,
     localChain: policy.privacy.localRoute.map((id) => targetById(policy, id)),
     inspection: request.inspection,
+    ...(request.notAnonymizable === undefined ? {} : { notAnonymizable: request.notAnonymizable }),
   });
   if (outcome.kind === "block") {
     return { kind: "block", ...common, privacyAction: "block", reason: outcome.reason };
@@ -127,6 +143,7 @@ export function decide(policy: RoutingPolicy, request: DecisionInput): Decision 
     chain: outcome.chain,
     privacyAction: outcome.action,
     allowedResidencies: outcome.allowedResidencies,
+    ...(outcome.notAnonymizable === undefined ? {} : { notAnonymizable: outcome.notAnonymizable }),
   };
 }
 

@@ -161,7 +161,7 @@ that ignores tools, a `tools: false` target flag is a later task. **(review, D5)
 - `AuditEntry` gains `tools?: { declared: number; toolMessages: number; called:
   string[] }`, absent when the request had no tools and no tool messages (old entries and
   tool-free requests are unchanged). Postgres: one nullable `jsonb` column `tools`
-  (migration `0002_*`). `called` is capped at 32 names (a model can return many calls; the
+  (migration `0001_audit_tools`). `called` is capped at 32 names (a model can return many calls; the
   cap keeps rows bounded).
 - Request span: `tamiz.tools.declared` (int), `tamiz.tools.called` (string array, same
   cap). `gen_ai.response.finish_reasons` gets `tool_calls`. The OTel GenAI opt-in content
