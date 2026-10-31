@@ -158,8 +158,9 @@ Legend for the *Area* column: `G` gateway, `C` contracts, `P` privacy service, `
 
 | ID | Day | Feature | Area | Title | Depends on | Deliverable | Definition of done | Status |
 |---|---|---|---|---|---|---|---|---|
-| T-010-01 | — | 010 | X | Spec, plan and tasks for `010-citara-integration` | T-002-06 | `specs/010-citara-integration/{spec,plan,tasks}.md` | Spec describes how Citara points its LLM calls at Tamiz (base URL + API key) and what it gets back (headers, audit); reviewed by Alex | todo |
-| T-010-02 | — | 010 | X | Integration guide and example client | T-010-01, T-OPS-01 | `docs/integrations/citara.md` + a minimal client example against the OpenAI-compatible endpoint | Example runs against `docker compose` and shows up in the audit log | todo |
+| T-010-01 | — | 010 | X | Spec, plan and tasks for `010-citara-integration` | T-002-06 | `specs/010-citara-integration/{spec,plan,tasks}.md` | Spec describes how Citara points its LLM calls at Tamiz (base URL + API key) and what it gets back (headers, audit); reviewed by Alex | in-progress (draft written, awaiting Alex's approval; decisions D1-D7 flagged in `spec.md`; `done/T-010-01-spec-plan-tasks-010.md`) |
+| T-010-02 | — | 010 | X | Integration guide and example client (spec 010 T001-T020) | T-010-01 | `docs/integrations/citara.md` + `examples/citara-client/` (official `openai` library, SDK retries off, Tamiz headers reported, audit check by request id) + opt-in scripted providers in the gateway E2E harness | Spec 010 US1-US4 tests green against the harness; guide tables checked against `/openapi.json`, the contracts, the example's config and the default policy; no gateway production code changed | todo |
+| T-010-03 | — | 010 | X | Recorded Citara example run on the full stack (spec 010 US5, T021) | T-010-02, T-OPS-01 | Run of `quickstart.md` section 3 against `docker compose up` with a `citara` key | Answer from `ollama-llama` for a DNI prompt; the example's audit check finds the entry with `clientId` `citara`; output (keys redacted) in the task record | todo |
 
 ---
 
