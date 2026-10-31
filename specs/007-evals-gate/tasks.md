@@ -133,18 +133,18 @@ approved by Alex (`T-007-01`).
 
 ### Tests first
 
-- [ ] T023 [P] [US5] `evals/test/quality-scorer.test.ts` covers:
+- [x] T023 [P] [US5] `evals/test/quality-scorer.test.ts` covers:
   - judge output parsing, with one retry and then an error;
   - more than 10 % errors makes the eval an error;
   - normalization and the relative gate against the frontier arm and against the
     baseline;
   - a missing baseline gives `baseline_missing`.
-- [ ] T024 [P] [US5] `evals/test/judge-prompt.test.ts`: the prompt file is versioned and
+- [x] T024 [P] [US5] `evals/test/judge-prompt.test.ts`: the prompt file is versioned and
   never contains the route or model of the answer (US5-4).
 
 ### Implementation
 
-- [ ] T025 [US5] Implement the quality eval:
+- [x] T025 [US5] Implement the quality eval:
   - the dataset `quality-es.v1.jsonl` (≥ 24 cases, with references free of personal
     data, checked by a test);
   - the judge prompt `evals/prompts/judge.v1.md` and the judge client
@@ -153,9 +153,9 @@ approved by Alex (`T-007-01`).
     the baseline;
   - `evals/policies/quality-ci.yaml`;
   - a `pinned-frontier` rule in `gateway/policies/default.yaml`, with its policy test.
-- [ ] T026 [US5] `evals/src/evals/cost.ts`, per R-08: the estimate over routing plus the
+- [x] T026 [US5] `evals/src/evals/cost.ts`, per R-08: the estimate over routing plus the
   actual usage over quality.
-- [ ] T027 Record the first accepted baseline in `evals/baselines/quality.json` from a run
+- [x] T027 Record the first accepted baseline in `evals/baselines/quality.json` from a run
   with the CI models.
   - Run the frontier comparison once with keys if they are available, and record the gap;
     otherwise say so.

@@ -20,6 +20,8 @@ app code.
 export TAMIZ_EVAL_GATEWAY_URL=http://localhost:3000   # gateway with the policy under test
 export TAMIZ_EVAL_API_KEY=<client key>
 export TAMIZ_EVAL_PRIVACY_URL=http://localhost:8001  # detection
+export TAMIZ_EVAL_JUDGE_URL=http://localhost:11434/v1 TAMIZ_EVAL_JUDGE_MODEL=qwen2.5:3b  # quality
+export TAMIZ_EVAL_QUALITY_GATEWAY_URL=http://localhost:3200  # optional: gateway with policies/quality-ci.yaml
 pnpm evals                       # every implemented eval
 pnpm evals -- --only routing     # a selection
 pnpm evals -- --report-dir out   # default: packages/evals/reports/ (git-ignored)
@@ -46,7 +48,8 @@ Full contract: `specs/007-evals-gate/contracts/cli.md`.
 | routing | `routing.v1.jsonl` via `POST /v1/simulate` (real inspection) | ≥ 95 % expected first route | `T-007-02` |
 | leak | `pii-leak-es.v1.jsonl` via `POST /v1/simulate` (160 requests, 380 values) | 0 % critical (DNI, NIE, NSS, IBAN, card); < 2 % names, emails, phones | `T-007-03` |
 | detection | `pii-detection-es.v1.jsonl` via the privacy service's `POST /analyze` (160 sentences, 271 spans) | recall ≥ 0.95 structured, ≥ 0.80 names | `T-007-03` |
-| quality, cost | `quality-es` | ≤ 5 % below the comparison; cost reported | `T-007-05` |
+| quality | `quality-es.v1.jsonl` (24 requests with references), answered on `tamiz-local`, graded by a blind judge (`prompts/judge.v1.md`) | `relative_score ≥ 0.95` against the frontier arm (`TAMIZ_EVAL_FRONTIER=on`) or the accepted baseline (`baselines/quality.json`) | `T-007-05` |
+| cost | `routing.v1.jsonl` via `POST /v1/simulate`, priced from `apps/gateway/policies/default.yaml` | reported: routed vs baseline target, saving | `T-007-05` |
 
 ## Datasets
 
@@ -73,3 +76,18 @@ pull request.
 - Identifiers carry valid control characters.
 - Names and places are invented and disjoint from the privacy service's development
   corpus; a test checks this.
+
+## Quality baselines
+
+Without frontier access the quality eval compares the local answers with an **accepted
+baseline**: the mean judge score recorded for the same answering model, judge model,
+dataset version and judge prompt (`baselines/quality.json`). If no entry matches, the eval
+reports `baseline_missing` (exit 2) together with the measured `mean_score.routed`.
+
+To accept a score, add an entry with its `source` (the CI run that measured it) in a
+reviewed pull request, as you would change a threshold. A change of model, prompt or
+dataset version needs a new entry.
+
+`policies/quality-ci.yaml` is the policy of the gateway that answers in CI: one local target
+on `qwen2.5:1.5b`. It is never for production.
+

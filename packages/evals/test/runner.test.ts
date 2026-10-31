@@ -155,7 +155,6 @@ describe("evals CLI", () => {
 
   it.each([
     [["--only", "vibes"], "unknown evals: vibes"],
-    [["--only", "quality"], "not implemented yet: quality"],
     [["--bogus"], "Unknown option"],
   ])("%j → exit 2 before running", async (argv, message) => {
     const { code, console } = await run(argv);
@@ -198,6 +197,7 @@ describe("runEvals", () => {
           TAMIZ_EVAL_CONCURRENCY: 2,
         },
         fetch: globalThis.fetch,
+        repoRoot: fileURLToPath(new URL("../../../", import.meta.url)),
       },
       datasetsDir: fileURLToPath(new URL("../datasets/", import.meta.url)),
       repoRoot: fileURLToPath(new URL("../../../", import.meta.url)),
