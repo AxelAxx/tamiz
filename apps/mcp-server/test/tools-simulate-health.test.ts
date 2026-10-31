@@ -13,12 +13,14 @@ afterEach(async () => {
 });
 
 describe("US1 simulate_routing and get_provider_health", () => {
-  it("US1-1 lists the tools with a description, input and output schemas, read-only", async () => {
+  it("US1-1 lists the four tools with a description, input and output schemas, read-only", async () => {
     session = await connect();
     const { tools } = await session.client.listTools();
 
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      "get_cost_report",
       "get_provider_health",
+      "query_audit_log",
       "simulate_routing",
     ]);
     for (const tool of tools) {

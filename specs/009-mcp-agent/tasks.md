@@ -164,7 +164,7 @@ passes T003–T007 against the fake gateway.
 
 ### Tests first
 
-- [ ] T017 [P] [US3] `mcp/test/tools-audit-cost.test.ts` covers US3-1 … US3-5:
+- [x] T017 [P] [US3] `mcp/test/tools-audit-cost.test.ts` covers US3-1 … US3-5:
   - all seven filters plus `cursor` are recorded exactly as the gateway query, with
     `undefined` fields absent;
   - the page parses with `AuditPageSchema`;
@@ -172,7 +172,7 @@ passes T003–T007 against the fake gateway.
   - no `limit` records `limit=20`, and `limit: 51` is invalid input with nothing recorded;
   - `get_cost_report` for each `groupBy` parses with `CostReportSchema`;
   - a fixture entry with an extra `prompt` field gives `gateway_contract`.
-- [ ] T018 [P] [US4] `mcp/test/readme.test.ts` covers US4-6. It extracts the blocks between
+- [x] T018 [P] [US4] `mcp/test/readme.test.ts` covers US4-6. It extracts the blocks between
   `<!-- mcp-config:start -->` and `<!-- mcp-config:end -->` in `mcp/README.md` and checks:
   - the Claude Desktop JSON parses, runs `node` with `.../apps/mcp-server/dist/main.js`, and
     its `env` keys are documented variables;
@@ -181,14 +181,14 @@ passes T003–T007 against the fake gateway.
 
 ### Implementation
 
-- [ ] T019 `mcp/src/tools/query-audit-log.ts` and `get-cost-report.ts`, with descriptions
+- [x] T019 `mcp/src/tools/query-audit-log.ts` and `get-cost-report.ts`, with descriptions
   verbatim from `contracts/tools.md`; add both to `ALL_TOOLS`.
-- [ ] T020 `mcp/README.md`, following `contracts/configuration.md`:
+- [x] T020 `mcp/README.md`, following `contracts/configuration.md`:
   - purpose, tools table, environment table;
   - the snippets between markers (Claude Desktop, Claude Code stdio and HTTP, a Windows path
     note);
   - choosing tools with a client key, and the simulation-text caveat.
-- [ ] T021 `CLAUDE.md` §12 (`pnpm --filter @tamiz/mcp-server start:http`, the inspector
+- [x] T021 `CLAUDE.md` §12 (`pnpm --filter @tamiz/mcp-server start:http`, the inspector
   command). Gates; quickstart §6 in Claude Desktop or Claude Code, recorded. Task record and
   backlog row.
 

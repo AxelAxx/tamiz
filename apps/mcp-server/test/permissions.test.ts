@@ -1,3 +1,4 @@
+import { MCP_TOOL_NAMES } from "@tamiz/contracts";
 import { describe, expect, it } from "vitest";
 import { loadConfig } from "../src/config.js";
 import { ALL_TOOLS } from "../src/tools/registry.js";
@@ -11,17 +12,19 @@ import { expectNoKey } from "./support/no-key.js";
 /** A valid argument set per tool, for the tests that call every tool. */
 const ARGUMENTS = {
   simulate_routing: { text: DNI_TEXT },
+  query_audit_log: { entity: "DNI", limit: 10 },
+  get_cost_report: { from: "2026-10-30T00:00:00Z", to: "2026-10-31T00:00:00Z" },
   get_provider_health: { windowMinutes: 30 },
 } satisfies Record<string, Record<string, unknown>>;
 
 describe("US2 permissions and the key", () => {
   it("US2-1 lists only the allowed tools; a disabled one is unknown and calls nothing", async () => {
-    const session = await connect({ tools: ["simulate_routing"] });
+    const session = await connect({ tools: ["simulate_routing", "get_provider_health"] });
     try {
       const { tools } = await session.client.listTools();
-      expect(tools.map((tool) => tool.name)).toEqual(["simulate_routing"]);
+      expect(tools.map((tool) => tool.name)).toEqual(["simulate_routing", "get_provider_health"]);
 
-      for (const name of ["get_provider_health", "query_audit_log"]) {
+      for (const name of ["query_audit_log", "get_cost_report"]) {
         await expect(session.client.callTool({ name, arguments: {} })).rejects.toThrow(/not found/);
       }
       expect(session.fake.requests).toEqual([]);
@@ -111,6 +114,12 @@ describe("US2 permissions and the key", () => {
 
     // HTTP holds no key: each request brings its own.
     expect(loadConfig({}, ["--transport", "http"]).ok).toBe(true);
+  });
+});
+
+describe("registry", () => {
+  it("implements every tool name of the contract, once", () => {
+    expect(ALL_TOOLS.map((tool) => tool.name)).toEqual([...MCP_TOOL_NAMES]);
   });
 });
 
