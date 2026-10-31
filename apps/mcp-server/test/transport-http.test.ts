@@ -82,7 +82,9 @@ describe("US4 streamable HTTP transport", () => {
 
     const { tools } = await admin.listTools();
     expect(tools.map((tool) => tool.name).sort()).toEqual([
+      "get_cost_report",
       "get_provider_health",
+      "query_audit_log",
       "simulate_routing",
     ]);
     const health = await admin.callTool({ name: "get_provider_health", arguments: {} });
