@@ -6,6 +6,7 @@
  */
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import type { SimulateResponse } from "@tamiz/contracts";
+import type { Schema } from "hono";
 import type {
   SimulatePolicy,
   SimulationResult,
@@ -93,8 +94,11 @@ export function toSimulateResponse(result: SimulationResult): SimulateResponse {
   };
 }
 
-export function registerSimulate(app: OpenAPIHono<ChatEnv>, simulate: SimulatePolicy): void {
-  app.openapi(simulateRoute, async (c) => {
+export function registerSimulate<S extends Schema, B extends string>(
+  app: OpenAPIHono<ChatEnv, S, B>,
+  simulate: SimulatePolicy,
+) {
+  return app.openapi(simulateRoute, async (c) => {
     const body = c.req.valid("json");
     const request = toInferenceRequest(body, c.get("requestId"), c.get("clientId"));
     return c.json(toSimulateResponse(await simulate(request)), 200);

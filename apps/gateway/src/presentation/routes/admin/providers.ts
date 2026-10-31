@@ -4,6 +4,7 @@
  */
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import { ProvidersReportSchema } from "@tamiz/contracts";
+import type { Schema } from "hono";
 import type { ProviderHealthUseCase } from "../../../application/use-cases/provider-health.js";
 import {
   ErrorEnvelopeBody,
@@ -34,11 +35,11 @@ export const providersRoute = createRoute({
   },
 });
 
-export function registerAdminProviders(
-  app: OpenAPIHono<ChatEnv>,
+export function registerAdminProviders<S extends Schema, B extends string>(
+  app: OpenAPIHono<ChatEnv, S, B>,
   health: ProviderHealthUseCase,
-): void {
-  app.openapi(providersRoute, async (c) => {
+) {
+  return app.openapi(providersRoute, async (c) => {
     const { windowMinutes } = c.req.valid("query");
     return c.json(ProvidersReportSchema.parse(await health({ windowMinutes })), 200);
   });

@@ -16,7 +16,7 @@
  * client's disconnect aborts the upstream call.
  */
 import { createRoute, type OpenAPIHono, z } from "@hono/zod-openapi";
-import type { Context } from "hono";
+import type { Context, Schema } from "hono";
 import { streamSSE } from "hono/streaming";
 import type {
   RouteInference,
@@ -147,12 +147,12 @@ function failed(c: Context<ChatEnv>, requestId: string, routing: RoutingFailure)
   return c.json(domainErrorToEnvelope(failure.error, requestId), status);
 }
 
-export function registerChatCompletions(
-  app: OpenAPIHono<ChatEnv>,
+export function registerChatCompletions<S extends Schema, B extends string>(
+  app: OpenAPIHono<ChatEnv, S, B>,
   routeInference: RouteInference,
   streamInference: StreamInference,
-): void {
-  app.openapi(chatCompletionsRoute, async (c) => {
+) {
+  return app.openapi(chatCompletionsRoute, async (c) => {
     const requestId = c.get("requestId");
     const body = c.req.valid("json");
     const request = toInferenceRequest(body, requestId, c.get("clientId"));

@@ -63,23 +63,23 @@ No designed UI: pages are unstyled placeholders. This phase does not wait for G1
 
 ### Tests first
 
-- [ ] T001 [P] [US1] `dash/test/env.test.ts`: the configuration schema (`data-model.md` §3.3)
+- [x] T001 [P] [US1] `dash/test/env.test.ts`: the configuration schema (`data-model.md` §3.3)
   accepts a complete set and rejects each missing or malformed variable, listing every
   problem at once; no secret value appears in the messages (US1-6, FR-005).
-- [ ] T002 [P] [US1] `dash/test/session.test.ts`:
+- [x] T002 [P] [US1] `dash/test/session.test.ts`:
   - passphrase hash format `scrypt$<N>$<r>$<p>$<salt b64>$<hash b64>` and constant-time
     comparison;
   - cookie signature (tampered → invalid), absolute expiry at 8 h with an injected clock;
   - sign-out deletes the session (US1-4);
   - 5 failures per 60 s per address, then refused for 60 s; `X-Forwarded-For` only with
     `TAMIZ_DASHBOARD_TRUST_PROXY=true` (US1-2).
-- [ ] T003 [P] [US1] `dash/test/origin.test.ts`: non-GET with a foreign `Origin`, a foreign
+- [x] T003 [P] [US1] `dash/test/origin.test.ts`: non-GET with a foreign `Origin`, a foreign
   `Referer`, or neither → `403 forbidden_origin` before the body is read; same origin passes
   (US1-5, R-04).
-- [ ] T004 [P] `gateway/test/routes-type.test.ts`: `hc<GatewayRoutes>` exposes the admin,
+- [x] T004 [P] `gateway/test/routes-type.test.ts`: `hc<GatewayRoutes>` exposes the admin,
   simulate and health routes with their typed responses (`expectTypeOf`), and the app built
   by `createApp` still answers every existing route (R-02).
-- [ ] T005 [US1] `dash/e2e/auth.spec.ts` (Playwright, against the E2E gateway):
+- [x] T005 [US1] `dash/e2e/auth.spec.ts` (Playwright, against the E2E gateway):
   - `US1-1` every page redirects to `/sign-in` and every `/api/*` data endpoint answers 401,
     with no call recorded by the E2E gateway's control port;
   - `US1-2` right passphrase → `/live`; wrong → message; sixth failure in a minute → 429 with
@@ -87,45 +87,45 @@ No designed UI: pages are unstyled placeholders. This phase does not wait for G1
   - `US1-4` sign-out → next `/api/audit` is 401, the old cookie replayed is 401;
   - `US1-5` a cross-origin `POST /api/simulate` and `DELETE /api/session` → 403, nothing
     reaches the gateway.
-- [ ] T006 [US1] `dash/e2e/key-leak.spec.ts` (`US1-3`, first version): sign in, visit every
+- [x] T006 [US1] `dash/e2e/key-leak.spec.ts` (`US1-3`, first version): sign in, visit every
   placeholder page, call every BFF endpoint; record every response header and body, the
   cookies and both storages; the admin key appears nowhere; the control port shows
   `Authorization: Bearer <key>` on every gateway call. Extended in T053.
 
 ### Implementation
 
-- [ ] T007 `dash/package.json` (`@tamiz/dashboard`, private, ESM), `next.config.ts`
+- [x] T007 `dash/package.json` (`@tamiz/dashboard`, private, ESM), `next.config.ts`
   (`output: "standalone"`, port 3100), `tsconfig.json` extending `@tamiz/tsconfig`,
   `vitest.config.ts` (jsdom), registration in the root Vitest projects, `turbo.json`
   (`build`, `typecheck`, `test`, `e2e`), Biome coverage. Dependencies as in `plan.md`
   (exact versions pinned by the lockfile).
-- [ ] T008 `dash/src/lib/server/env.ts` (`import "server-only"`; Zod; exits listing every
+- [x] T008 `dash/src/lib/server/env.ts` (`import "server-only"`; Zod; exits listing every
   problem) and `dash/.env.example` documenting each variable.
-- [ ] T009 `dash/src/lib/server/session.ts` (in-memory store, signing, expiry, rate limit),
+- [x] T009 `dash/src/lib/server/session.ts` (in-memory store, signing, expiry, rate limit),
   `dash/scripts/hash-passphrase.ts` (reads stdin, prints the hash),
   `dash/src/app/api/session/route.ts` (`POST`, `DELETE`), `dash/src/proxy.ts` (page gate:
   cookie signature → otherwise redirect to `/sign-in`).
-- [ ] T010 `dash/src/lib/server/origin.ts` and `dash/src/lib/server/handler.ts`: composable
+- [x] T010 `dash/src/lib/server/origin.ts` and `dash/src/lib/server/handler.ts`: composable
   `withSession`, `withOrigin`, `callGateway(schema)` (R-01, constitution IX).
-- [ ] T011 `gateway/src/presentation/app.ts` and `routes/**`: `register*` return the app so
+- [x] T011 `gateway/src/presentation/app.ts` and `routes/**`: `register*` return the app so
   `createApp` chains them; export `type GatewayRoutes`. No behaviour change: the whole gateway
   suite stays green.
-- [ ] T012 `dash/src/lib/server/gateway.ts`: `hc<GatewayRoutes>` with the admin key, a
+- [x] T012 `dash/src/lib/server/gateway.ts`: `hc<GatewayRoutes>` with the admin key, a
   10-second timeout, contract parsing and the error mapping of
   `contracts/dashboard-bff.md` (`gateway_unreachable`, `gateway_credentials`, `contract`,
   `gateway`). Route handlers `dash/src/app/api/{health,gateway-health,audit,cost,providers,simulate}/route.ts`;
   each validates its input with the contract schema, logs no body, sets
   `Cache-Control: no-store`.
-- [ ] T013 `dash/src/lib/api-client.ts` (browser `fetch` of `/api/*`, parsing with the
+- [x] T013 `dash/src/lib/api-client.ts` (browser `fetch` of `/api/*`, parsing with the
   contracts and `BffErrorSchema`), `dash/src/lib/schemas.ts` (`data-model.md` §1.3), the
   TanStack Query provider in `dash/src/app/providers.tsx`.
-- [ ] T014 `gateway/scripts/e2e-gateway.ts`: the real `createApp` with in-memory adapters,
+- [x] T014 `gateway/scripts/e2e-gateway.ts`: the real `createApp` with in-memory adapters,
   the default policy, a scripted fake detector (findings keyed by fixture markers), fake
   providers that throw if called, test API keys (a `dashboard` admin key and a client key);
   a control server on `127.0.0.1` with `POST /__e2e/audit`, `POST /__e2e/reset`,
   `POST /__e2e/circuit`, `POST /__e2e/detector` (outage on/off) and `GET /__e2e/requests`.
   `dash/playwright.config.ts` with `webServer` for it and `next start`; Chromium only.
-- [ ] T015 Unstyled placeholder pages for `/sign-in` and the seven console routes, `/`
+- [x] T015 Unstyled placeholder pages for `/sign-in` and the seven console routes, `/`
   redirecting to `/live`; `dash/README.md`; gates; record; backlog row.
 
 ---

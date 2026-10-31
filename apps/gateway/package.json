@@ -5,6 +5,11 @@
   "description": "Tamiz gateway: privacy-aware, OpenAI-compatible LLM routing service (Hono, Node.js 22)",
   "license": "Apache-2.0",
   "type": "module",
+  "exports": {
+    "./routes": {
+      "types": "./src/presentation/app.ts"
+    }
+  },
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "start": "node dist/main.js",
@@ -14,7 +19,8 @@
     "generate-api-key": "tsx scripts/generate-api-key.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/db-migrate.ts",
-    "api-key:add": "tsx scripts/add-api-key.ts"
+    "api-key:add": "tsx scripts/add-api-key.ts",
+    "e2e-gateway": "tsx scripts/e2e-gateway.ts"
   },
   "devDependencies": {
     "@opentelemetry/context-async-hooks": "2.12.0",

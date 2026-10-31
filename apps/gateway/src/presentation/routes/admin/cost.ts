@@ -4,6 +4,7 @@
  */
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import { CostReportSchema } from "@tamiz/contracts";
+import type { Schema } from "hono";
 import type { CostReportUseCase } from "../../../application/use-cases/cost-report.js";
 import { httpStatusFor, toErrorEnvelope } from "../../mappers/error-envelope.js";
 import { CostQueryParams, CostReportBody, ErrorEnvelopeBody } from "../../openapi-schemas.js";
@@ -31,8 +32,11 @@ export const costRoute = createRoute({
   },
 });
 
-export function registerAdminCost(app: OpenAPIHono<ChatEnv>, report: CostReportUseCase): void {
-  app.openapi(costRoute, async (c) => {
+export function registerAdminCost<S extends Schema, B extends string>(
+  app: OpenAPIHono<ChatEnv, S, B>,
+  report: CostReportUseCase,
+) {
+  return app.openapi(costRoute, async (c) => {
     const query = c.req.valid("query");
     if (Date.parse(query.from) >= Date.parse(query.to)) {
       return c.json(
