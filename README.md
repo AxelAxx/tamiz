@@ -10,7 +10,7 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: features `001` … `006` done.
+> Status: features `001` … `007` done.
 >
 > - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
 >   gateway skeleton, architecture check, CI.
@@ -78,7 +78,13 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >
 >   <!-- Jaeger screenshot: added with T-OPS-01 / T-DOC-01, once the full stack runs. -->
 >
-> Next: feature `007-evals-gate`.
+> - **007 evals gate**: `pnpm evals` runs the leak, detection, routing, quality
+>   (LLM-as-judge) and cost evals against the real services. The CI job `evals` runs them on
+>   every pull request with local models and blocks below threshold. Results are in the
+>   [Evals](#evals) section below. Walkthrough:
+>   [`specs/007-evals-gate/quickstart.md`](specs/007-evals-gate/quickstart.md).
+>
+> Next: feature `008-dashboard`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
