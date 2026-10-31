@@ -165,11 +165,18 @@ export async function runEvals(input: RunInput): Promise<RunOutput> {
         input.datasetsDir,
         input.context.config.TAMIZ_EVAL_CONCURRENCY,
       );
-      datasets.push({
-        name: dataset.header.dataset,
-        version: dataset.header.version,
-        cases: dataset.cases.length,
-      });
+      // Two evals may share a dataset (routing and cost): list it once.
+      if (
+        !datasets.some(
+          (d) => d.name === dataset.header.dataset && d.version === dataset.header.version,
+        )
+      ) {
+        datasets.push({
+          name: dataset.header.dataset,
+          version: dataset.header.version,
+          cases: dataset.cases.length,
+        });
+      }
       policyFile ??= dataset.header.policy;
       models = { ...models, ...summary.models };
       const { metrics, missing: absent } = gate(e.id, summary, thresholds);

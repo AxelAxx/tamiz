@@ -101,7 +101,35 @@ All data is synthetic and versioned in `packages/evals/datasets/`.
 - **Cost**: the routing cases priced on the decided target and on the most expensive one.
 
 <!-- evals:start -->
-Not run yet: the first CI report fills this table (`pnpm evals:readme`).
+Last run: 2026-10-31, commit `7f423cd`, policy `default` v3 — overall **pass**.
+
+| Eval | Metric | Result | Threshold | |
+|---|---|---|---|---|
+| PII leak | `leak_rate.CREDIT_CARD` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.DNI` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.EMAIL` | 0.00 % | < 2.00 % | ✓ pass |
+| PII leak | `leak_rate.IBAN` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.NIE` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.NSS` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.PERSON` | 1.00 % | < 2.00 % | ✓ pass |
+| PII leak | `leak_rate.PHONE` | 0.00 % | < 2.00 % | ✓ pass |
+| Detection | `recall.CIF` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.CREDIT_CARD` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.DNI` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.EMAIL` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.IBAN` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.NIE` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.NSS` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.PERSON` | 89.09 % | ≥ 80.00 % | ✓ pass |
+| Detection | `recall.PHONE` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Routing | `route_accuracy` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Quality | `mean_score.routed` | 0.8750 | reported | reported |
+| Quality | `relative_score` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Cost | `cost.routed_estimate` | $0.03759 | reported | reported |
+| Cost | `cost.baseline_estimate` | $0.29130 | reported | reported |
+| Cost | `saving` | 87.09 % | reported | reported |
+
+Datasets: pii-leak-es v1 (160), pii-detection-es v1 (160), routing v1 (44), quality-es v1 (24). Models: answer `qwen2.5:1.5b`, judge `qwen2.5:3b`.
 <!-- evals:end -->
 
 Limitations: detection is statistical (spaCy for names), so the figures are a measured
