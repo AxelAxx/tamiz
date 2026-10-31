@@ -133,6 +133,7 @@ export async function runEvals(input: RunInput): Promise<RunOutput> {
   const datasets: EvalReport["run"]["datasets"] = [];
   const diagnostics: string[] = [];
   let policyFile: string | undefined;
+  let models: EvalReport["run"]["models"] = { ...input.models };
 
   for (const e of input.evals) {
     const t0 = input.now().getTime();
@@ -170,9 +171,20 @@ export async function runEvals(input: RunInput): Promise<RunOutput> {
         cases: dataset.cases.length,
       });
       policyFile ??= dataset.header.policy;
+      models = { ...models, ...summary.models };
       const { metrics, missing: absent } = gate(e.id, summary, thresholds);
       const failing = summary.failing.slice(0, EVAL_FAILING_CAP);
       const common = { ...base, metrics, failing, failingCount: summary.failing.length };
+      if (summary.error !== undefined) {
+        diagnostics.push(`${e.id}: ${summary.error}`);
+        results.push({
+          ...common,
+          status: "error",
+          durationMs: elapsed(),
+          error: { type: summary.error },
+        });
+        continue;
+      }
       if (absent.length > 0) {
         diagnostics.push(`${e.id}: gated metrics not produced: ${absent.join(", ")}`);
         results.push({
@@ -235,7 +247,7 @@ export async function runEvals(input: RunInput): Promise<RunOutput> {
         datasets,
         ...(policy === undefined ? {} : { policy }),
         services: input.services ?? {},
-        models: input.models ?? {},
+        models,
       },
       status,
       evals: results,

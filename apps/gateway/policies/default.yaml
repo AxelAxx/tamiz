@@ -61,6 +61,12 @@ rules:
     residency: [local]
     route: [ollama-llama]
 
+  # The frontier route on request: the quality eval's comparison arm (spec 007 R-07). The
+  # privacy section still applies first, so personal data never reaches it unprotected.
+  - id: pinned-frontier
+    when: { requestedModel: [tamiz-frontier] }
+    route: [anthropic-sonnet]
+
   - id: code-to-frontier
     when: { taskType: [code] }
     route: [anthropic-sonnet, openai-mini, mistral-small]

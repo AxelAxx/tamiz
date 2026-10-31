@@ -4,7 +4,11 @@
  * Responses are parsed with `@tamiz/contracts`; anything else is a `ServiceError` whose type
  * is the failure class, never the response body.
  */
-import { HealthResponseSchema, SimulateResponseSchema } from "@tamiz/contracts";
+import {
+  ChatCompletionResponseSchema,
+  HealthResponseSchema,
+  SimulateResponseSchema,
+} from "@tamiz/contracts";
 import type { z } from "zod";
 import { ServiceError } from "../eval.js";
 
@@ -14,8 +18,19 @@ export type ChatMessage = {
 };
 export type SimulateResponse = z.infer<typeof SimulateResponseSchema>;
 
+export interface ChatAnswer {
+  readonly text: string;
+  /** The model that answered, as the gateway reports it. */
+  readonly model: string;
+  readonly promptTokens: number;
+  readonly completionTokens: number;
+  readonly costUsd?: number;
+}
+
 export interface GatewayClient {
   simulate(messages: ReadonlyArray<ChatMessage>, model?: string): Promise<SimulateResponse>;
+  /** A real completion through the gateway (the quality eval's arms). */
+  chat(messages: ReadonlyArray<ChatMessage>, model: string, maxTokens: number): Promise<ChatAnswer>;
   version(): Promise<string | undefined>;
 }
 
@@ -57,6 +72,24 @@ export function createGatewayClient(options: GatewayClientOptions): GatewayClien
         },
         body: JSON.stringify({ model, messages }),
       }),
+    async chat(messages, model, maxTokens) {
+      const body = await call("/v1/chat/completions", ChatCompletionResponseSchema, {
+        method: "POST",
+        headers: {
+          authorization: `Bearer ${options.apiKey}`,
+          "content-type": "application/json",
+        },
+        body: JSON.stringify({ model, messages, max_tokens: maxTokens, temperature: 0 }),
+      });
+      const cost = body.usage.cost_usd;
+      return {
+        text: body.choices[0]?.message.content ?? "",
+        model: body.model,
+        promptTokens: body.usage.prompt_tokens,
+        completionTokens: body.usage.completion_tokens,
+        ...(cost === undefined ? {} : { costUsd: cost }),
+      };
+    },
     async version() {
       try {
         return (await call("/health", HealthResponseSchema, { method: "GET" })).version;

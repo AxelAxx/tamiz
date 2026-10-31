@@ -25,11 +25,24 @@ export interface Summary {
   readonly metrics: ReadonlyArray<Omit<EvalMetric, "threshold" | "pass">>;
   /** Every failing case; the runner caps the list in the report. */
   readonly failing: ReadonlyArray<EvalFailingCase>;
+  /**
+   * The eval could not produce a trustworthy result (an unreliable judge, a missing
+   * baseline): the runner reports it as an error, never as a pass.
+   */
+  readonly error?: string;
+  /** Models this eval used, for the report's provenance. */
+  readonly models?: {
+    readonly answer?: string;
+    readonly judge?: string;
+    readonly frontier?: string;
+  };
 }
 
 export interface EvalContext {
   readonly config: EvalConfig;
   readonly fetch: typeof fetch;
+  /** For files named by datasets (policy prices). */
+  readonly repoRoot: string;
 }
 
 export interface Eval<C extends { id: string }, O, R> {

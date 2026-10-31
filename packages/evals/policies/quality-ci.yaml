@@ -1,0 +1,35 @@
+# Policy for the quality eval in CI (spec 007 research R-07). Never for production.
+#
+# Same shape as apps/gateway/policies/local-only.yaml, with a small quantized model that
+# fits a CI runner. The quality eval asks for `tamiz-local`, as it does against the
+# default policy, so the same request reaches the cheapest local route in both.
+
+id: quality-ci
+version: 1
+defaultTimeoutMs: 120000
+
+targets:
+  - id: ollama-llama
+    provider: ollama
+    model: qwen2.5:1.5b
+    region: local
+    residency: local
+    pricing: { inputUsdPerMillion: 0, outputUsdPerMillion: 0 }
+
+privacy:
+  onDetectorError: restrict_to_local
+  localRoute: [ollama-llama]
+  levels:
+    none:     { action: allow }
+    low:      { action: allow }
+    high:     { action: allow }
+    critical: { action: restrict_to_local }
+
+rules:
+  - id: pinned-local
+    when: { requestedModel: [tamiz-local] }
+    residency: [local]
+    route: [ollama-llama]
+
+default:
+  route: [ollama-llama]
