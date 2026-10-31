@@ -82,6 +82,32 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >
 > Repository: https://github.com/AxelAxx/tamiz
 
+## Evals
+
+The evals are the executable specification of what Tamiz promises (constitution IV,
+`specs/007-evals-gate/`). They run against the real privacy service and gateway on every
+pull request, with local models, and the pull request cannot merge below a threshold.
+All data is synthetic and versioned in `packages/evals/datasets/`.
+
+- **PII leak**: would a personal value reach a non-local provider verbatim, through any
+  target of the decided chain, fallbacks included? 160 synthetic Spanish requests (health,
+  legal, fintech, HR).
+- **Detection**: precision and recall of the privacy service on held-out sentences in
+  harder formats than its development corpus.
+- **Routing**: the 44 routing cases through `POST /v1/simulate`, with the real inspection.
+- **Quality**: answers on the local route, graded by a blind local judge. CI compares them
+  with an accepted baseline for the same models, so a regression fails. The frontier
+  comparison needs keys and is run separately.
+- **Cost**: the routing cases priced on the decided target and on the most expensive one.
+
+<!-- evals:start -->
+Not run yet: the first CI report fills this table (`pnpm evals:readme`).
+<!-- evals:end -->
+
+Limitations: detection is statistical (spaCy for names), so the figures are a measured
+defence layer on synthetic data, not a guarantee. CI runs small local models, so the
+quality figures track regressions rather than absolute quality.
+
 ## Where to start
 
 - `CLAUDE.md` — the project map and working protocol (read first).

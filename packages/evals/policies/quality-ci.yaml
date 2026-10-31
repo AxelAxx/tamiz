@@ -6,7 +6,14 @@
 
 id: quality-ci
 version: 1
-defaultTimeoutMs: 120000
+defaultTimeoutMs: 240000
+
+# CPU inference on a CI runner is slow and requests queue on one model: allow long
+# deadlines and no retries, so a slow answer is measured instead of abandoned.
+resilience:
+  requestDeadlineMs: 300000
+  maxAttempts: 1
+  circuitBreaker: { failureThreshold: 50, cooldownMs: 1000 }
 
 targets:
   - id: ollama-llama
