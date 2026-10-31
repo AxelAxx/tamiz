@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-31
 
-**Status**: Draft
+**Status**: Approved (reviewed by Alex on 2026-10-31)
 
 **Input**: User description: "009-mcp-agent: apps/mcp-server exposes four read-only MCP tools over the gateway admin API (simulate_routing, query_audit_log, get_cost_report, get_provider_health) with input/output schemas from @tamiz/contracts, per-tool permissions, stdio and streamable HTTP transports, admin-key handling, and a dogfooding agent (AI SDK 6 + MCP client) whose LLM calls go through Tamiz and answers 'why did spend rise yesterday?'; tests with an in-process MCP client and a fake gateway; README config for Claude Desktop and Claude Code. Backlog T-009-02 … T-009-04."
 
