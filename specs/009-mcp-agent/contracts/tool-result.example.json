@@ -1,0 +1,62 @@
+{
+  "success": {
+    "tool": "get_provider_health",
+    "arguments": { "windowMinutes": 15 },
+    "result": {
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"windowMinutes\":15,\"generatedAt\":\"2026-10-31T09:00:00.000Z\",\"targets\":[{\"targetId\":\"ollama-llama\",\"provider\":\"ollama\",\"model\":\"llama3.1:8b\",\"residency\":\"local\",\"circuit\":\"closed\",\"window\":{\"requests\":12,\"errors\":0,\"errorRate\":0,\"latencyP50Ms\":840,\"latencyP95Ms\":1310}},{\"targetId\":\"mistral-small\",\"provider\":\"mistral\",\"model\":\"mistral-small-latest\",\"residency\":\"eu\",\"circuit\":\"open\",\"cooldownRemainingMs\":21000,\"window\":{\"requests\":7,\"errors\":5,\"errorRate\":0.7142857142857143,\"latencyP50Ms\":420,\"latencyP95Ms\":455}}]}"
+        }
+      ],
+      "structuredContent": {
+        "windowMinutes": 15,
+        "generatedAt": "2026-10-31T09:00:00.000Z",
+        "targets": [
+          {
+            "targetId": "ollama-llama",
+            "provider": "ollama",
+            "model": "llama3.1:8b",
+            "residency": "local",
+            "circuit": "closed",
+            "window": {
+              "requests": 12,
+              "errors": 0,
+              "errorRate": 0,
+              "latencyP50Ms": 840,
+              "latencyP95Ms": 1310
+            }
+          },
+          {
+            "targetId": "mistral-small",
+            "provider": "mistral",
+            "model": "mistral-small-latest",
+            "residency": "eu",
+            "circuit": "open",
+            "cooldownRemainingMs": 21000,
+            "window": {
+              "requests": 7,
+              "errors": 5,
+              "errorRate": 0.7142857142857143,
+              "latencyP50Ms": 420,
+              "latencyP95Ms": 455
+            }
+          }
+        ]
+      }
+    }
+  },
+  "error": {
+    "tool": "query_audit_log",
+    "arguments": { "entity": "DNI", "limit": 20 },
+    "result": {
+      "isError": true,
+      "content": [
+        {
+          "type": "text",
+          "text": "{\"error\":{\"code\":\"gateway_forbidden\",\"message\":\"the gateway key lacks the admin role\"}}"
+        }
+      ]
+    }
+  }
+}
