@@ -75,6 +75,26 @@ function presentHeaders(
   return picked;
 }
 
+/**
+ * Registers every route on `app`, chained so the returned type carries each route's input
+ * and responses (spec 008 research R-02). Registration runs after the middlewares, in this
+ * order; the order is part of the behaviour.
+ */
+function registerRoutes(app: GatewayApp, deps: AppDeps) {
+  const health = registerHealth(app, deps);
+  const chat = registerChatCompletions(health, deps.routeInference, deps.streamInference);
+  const simulate = registerSimulate(chat, deps.simulatePolicy);
+  const audit = registerAdminAudit(simulate, deps.queryAuditLog);
+  const cost = registerAdminCost(audit, deps.costReport);
+  return registerAdminProviders(cost, deps.providerHealth);
+}
+
+/**
+ * The typed route table of the gateway, for `hc<GatewayRoutes>(url)` (spec 008 R-02).
+ * Type-only: importing it bundles no gateway code.
+ */
+export type GatewayRoutes = ReturnType<typeof registerRoutes>;
+
 export function createApp(deps: AppDeps): GatewayApp {
   const app = new OpenAPIHono<AppEnv>({
     defaultHook: (result, c) => {
@@ -143,12 +163,7 @@ export function createApp(deps: AppDeps): GatewayApp {
     await next();
   });
 
-  registerHealth(app, deps);
-  registerChatCompletions(app, deps.routeInference, deps.streamInference);
-  registerSimulate(app, deps.simulatePolicy);
-  registerAdminAudit(app, deps.queryAuditLog);
-  registerAdminCost(app, deps.costReport);
-  registerAdminProviders(app, deps.providerHealth);
+  registerRoutes(app, deps);
 
   app.openAPIRegistry.registerComponent("securitySchemes", "bearerAuth", {
     type: "http",

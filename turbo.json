@@ -12,7 +12,11 @@
     },
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
+    },
+    "e2e": {
+      "dependsOn": ["build"],
+      "cache": false
     }
   }
 }

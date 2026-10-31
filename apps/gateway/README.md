@@ -19,6 +19,7 @@ src/
 ├── presentation/    app.ts (createApp, OpenAPI), routes/, middlewares/, mappers/ — HTTP only
 └── main.ts          composition root: the only module that imports infrastructure
 scripts/generate-api-key.ts   prints a new client key and its TAMIZ_API_KEYS entry
+scripts/e2e-gateway.ts        the real app with in-memory fakes and a control port (dashboard E2E)
 policies/                     routing policy files (see policies/README.md)
 ```
 
@@ -90,7 +91,19 @@ pnpm --filter @tamiz/gateway typecheck   # tsc --noEmit
 pnpm --filter @tamiz/gateway test        # vitest run
 pnpm --filter @tamiz/gateway build       # tsc -p tsconfig.build.json → dist/
 pnpm --filter @tamiz/gateway generate-api-key acme   # prints "key: tmz_…" once and the TAMIZ_API_KEYS entry
+pnpm --filter @tamiz/gateway e2e-gateway # the dashboard's E2E gateway (spec 008 R-13): :3210, control :3211
 ```
+
+`createApp` registers its routes in one chain and exports their type, `GatewayRoutes`
+(`@tamiz/gateway/routes`, type-only), so the dashboard's `hc<GatewayRoutes>` client is typed
+by the gateway itself (spec 008 R-02). A new route joins that chain in `registerRoutes`.
+
+The E2E gateway answers on `127.0.0.1` only and never calls a provider (they throw). Its
+control server takes `POST /__e2e/audit` (audit entries in the contract shape),
+`POST /__e2e/reset`, `POST /__e2e/circuit` (`{ targetId, cooldownMs }`),
+`POST /__e2e/detector` (`{ outage }`) and `GET /__e2e/requests` (method, path and
+`Authorization` of every gateway request). Its fake detector finds fixed synthetic markers
+(`12345678Z` DNI, `ES9121000418450200051332` IBAN, …; see the script).
 
 `@tamiz/contracts` is consumed through its `dist/` entry point, so run `pnpm build` at the
 root (or `pnpm --filter @tamiz/contracts build`) before `dev` or a direct `vitest` call;

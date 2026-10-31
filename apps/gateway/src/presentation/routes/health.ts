@@ -8,7 +8,7 @@
  */
 import { createRoute, type OpenAPIHono } from "@hono/zod-openapi";
 import { type HealthResponse, HealthResponseSchema, milliseconds } from "@tamiz/contracts";
-import type { Env } from "hono";
+import type { Env, Schema } from "hono";
 import type { ClockPort } from "../../application/ports/clock.port.js";
 import { HealthResponseBody } from "../openapi-schemas.js";
 
@@ -36,6 +36,9 @@ export const healthRoute = createRoute({
   },
 });
 
-export function registerHealth<E extends Env>(app: OpenAPIHono<E>, deps: HealthDeps): void {
-  app.openapi(healthRoute, (c) => c.json(buildHealthResponse(deps), 200));
+export function registerHealth<E extends Env, S extends Schema, B extends string>(
+  app: OpenAPIHono<E, S, B>,
+  deps: HealthDeps,
+) {
+  return app.openapi(healthRoute, (c) => c.json(buildHealthResponse(deps), 200));
 }
