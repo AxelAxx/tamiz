@@ -6,7 +6,7 @@
       "judgePrompt": "judge.v1",
       "answerModel": "qwen2.5:1.5b",
       "judgeModel": "qwen2.5:3b",
-      "score": 0.875,
+      "score": 0.99,
       "acceptedAt": "2026-10-31T00:00:00.000Z",
       "source": "https://github.com/AxelAxx/tamiz/actions/runs/41186335451 (evals job, commit bc6e4bb)"
     }
