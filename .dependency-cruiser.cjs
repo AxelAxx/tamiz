@@ -2,7 +2,7 @@
  * Architecture limits of the gateway (constitution I, spec 001 FR-021 / FR-022,
  * research R-12). Run from the repository root:
  *
- *   pnpm arch   →   depcruise apps/gateway/src --config .dependency-cruiser.cjs --output-type err
+ *   pnpm arch   →   depcruise apps/gateway/src apps/mcp-server/src --config .dependency-cruiser.cjs --output-type err
  *
  * Every rule is an error: a layering violation is a failed build, not a review comment.
  * Paths are relative to the repository root, which is where `pnpm arch` and the
@@ -14,11 +14,16 @@
  *   infrastructure  → infrastructure, application, domain, npm, node core, workspace packages
  *   presentation    → presentation, application, domain, @tamiz/contracts, npm, node core
  *   main.ts         → anything; and nothing but main.ts imports infrastructure
+ *
+ * The MCP server (spec 009 research R-13) is a thin adapter with flat modules, kept apart
+ * from gateway code by its package dependencies. One rule keeps its agent, a client of the
+ * server, out of the server side.
  */
 
 const path = require("node:path");
 
 const GATEWAY = "apps/gateway/src";
+const MCP = "apps/mcp-server/src";
 
 /** @type {import('dependency-cruiser').IConfiguration} */
 module.exports = {
@@ -71,6 +76,15 @@ module.exports = {
         "(domain and application are covered by their own rules, so a violation names one rule).",
       from: { pathNot: `^${GATEWAY}/(main\\.ts$|infrastructure/|domain/|application/)` },
       to: { path: `^${GATEWAY}/infrastructure/` },
+    },
+    {
+      name: "mcp-agent-isolated",
+      severity: "error",
+      comment:
+        "The agent is a client of the MCP server and reaches it only through MCP: nothing in " +
+        "apps/mcp-server/src outside agent/ imports agent/ (spec 009 research R-13).",
+      from: { path: `^${MCP}/`, pathNot: `^${MCP}/agent/` },
+      to: { path: `^${MCP}/agent/` },
     },
     {
       name: "no-circular",

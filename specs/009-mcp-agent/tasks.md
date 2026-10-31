@@ -45,7 +45,7 @@ passes T003–T007 against the fake gateway.
 
 ### Tests first
 
-- [ ] T001 [P] `contracts/test/mcp.test.ts` covers:
+- [x] T001 [P] `contracts/test/mcp.test.ts` covers:
   - `SimulateRoutingInputSchema`: `text` 1 … 32 000 chars, `messages` ≥ 1, "exactly one of
     `text` / `messages`" (both or neither fail), `model` 1 … 200 chars;
   - `QueryAuditLogInputSchema`: `limit` is `z.int().min(1).max(50).default(20)`, no string
@@ -57,7 +57,7 @@ passes T003–T007 against the fake gateway.
   - `specs/009-mcp-agent/contracts/tool-result.example.json`: its `structuredContent`
     parses with `ProvidersReportSchema`, and its error text parses with
     `McpToolErrorSchema`.
-- [ ] T002 [P] `mcp/test/support/` holds the shared harness (research R-12):
+- [x] T002 [P] `mcp/test/support/` holds the shared harness (research R-12):
   - `fake-gateway.ts`: a Hono app with `POST /v1/simulate`, `GET /v1/admin/{audit,cost,providers}`
     and `POST /v1/chat/completions`. It:
     - checks the bearer against configured admin and client keys (401/403 as the gateway);
@@ -70,7 +70,7 @@ passes T003–T007 against the fake gateway.
     `InMemoryTransport.createLinkedPair()` (both halves from `@modelcontextprotocol/client`),
     plus a captured log stream.
   - `no-key.ts`: asserts a key string is absent from listed tools, results, errors and logs.
-- [ ] T003 [US1] `mcp/test/tools-simulate-health.test.ts` covers US1-1 … US1-5, one test
+- [x] T003 [US1] `mcp/test/tools-simulate-health.test.ts` covers US1-1 … US1-5, one test
   per scenario:
   - the list shows four tools with descriptions, input and output schemas, and
     `readOnlyHint: true`;
@@ -81,14 +81,14 @@ passes T003–T007 against the fake gateway.
     default);
   - invalid input (empty text, both `text` and `messages`, a window of 0) is a protocol
     error and the fake records nothing.
-- [ ] T004 [US1] `mcp/test/errors.test.ts` covers US1-6, US2-6 and US2-7, with one case per
+- [x] T004 [US1] `mcp/test/errors.test.ts` covers US1-6, US2-6 and US2-7, with one case per
   row of the error table in `contracts/tools.md`:
   - connection refused, a delay past a 100 ms timeout, a body with a missing field;
   - 401, 403, 400 with the gateway's message, 500.
 
   Each case checks `isError: true`, the code, no `structuredContent`, and no key in the
   text.
-- [ ] T005 [US2] `mcp/test/permissions.test.ts` covers US2-1 … US2-5:
+- [x] T005 [US2] `mcp/test/permissions.test.ts` covers US2-1 … US2-5:
   - `TAMIZ_MCP_TOOLS=simulate_routing,get_provider_health` lists two tools, and calling
     `query_audit_log` is an unknown-tool error with nothing recorded;
   - `loadConfig` with `nope` fails naming `nope`;
@@ -96,7 +96,7 @@ passes T003–T007 against the fake gateway.
     tool has `idempotentHint: true`, `destructiveHint: false`, `openWorldHint: false`;
   - `no-key.ts` over a full session with successes and failures;
   - stdio config without `TAMIZ_MCP_GATEWAY_KEY` fails naming the variable.
-- [ ] T006 [US4] `mcp/test/transport-http.test.ts` covers US4-2 … US4-5:
+- [x] T006 [US4] `mcp/test/transport-http.test.ts` covers US4-2 … US4-5:
   - the Hono app from `transports/http.ts` is called in process through
     `StreamableHTTPClientTransport` with a custom `fetch` that calls `app.fetch`;
   - the bearer value reaches the fake gateway, and nothing is cached across requests;
@@ -104,7 +104,7 @@ passes T003–T007 against the fake gateway.
   - `Host: evil.example` or `Origin: https://evil.example` gives `403`;
   - two clients with different keys call concurrently, and each recorded request carries
     its own key.
-- [ ] T007 [US4] `mcp/test/transport-stdio.test.ts` covers US4-1:
+- [x] T007 [US4] `mcp/test/transport-stdio.test.ts` covers US4-1:
   - the fake gateway is served on `@hono/node-server` port 0;
   - `StdioClientTransport` spawns `node mcp/dist/main.js` with the env;
   - list and call `get_provider_health`;
@@ -115,43 +115,43 @@ passes T003–T007 against the fake gateway.
 
 ### Implementation
 
-- [ ] T008 `contracts/src/mcp.ts` (data-model 1.1, 1.2, 1.4): `McpToolNameSchema`,
+- [x] T008 `contracts/src/mcp.ts` (data-model 1.1, 1.2, 1.4): `McpToolNameSchema`,
   `MCP_TOOL_NAMES`, the four input schemas built from `AuditQuerySchema.shape`,
   `CostQuerySchema` and `ChatMessageSchema`, `McpToolErrorCodeSchema`, `McpToolErrorSchema`
   and their types; export them from `contracts/src/index.ts`.
-- [ ] T009 Make `mcp/` the `@tamiz/mcp-server` package:
+- [x] T009 Make `mcp/` the `@tamiz/mcp-server` package:
   - `package.json`: private, ESM; bin `tamiz-mcp` → `dist/main.js`; scripts `build`,
     `typecheck`, `test`, `start:http`, `agent:demo`;
   - dependencies per plan "Technical Context", with versions from research R-01; check the
     `@modelcontextprotocol/hono` peer range and record the result;
   - `tsconfig.json`, `tsconfig.build.json`, `vitest.config.ts`;
   - register the project in the root `vitest.config.ts` and turbo.
-- [ ] T010 [P] `mcp/src/config.ts`: the Zod env of data-model section 3, `loadConfig(env,
+- [x] T010 [P] `mcp/src/config.ts`: the Zod env of data-model section 3, `loadConfig(env,
   argv)`, failing with the variable's name. `mcp/src/logger.ts`: pino to file descriptor 2,
   redacting `authorization`, `*.authorization` and `*.key`.
-- [ ] T011 [P] `mcp/src/gateway-client.ts` (research R-07):
+- [x] T011 [P] `mcp/src/gateway-client.ts` (research R-07):
   - `createGatewayClient({ baseUrl, key, timeoutMs, fetch })` with `simulate`, `providers`,
     `audit` and `cost`;
   - each sets the bearer and `x-request-id: mcp-<uuid>`, applies an abort timeout, builds the
     query string without `undefined`, parses with the contract and maps failures to the
     seven codes;
   - it returns `Result<T, ToolError>` and never puts headers in messages.
-- [ ] T012 `mcp/src/tools/definition.ts` (`ToolDefinition`, `toToolResult`,
+- [x] T012 `mcp/src/tools/definition.ts` (`ToolDefinition`, `toToolResult`,
   `toToolError`), `simulate-routing.ts`, `get-provider-health.ts` (descriptions verbatim
   from `contracts/tools.md`), and `registry.ts` (`ALL_TOOLS`, `selectTools(allowlist)`).
-- [ ] T013 `mcp/src/server.ts`: `createMcpServer({ tools, gateway, version })` registers each
+- [x] T013 `mcp/src/server.ts`: `createMcpServer({ tools, gateway, version })` registers each
   selected tool with `registerTool(name, { title, description, inputSchema, outputSchema,
   annotations })`, with the four fixed annotations. Check how the SDK treats `isError`
   results with an `outputSchema` (research R-07) and pin it in T004.
-- [ ] T014 `mcp/src/transports/stdio.ts`, `mcp/src/transports/http.ts` (research R-05:
+- [x] T014 `mcp/src/transports/stdio.ts`, `mcp/src/transports/http.ts` (research R-05:
   `createMcpHonoApp({ host, allowedHosts })`, the bearer middleware, a server and a
   `WebStandardStreamableHTTPServerTransport({ sessionIdGenerator: undefined })` per request,
   `405` for `GET`/`DELETE`), and `mcp/src/main.ts` (the composition root; exit 1 on
   configuration errors).
-- [ ] T015 `.dependency-cruiser.cjs`: the rule `mcp-agent-isolated`, so nothing in
+- [x] T015 `.dependency-cruiser.cjs`: the rule `mcp-agent-isolated`, so nothing in
   `apps/mcp-server/src` outside `agent/` imports `apps/mcp-server/src/agent/`. Add
   `apps/mcp-server/src` to the root `arch` script.
-- [ ] T016 Gates (`pnpm lint`, `typecheck`, `arch`, `test`, `build`). Run quickstart §3–§5
+- [x] T016 Gates (`pnpm lint`, `typecheck`, `arch`, `test`, `build`). Run quickstart §3–§5
   by hand against a local gateway. Update `mcp/README.md` (status, how to run). Write the
   task record and set the backlog row.
 
