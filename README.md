@@ -10,7 +10,7 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: features `001` … `006` done.
+> Status: features `001` … `007` done.
 >
 > - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
 >   gateway skeleton, architecture check, CI.
@@ -78,9 +78,69 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >
 >   <!-- Jaeger screenshot: added with T-OPS-01 / T-DOC-01, once the full stack runs. -->
 >
-> Next: feature `007-evals-gate`.
+> - **007 evals gate**: `pnpm evals` runs the leak, detection, routing, quality
+>   (LLM-as-judge) and cost evals against the real services. The CI job `evals` runs them on
+>   every pull request with local models and blocks below threshold. Results are in the
+>   [Evals](#evals) section below. Walkthrough:
+>   [`specs/007-evals-gate/quickstart.md`](specs/007-evals-gate/quickstart.md).
+>
+> Next: feature `008-dashboard`.
 >
 > Repository: https://github.com/AxelAxx/tamiz
+
+## Evals
+
+The evals are the executable specification of what Tamiz promises (constitution IV,
+`specs/007-evals-gate/`). They run against the real privacy service and gateway on every
+pull request, with local models, and the pull request cannot merge below a threshold.
+All data is synthetic and versioned in `packages/evals/datasets/`.
+
+- **PII leak**: would a personal value reach a non-local provider verbatim, through any
+  target of the decided chain, fallbacks included? 160 synthetic Spanish requests (health,
+  legal, fintech, HR).
+- **Detection**: precision and recall of the privacy service on held-out sentences in
+  harder formats than its development corpus.
+- **Routing**: the 44 routing cases through `POST /v1/simulate`, with the real inspection.
+- **Quality**: answers on the local route, graded by a blind local judge. CI compares them
+  with an accepted baseline for the same models, so a regression fails. The frontier
+  comparison needs keys and is run separately.
+- **Cost**: the routing cases priced on the decided target and on the most expensive one.
+
+<!-- evals:start -->
+Last run: 2026-10-31, commit `7f423cd`, policy `default` v3 — overall **pass**.
+
+| Eval | Metric | Result | Threshold | |
+|---|---|---|---|---|
+| PII leak | `leak_rate.CREDIT_CARD` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.DNI` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.EMAIL` | 0.00 % | < 2.00 % | ✓ pass |
+| PII leak | `leak_rate.IBAN` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.NIE` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.NSS` | 0.00 % | = 0.00 % | ✓ pass |
+| PII leak | `leak_rate.PERSON` | 1.00 % | < 2.00 % | ✓ pass |
+| PII leak | `leak_rate.PHONE` | 0.00 % | < 2.00 % | ✓ pass |
+| Detection | `recall.CIF` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.CREDIT_CARD` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.DNI` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.EMAIL` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.IBAN` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.NIE` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.NSS` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Detection | `recall.PERSON` | 89.09 % | ≥ 80.00 % | ✓ pass |
+| Detection | `recall.PHONE` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Routing | `route_accuracy` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Quality | `mean_score.routed` | 0.8750 | reported | reported |
+| Quality | `relative_score` | 100.00 % | ≥ 95.00 % | ✓ pass |
+| Cost | `cost.routed_estimate` | $0.03759 | reported | reported |
+| Cost | `cost.baseline_estimate` | $0.29130 | reported | reported |
+| Cost | `saving` | 87.09 % | reported | reported |
+
+Datasets: pii-leak-es v1 (160), pii-detection-es v1 (160), routing v1 (44), quality-es v1 (24). Models: answer `qwen2.5:1.5b`, judge `qwen2.5:3b`.
+<!-- evals:end -->
+
+Limitations: detection is statistical (spaCy for names), so the figures are a measured
+defence layer on synthetic data, not a guarantee. CI runs small local models, so the
+quality figures track regressions rather than absolute quality.
 
 ## Where to start
 

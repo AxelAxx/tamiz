@@ -17,6 +17,7 @@
     "test": "turbo run build && vitest run",
     "test:packages": "turbo run test",
     "evals": "turbo run build --filter=@tamiz/evals... && node packages/evals/dist/cli.js",
+    "evals:readme": "turbo run build --filter=@tamiz/evals... && node packages/evals/dist/readme-cli.js",
     "build": "turbo run build",
     "commitlint": "commitlint --edit",
     "prepare": "husky"

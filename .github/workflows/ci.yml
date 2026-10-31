@@ -106,8 +106,108 @@ jobs:
       - name: "Privacy: docker build"
         run: docker build -t tamiz-privacy services/privacy
 
-      # - name: Evals (feature 007, T-007-xx)
-      #   run: pnpm evals
-
       # - name: Docker build (OPS: whole stack)
       #   run: docker compose build
+
+  # Spec 007 FR-014 (T-007-06): the evals against the real services, with local models.
+  # Leak, detection, routing and cost use the privacy service and a gateway on the default
+  # policy (fake cloud keys: those evals only simulate). Quality answers through a second
+  # gateway on packages/evals/policies/quality-ci.yaml and is graded by a local judge.
+  # Below a threshold the job fails (exit 1); a broken harness fails it too (exit 2).
+  evals:
+    name: evals
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      OLLAMA_IMAGE: ollama/ollama:0.40.5
+      ANSWER_MODEL: qwen2.5:1.5b
+      JUDGE_MODEL: qwen2.5:3b
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Set up pnpm (version from packageManager)
+        uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
+
+      - name: Set up Node.js (version from .nvmrc)
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .nvmrc
+          cache: pnpm
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Start the privacy service
+        run: |
+          docker build -t tamiz-privacy services/privacy
+          docker run -d --name privacy -p 127.0.0.1:8001:8001 tamiz-privacy
+
+      - name: Restore the local models
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.ollama-models
+          key: ollama-models-${{ env.ANSWER_MODEL }}-${{ env.JUDGE_MODEL }}
+
+      - name: Start Ollama and pull the models
+        run: |
+          mkdir -p ~/.ollama-models
+          docker run -d --name ollama -p 127.0.0.1:11434:11434 -v ~/.ollama-models:/root/.ollama "$OLLAMA_IMAGE"
+          for _ in $(seq 1 30); do curl -sf http://127.0.0.1:11434/api/version > /dev/null && break; sleep 2; done
+          docker exec ollama ollama pull "$ANSWER_MODEL"
+          docker exec ollama ollama pull "$JUDGE_MODEL"
+          sudo chmod -R a+rwX ~/.ollama-models
+
+      - name: Start the gateways
+        run: |
+          KEY="tmz_ci_$(openssl rand -hex 24)"
+          echo "::add-mask::$KEY"
+          echo "TAMIZ_EVAL_API_KEY=$KEY" >> "$GITHUB_ENV"
+          HASH="$(printf %s "$KEY" | sha256sum | cut -d' ' -f1)"
+          cd apps/gateway
+          TAMIZ_API_KEYS="eval:$HASH" TAMIZ_PRIVACY_URL=http://127.0.0.1:8001 LOG_LEVEL=warn             TAMIZ_POLICY_FILE=policies/default.yaml PORT=3000 HOST=127.0.0.1             MISTRAL_API_KEY=ci-unused OPENAI_API_KEY=ci-unused ANTHROPIC_API_KEY=ci-unused             nohup node dist/main.js > /tmp/gateway-default.log 2>&1 &
+          TAMIZ_API_KEYS="eval:$HASH" TAMIZ_PRIVACY_URL=http://127.0.0.1:8001 LOG_LEVEL=warn             TAMIZ_POLICY_FILE=../../packages/evals/policies/quality-ci.yaml PORT=3200 HOST=127.0.0.1             OLLAMA_BASE_URL=http://127.0.0.1:11434/v1             nohup node dist/main.js > /tmp/gateway-quality.log 2>&1 &
+
+      - name: Wait for the services
+        run: |
+          for url in http://127.0.0.1:8001/health http://127.0.0.1:3000/health http://127.0.0.1:3200/health; do
+            for _ in $(seq 1 90); do curl -sf "$url" > /dev/null && break; sleep 2; done
+            if ! curl -sf "$url" > /dev/null; then
+              echo "::error::$url is not healthy"
+              docker logs privacy 2>&1 | tail -20
+              tail -20 /tmp/gateway-*.log
+              exit 1
+            fi
+          done
+
+      - name: Evals
+        env:
+          TAMIZ_EVAL_GATEWAY_URL: http://127.0.0.1:3000
+          TAMIZ_EVAL_QUALITY_GATEWAY_URL: http://127.0.0.1:3200
+          TAMIZ_EVAL_PRIVACY_URL: http://127.0.0.1:8001
+          TAMIZ_EVAL_JUDGE_URL: http://127.0.0.1:11434/v1
+          TAMIZ_EVAL_JUDGE_MODEL: ${{ env.JUDGE_MODEL }}
+          TAMIZ_EVAL_CONCURRENCY: "2"
+        run: node packages/evals/dist/cli.js
+
+      - name: Job summary
+        if: ${{ !cancelled() }}
+        run: cat packages/evals/reports/evals.md >> "$GITHUB_STEP_SUMMARY" || true
+
+      - name: Upload the eval report
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: evals-report
+          path: packages/evals/reports/
+          if-no-files-found: warn
+
+      - name: Service logs on failure
+        if: ${{ failure() }}
+        run: |
+          docker logs privacy 2>&1 | tail -40
+          docker logs ollama 2>&1 | tail -40
+          tail -40 /tmp/gateway-*.log

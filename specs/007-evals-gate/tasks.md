@@ -163,12 +163,12 @@ approved by Alex (`T-007-01`).
 
 ## Phase 5: `T-007-06` — CI job and README (US6)
 
-- [ ] T028 [P] [US6] `evals/test/readme.test.ts`: the table between the markers is
+- [x] T028 [P] [US6] `evals/test/readme.test.ts`: the table between the markers is
   replaced; a missing or duplicated marker gives exit 2 (US6-4).
-- [ ] T029 `evals/src/report/readme.ts`; the README markers and a first table.
-- [ ] T030 Add a `## Evals` section to `README.md` (what is measured, thresholds,
+- [x] T029 `evals/src/report/readme.ts`; the README markers and a first table.
+- [x] T030 Add a `## Evals` section to `README.md` (what is measured, thresholds,
   limitations) with the generated table.
-- [ ] T031 [US6] Add the `evals` job to `.github/workflows/ci.yml`:
+- [x] T031 [US6] Add the `evals` job to `.github/workflows/ci.yml`:
   - privacy image;
   - Ollama container with the model cache;
   - two gateways;
@@ -178,16 +178,16 @@ approved by Alex (`T-007-01`).
   - a 20-minute timeout.
 
   Measure the duration; apply the fallback of R-11 if it exceeds 15 minutes.
-- [ ] T032 [US6] Run `pnpm evals:readme` from the CI report artifact and commit the table.
-- [ ] T033 Update `CLAUDE.md` section 12 (`pnpm evals`, `evals:readme`,
+- [x] T032 [US6] Run `pnpm evals:readme` from the CI report artifact and commit the table.
+- [x] T033 Update `CLAUDE.md` section 12 (`pnpm evals`, `evals:readme`,
   `generate:datasets`) and section 10 (link to the report).
-- [ ] T034 [US6] Demonstrate the gate:
+- [x] T034 [US6] Demonstrate the gate:
   - in a scratch PR, drop one routing expectation below threshold;
   - check that the job fails with the case in the summary;
   - revert, and check it passes;
   - ask Alex to mark `evals` as a required check;
   - record the links.
-- [ ] T035 Run the quickstart and record it. Polish: README status (007),
+- [x] T035 Run the quickstart and record it. Polish: README status (007),
   `docs/architecture.md` (the evals in the CI pipeline). Gates; record; backlog row.
 
 ## Dependencies

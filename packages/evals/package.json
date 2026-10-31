@@ -17,7 +17,8 @@
     "test": "vitest run",
     "build": "tsc -p tsconfig.build.json",
     "evals": "node dist/cli.js",
-    "generate:datasets": "node dist/generate-datasets.js"
+    "generate:datasets": "node dist/generate-datasets.js",
+    "evals:readme": "node dist/readme-cli.js"
   },
   "devDependencies": {
     "@tamiz/tsconfig": "workspace:*",
