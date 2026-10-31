@@ -113,8 +113,9 @@ findings with the dataset's annotated spans.
 **Acceptance Scenarios**:
 
 1. **Given** the held-out detection dataset, **When** evaluated, **Then** precision and
-   recall are reported per entity kind, with a finding matching an annotation only when
-   kind and offsets match.
+   recall are reported per entity kind. A finding matches an annotation when the kind and
+   offsets match exactly for structured identifiers, and when the kind matches and the
+   spans overlap for names and places (the privacy service's own matching rule).
 2. **Given** the structured identifiers (DNI, NIE, CIF, IBAN, NSS, card, phone, email),
    **When** evaluated, **Then** recall is at least 0.95 for each; below, the eval fails.
 3. **Given** names, **When** evaluated, **Then** recall is at least 0.80 (the privacy

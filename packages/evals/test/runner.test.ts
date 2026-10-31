@@ -61,6 +61,7 @@ afterEach(() => {
 });
 afterAll(() => server.close());
 
+const ONLY_ROUTING = ["--only", "routing"];
 const ENV = { TAMIZ_EVAL_GATEWAY_URL: GATEWAY, TAMIZ_EVAL_API_KEY: "tmz_test" };
 
 async function run(argv: string[] = [], env: Record<string, string> = ENV) {
@@ -84,7 +85,7 @@ async function run(argv: string[] = [], env: Record<string, string> = ENV) {
 
 describe("evals CLI", () => {
   it("US1-1, US4-1: every case on its route → exit 0, the report says pass", async () => {
-    const { code, report, console } = await run();
+    const { code, report, console } = await run(ONLY_ROUTING);
     expect(code).toBe(0);
     expect(simulateCalls).toBe(dataset.cases.length);
     expect(report?.status).toBe("pass");
@@ -101,7 +102,7 @@ describe("evals CLI", () => {
 
   it("US1-2, US4-2: three wrong routes → below 95 %, exit 1, the cases listed", async () => {
     mode = "wrong-three";
-    const { code, report, markdown } = await run();
+    const { code, report, markdown } = await run(ONLY_ROUTING);
     expect(code).toBe(1);
     expect(report?.status).toBe("fail");
     const routing = report?.evals.find((e) => e.id === "routing");
@@ -121,7 +122,7 @@ describe("evals CLI", () => {
     ["off its contract", "off-contract", "contract"],
   ] as const)("US1-3: a gateway %s → exit 2, the service named", async (_name, m, type) => {
     mode = m;
-    const { code, report, console } = await run();
+    const { code, report, console } = await run(ONLY_ROUTING);
     expect(code).toBe(2);
     expect(report?.status).toBe("error");
     expect(report?.evals.find((e) => e.id === "routing")?.error).toEqual({
@@ -145,12 +146,14 @@ describe("evals CLI", () => {
     expect((await run(["--only", "routing"])).code).toBe(0);
     const unconfigured = await run(["--only", "routing"], {});
     expect(unconfigured.code).toBe(2);
-    expect(unconfigured.report?.evals[0]?.error).toEqual({ type: "config_missing" });
+    expect(unconfigured.report?.evals.find((e) => e.id === "routing")?.error).toEqual({
+      type: "config_missing",
+    });
   });
 
   it.each([
     [["--only", "vibes"], "unknown evals: vibes"],
-    [["--only", "leak"], "not implemented yet: leak"],
+    [["--only", "quality"], "not implemented yet: quality"],
     [["--bogus"], "Unknown option"],
   ])("%j → exit 2 before running", async (argv, message) => {
     const { code, console } = await run(argv);
@@ -167,7 +170,7 @@ describe("evals CLI", () => {
 
   it("FR-005: no dataset text reaches the console, the JSON or the Markdown", async () => {
     mode = "wrong-three";
-    const { console, json, markdown } = await run();
+    const { console, json, markdown } = await run(ONLY_ROUTING);
     const written = `${console}\n${json}\n${markdown}`;
     for (const c of dataset.cases) {
       for (const message of c.messages) {

@@ -83,13 +83,13 @@ approved by Alex (`T-007-01`).
 
 ### Tests first
 
-- [ ] T012 [P] [US2] `evals/test/synthetic.test.ts` covers:
+- [x] T012 [P] [US2] `evals/test/synthetic.test.ts` covers:
   - the PRNG is deterministic;
   - identifier generators produce valid control characters (DNI/NIE letter, CIF, IBAN
     mod 97, NSS, Luhn);
   - names and templates are disjoint from the privacy corpus lists;
   - `--check` detects a changed file.
-- [ ] T013 [P] [US2] `evals/test/leak-scorer.test.ts`, toy cases for scenarios US2-1 …
+- [x] T013 [P] [US2] `evals/test/leak-scorer.test.ts`, toy cases for scenarios US2-1 …
   US2-5:
   - a critical value reaching a non-local fallback;
   - a verbatim name after `anonymize` (a leak) and a placeholder (no leak);
@@ -98,19 +98,19 @@ approved by Alex (`T-007-01`).
   - NFC normalization;
   - a detector failure, which is an error;
   - low kinds are reported only.
-- [ ] T014 [P] [US3] `evals/test/detection-scorer.test.ts`: exact kind-and-offset matching,
+- [x] T014 [P] [US3] `evals/test/detection-scorer.test.ts`: exact kind-and-offset matching,
   per-kind precision and recall, overlapping findings.
 
 ### Implementation
 
-- [ ] T015 [US2] `evals/src/evals/leak.ts`; `evals/src/clients/privacy.ts`.
-- [ ] T016 `evals/scripts/generate-pii-datasets.ts` and `evals/src/synthetic/*`. Generate
+- [x] T015 [US2] `evals/src/evals/leak.ts`; `evals/src/clients/privacy.ts`.
+- [x] T016 `evals/scripts/generate-pii-datasets.ts` and `evals/src/synthetic/*`. Generate
   `pii-leak-es.v1.jsonl` (≥ 150 cases) and `pii-detection-es.v1.jsonl` (≥ 150 values) with
   the harder formats of FR-009. Add the script `generate:datasets` with `--check`.
-- [ ] T017 [US3] `evals/src/evals/detection.ts` over `/analyze`.
-- [ ] T018 Run both evals locally against the real privacy service and gateway, and record
+- [x] T017 [US3] `evals/src/evals/detection.ts` over `/analyze`.
+- [x] T018 Run both evals locally against the real privacy service and gateway, and record
   the figures in the task record.
-- [ ] T019 If a gate fails on the real services:
+- [x] T019 If a gate fails on the real services:
   - fix the cause in the privacy service or the policy, in this PR when small;
   - never fix it by editing a bound;
   - otherwise, record it and add a backlog task.
