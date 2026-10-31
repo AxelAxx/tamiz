@@ -4,7 +4,7 @@
 
 **Created**: 2026-10-31
 
-**Status**: Draft
+**Status**: Approved (reviewed by Alex on 2026-10-31)
 
 **Input**: User description: "008-dashboard: the Tamiz operator dashboard (apps/dashboard, Next.js 16). Screens: live traffic (polls GET /v1/admin/audit), policy simulator (POST /v1/simulate, shows entities, rule, taskType, size, action, chain), audit log (filters + keyset cursor), cost analytics (GET /v1/admin/cost vs all-frontier baseline), provider health (GET /v1/admin/providers), eval results (EvalReportSchema, CI artifact evals-report), policy editor (new GET/PUT /v1/admin/policy with Zod validation and version bump). Admin key held server-side only, never sent to the browser. Accessibility basics, Playwright flows, Given/When/Then mapping 1:1 to tests. Includes a Claude Design brief (design-brief.md) and an explicit design-received gate before UI tasks. Backlog T-008-02 … T-008-09."
 

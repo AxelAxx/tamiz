@@ -8,7 +8,7 @@
 | Branch / PR | `008-dashboard` (Spec Kit naming), cut from `main` at dc07462 / draft PR opened after this commit |
 | Date | 2026-10-31 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | done (draft, pending Alex's approval); `spec.md` stays `Draft` until Alex approves the PR |
+| Status | done; spec reviewed and approved by Alex on 2026-10-31 without changes (`spec.md` flipped to `Approved` in the same PR) |
 
 ## What was done
 
