@@ -14,6 +14,8 @@ import {
   ProviderNameSchema,
   ResidencySchema,
   TargetIdSchema,
+  TaskSizeSchema,
+  TaskTypeSchema,
 } from "./routing-policy.js";
 
 export const SimulatedEntitySchema = z.strictObject({
@@ -38,6 +40,9 @@ export const SimulateResponseSchema = z
     detector: z.enum(["ok", "unavailable", "timeout", "contract"]),
     entities: z.array(SimulatedEntitySchema),
     ruleId: z.string(),
+    /** The classification the rule matched on (spec 007 FR-010: routing mismatches show it). */
+    taskType: TaskTypeSchema,
+    size: TaskSizeSchema,
     decision: z.enum(["route", "block"]),
     privacyAction: PrivacyActionSchema,
     /** Empty when blocked. */

@@ -119,15 +119,15 @@ approved by Alex (`T-007-01`).
 
 ## Phase 3: `T-007-04` — Routing against the real inspection (US4)
 
-- [ ] T020 [P] [US4] `evals/test/routing-scorer.test.ts`: mismatch details (expected and
+- [x] T020 [P] [US4] `evals/test/routing-scorer.test.ts`: mismatch details (expected and
   actual route, rule, task type, sensitivity), plus blocked expectations.
-- [ ] T021 [US4] Mismatch reporting in `evals/src/evals/routing.ts`.
+- [x] T021 [US4] Mismatch reporting in `evals/src/evals/routing.ts`.
   - Run against the real services.
   - If a case's route changes because the real inspection finds incidental data, write
     `routing.v2.jsonl` and update the feature 002 unit gate to read it, in the same PR.
   - Confirm, through the gateway's audit endpoint, that the run wrote no audit entries
     (US4-3).
-- [ ] T022 Gates; record; backlog row.
+- [x] T022 Gates; record; backlog row.
 
 ## Phase 4: `T-007-05` — Quality and cost (US5)
 

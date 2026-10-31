@@ -3,8 +3,9 @@ import type { SimulateResponse } from "../src/clients/gateway.js";
 import type { LeakCase } from "../src/datasets.js";
 import { scoreDetection } from "../src/evals/detection.js";
 import { leakEval, observeSimulation, scoreLeak } from "../src/evals/leak.js";
+import { type RoutingObservation, routingEval, scoreRouting } from "../src/evals/routing.js";
 
-// Spec 007 US2-1 … US2-5, US3-1 (tasks.md T013, T014).
+// Spec 007 US2-1 … US2-5, US3-1, US4-1, US4-2 (tasks.md T013, T014, T020).
 
 const TEXT = "Soy Edurne Zubiri, DNI 06324134P, de Soria.";
 const CASE: LeakCase = {
@@ -31,6 +32,8 @@ function simulated(overrides: Partial<SimulateResponse> = {}): SimulateResponse 
     detector: "ok",
     entities: [],
     ruleId: "default",
+    taskType: "chat",
+    size: "short",
     decision: "route",
     privacyAction: "restrict_to_local",
     chain: [target("ollama-llama", "local")],
@@ -161,5 +164,58 @@ describe("detection scorer", () => {
     const { tp, fp } = scoreDetection(labels, findings);
     expect(tp).toHaveLength(1);
     expect(fp).toHaveLength(1);
+  });
+});
+
+describe("routing scorer", () => {
+  const routingCase = (route: string) => ({
+    id: "routing-001",
+    messages: [{ role: "user" as const, content: "Hola" }],
+    expected: { taskType: "chat", size: "short", route },
+  });
+  const observed = (overrides: Partial<RoutingObservation> = {}): RoutingObservation => ({
+    route: "mistral-small",
+    rule: "default",
+    taskType: "chat",
+    size: "short",
+    sensitivity: "none",
+    decision: "route",
+    ...overrides,
+  });
+
+  it("US4-1: the first target must be the expected route", () => {
+    expect(scoreRouting(routingCase("mistral-small"), observed()).ok).toBe(true);
+    expect(scoreRouting(routingCase("openai-mini"), observed()).ok).toBe(false);
+  });
+
+  it("an expected `block` passes only when the request is blocked", () => {
+    expect(
+      scoreRouting(routingCase("block"), observed({ decision: "block", route: null })).ok,
+    ).toBe(true);
+    expect(scoreRouting(routingCase("block"), observed()).ok).toBe(false);
+    expect(
+      scoreRouting(routingCase("mistral-small"), observed({ decision: "block", route: null })).ok,
+    ).toBe(false);
+  });
+
+  it("US4-2: a mismatch shows route, rule, task type, size and sensitivity on both sides", () => {
+    const c = routingCase("openai-mini");
+    const result = scoreRouting(c, observed({ taskType: "summarize", sensitivity: "low" }));
+    const summary = routingEval.summarize([{ c, result }]);
+    expect(summary.failing).toEqual([
+      {
+        id: "routing-001",
+        reason: "unexpected route",
+        expected: { route: "openai-mini", taskType: "chat", size: "short" },
+        actual: {
+          route: "mistral-small",
+          rule: "default",
+          taskType: "summarize",
+          size: "short",
+          sensitivity: "low",
+        },
+      },
+    ]);
+    expect(summary.metrics.find((m) => m.name === "task_type_accuracy")?.value).toBe(0);
   });
 });

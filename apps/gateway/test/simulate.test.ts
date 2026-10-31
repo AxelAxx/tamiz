@@ -68,6 +68,15 @@ describe("POST /v1/simulate", () => {
     expect(DNI_TEXT.slice(10, 19)).toBe("12345678Z");
   });
 
+  it("spec 007 FR-010: the classification the rule matched on is part of the answer", async () => {
+    const { json } = await simulate(HIGH, NAMES_TEXT);
+    expect(json).toMatchObject({
+      taskType: "summarize",
+      size: "short",
+      ruleId: "cheap-short-tasks",
+    });
+  });
+
   it("US5-2: `anonymize` shows exactly what the provider would receive", async () => {
     const { json } = await simulate(HIGH, NAMES_TEXT);
 
