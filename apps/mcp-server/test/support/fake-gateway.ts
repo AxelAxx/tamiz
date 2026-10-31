@@ -1,16 +1,21 @@
 import {
   AuditQuerySchema,
   ChatCompletionRequestSchema,
+  type ChatCompletionResponse,
+  ChatCompletionResponseSchema,
+  type CostQueryDto,
   CostQuerySchema,
+  type CostReportDto,
   ProvidersQuerySchema,
 } from "@tamiz/contracts";
 import { type Context, Hono } from "hono";
 import { AUDIT_PAGES, COST_REPORT, PROVIDERS, SIMULATE_DNI } from "./fixtures.js";
 
 /**
- * A fake Tamiz gateway (research R-12): the simulate and admin routes, with the gateway's
- * key roles and the real contracts on both sides. Every request is recorded; a scripted
- * failure replaces the next answers until it is cleared.
+ * A fake Tamiz gateway (research R-12): the simulate, admin and chat completion routes, with
+ * the gateway's key roles and the real contracts on both sides. Every request is recorded; a
+ * scripted failure replaces the next answers until it is cleared. Chat completions answer
+ * from a script of model replies, one per call, each with its own `x-request-id`.
  */
 
 export const ADMIN_KEY = "tamiz_test_admin_7c1f9e2a4b";
@@ -31,12 +36,26 @@ export type ScriptedFailure =
   | { kind: "delay"; ms: number }
   | { kind: "body"; body: unknown };
 
+/** One model reply: its text, or a gateway error for that call. */
+export type ScriptedReply =
+  | string
+  | { status: 451 | 502; type: "policy_blocked" | "provider_error"; message?: string };
+
+export interface FakeGatewayOptions {
+  /** Answers `GET /v1/admin/cost` instead of the default fixture. */
+  cost?: (query: CostQueryDto) => CostReportDto;
+}
+
 export interface FakeGateway {
   app: Hono;
   /** A `fetch` that calls the app in process, as the gateway client expects. */
   fetch: typeof fetch;
   requests: RecordedRequest[];
   fail(failure: ScriptedFailure | undefined): void;
+  /** Queues the model's replies for the next chat completions. */
+  script(replies: readonly ScriptedReply[]): void;
+  /** The `x-request-id` of every chat completion answered, in order. */
+  chatRequestIds: string[];
 }
 
 const STATUS_TYPE = {
@@ -53,8 +72,10 @@ function envelope(status: keyof typeof STATUS_TYPE, message: string) {
   return { error: { type: STATUS_TYPE[status], message, requestId: "req-fake" } };
 }
 
-export function createFakeGateway(): FakeGateway {
+export function createFakeGateway(options: FakeGatewayOptions = {}): FakeGateway {
   const requests: RecordedRequest[] = [];
+  const replies: ScriptedReply[] = [];
+  const chatRequestIds: string[] = [];
   let failure: ScriptedFailure | undefined;
   const app = new Hono();
 
@@ -110,7 +131,36 @@ export function createFakeGateway(): FakeGateway {
     if (Date.parse(parsed.data.from) >= Date.parse(parsed.data.to)) {
       return c.json(envelope(400, "from must be before to"), 400);
     }
-    return c.json({ ...COST_REPORT, ...parsed.data });
+    return c.json(options.cost?.(parsed.data) ?? { ...COST_REPORT, ...parsed.data });
+  });
+
+  app.post("/v1/chat/completions", async (c) => {
+    const parsed = ChatCompletionRequestSchema.safeParse(await c.req.json());
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0];
+      return c.json(envelope(400, `invalid chat body at ${issue?.path.join(".") ?? ""}`), 400);
+    }
+    const requestId = `req-${chatRequestIds.length + 1}`;
+    chatRequestIds.push(requestId);
+    c.header("x-request-id", requestId);
+    const reply = replies.shift();
+    if (reply === undefined) {
+      return c.json(chatError("internal", "the script has no reply left", requestId), 500);
+    }
+    if (typeof reply !== "string") {
+      return c.json(chatError(reply.type, reply.message ?? "scripted", requestId), reply.status);
+    }
+    const answer: ChatCompletionResponse = ChatCompletionResponseSchema.parse({
+      id: `chatcmpl-${requestId}`,
+      object: "chat.completion",
+      created: 1_793_000_000,
+      model: "llama3.1:8b",
+      choices: [
+        { index: 0, message: { role: "assistant", content: reply }, finish_reason: "stop" },
+      ],
+      usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120, cost_usd: 0 },
+    });
+    return c.json(answer);
   });
 
   return {
@@ -120,7 +170,15 @@ export function createFakeGateway(): FakeGateway {
     fail(next) {
       failure = next;
     },
+    script(next) {
+      replies.push(...next);
+    },
+    chatRequestIds,
   };
+}
+
+function chatError(type: string, message: string, requestId: string) {
+  return { error: { type, message, requestId } };
 }
 
 async function scripted(c: Context, failure: ScriptedFailure): Promise<Response | undefined> {
