@@ -1,0 +1,34 @@
+{
+  "name": "@tamiz/mcp-server",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Tamiz MCP server: read-only tools over the gateway's simulate and admin API (stdio and streamable HTTP)",
+  "license": "Apache-2.0",
+  "type": "module",
+  "bin": {
+    "tamiz-mcp": "./dist/main.js"
+  },
+  "scripts": {
+    "start": "node dist/main.js",
+    "start:http": "node dist/main.js --transport http",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "test": "vitest run",
+    "build": "tsc -p tsconfig.build.json"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "2.4.0",
+    "@tamiz/tsconfig": "workspace:*",
+    "@types/node": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  },
+  "dependencies": {
+    "@hono/node-server": "^2.1.5",
+    "@modelcontextprotocol/hono": "2.0.2",
+    "@modelcontextprotocol/server": "2.4.0",
+    "@tamiz/contracts": "workspace:*",
+    "hono": "^4.13.13",
+    "pino": "^10.4.0",
+    "zod": "^4.6.7"
+  }
+}
