@@ -10,7 +10,7 @@ with anonymization or blocking when required), survives provider failures with f
 chains and circuit breakers, audits every decision without ever storing prompt content,
 and proves it all with privacy-leak and routing evals that gate CI.
 
-> Status: features `001` … `007` done.
+> Status: features `001` … `007` and `009` done; `008` in progress.
 >
 > - **001 contracts and skeleton**: pnpm + Turborepo + Biome workspace, Zod contracts,
 >   gateway skeleton, architecture check, CI.
@@ -83,6 +83,19 @@ and proves it all with privacy-leak and routing evals that gate CI.
 >   every pull request with local models and blocks below threshold. Results are in the
 >   [Evals](#evals) section below. Walkthrough:
 >   [`specs/007-evals-gate/quickstart.md`](specs/007-evals-gate/quickstart.md).
+>
+> - **009 MCP server and agent**: `apps/mcp-server` exposes four read-only MCP tools over
+>   stdio and streamable HTTP, for Claude Desktop, Claude Code or any MCP host:
+>   - `simulate_routing`;
+>   - `query_audit_log`;
+>   - `get_cost_report`;
+>   - `get_provider_health`.
+>
+>   An allowlist chooses the tools, and the admin key stays with the server. A small
+>   agent (AI SDK 6 + MCP client) answers "why did spend rise yesterday?". Its own model
+>   calls go **through Tamiz** on the local-only `pinned-local` rule, so the gateway audits
+>   its own operator tooling. Setup:
+>   [`apps/mcp-server/README.md`](apps/mcp-server/README.md).
 >
 > Next: feature `008-dashboard`.
 >

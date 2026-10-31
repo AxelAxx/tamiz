@@ -9,8 +9,8 @@ MCP host) what Tamiz would do, what happened, what it cost and how providers are
 - **The key stays with the server.** It never reaches the assistant or its model.
 
 The server is built on the official MCP TypeScript SDK v2 (`@modelcontextprotocol/server`
-2.4.0) and runs over stdio or stateless streamable HTTP. Feature `009-mcp-agent`. The
-dogfooding agent arrives with `T-009-04`.
+2.4.0) and runs over stdio or stateless streamable HTTP. Feature `009-mcp-agent`. A small
+dogfooding agent ships with it (see [Agent](#agent)).
 
 ## Tools
 
@@ -132,6 +132,49 @@ Text you give `simulate_routing` from a cloud-hosted assistant has already reach
 assistant's model before the tool runs, and Tamiz cannot prevent that. Simulate with
 synthetic text (for example a made-up DNI), or from a local host. The other tools return
 metadata only: kinds, counts, costs and targets, never message text or detected values.
+
+## Agent
+
+`src/agent/` is a small agent built with AI SDK 6 and the `@ai-sdk/mcp` client. It
+answers operational questions with the tools. Its own model calls go **through Tamiz**:
+every call is a normal `POST /v1/chat/completions` with the agent's client key and the
+model `tamiz-local`, which the default policy pins to the local route (`pinned-local`). The
+gateway inspects, routes and audits it like any request, and the agent holds no provider
+key.
+
+```bash
+pnpm --filter @tamiz/mcp-server start:http      # the server, in another terminal
+TAMIZ_AGENT_API_KEY=<client key> TAMIZ_AGENT_MCP_KEY=<admin key>   pnpm --filter @tamiz/mcp-server agent:demo -- "why did spend rise yesterday?"
+```
+
+| Agent variable | Default | |
+|---|---|---|
+| `TAMIZ_AGENT_GATEWAY_URL` | `http://localhost:3000` | Where the model calls go. |
+| `TAMIZ_AGENT_API_KEY` | — | Required: a client key for the model calls. |
+| `TAMIZ_AGENT_MODEL` | `tamiz-local` | The requested model. |
+| `TAMIZ_AGENT_MCP_URL` | `http://127.0.0.1:3100/mcp` | The server's HTTP transport. |
+| `TAMIZ_AGENT_MCP_KEY` | — | Required: an admin key, sent as the bearer to the MCP server. |
+
+**Tool protocol.** The gateway's chat contract carries no `tools`, so the agent uses a text
+protocol (`specs/009-mcp-agent/contracts/agent-protocol.md`):
+
+- each model reply is one JSON object, either `{"tool", "arguments"}` or `{"answer"}`;
+- tool results and errors go back as `Observation …` messages;
+- a run stops after at most 6 model calls.
+
+The demo prints the answer and a run record with:
+
+- the prompt version (`prompts/system.v1.md`);
+- the UTC date;
+- the tools called, with their arguments;
+- the gateway request id of every model call.
+
+The record never holds the tool results.
+
+**Demo data.** `demo/seed-audit.sql` inserts synthetic, content-free audit rows for the
+two days before today, in which yesterday's spend doubles on `anthropic-sonnet`. Load it
+with `psql "$DATABASE_URL" -f apps/mcp-server/demo/seed-audit.sql` into the gateway's
+Postgres. The demo needs Ollama with `llama3.1:8b` for the `ollama-llama` target.
 
 ## Development
 

@@ -201,12 +201,12 @@ and T023 pass with scripted model answers; T030 records the real run.
 
 ### Tests first
 
-- [ ] T022 [P] [US5] `mcp/test/agent-action.test.ts` checks `extractAction` (research R-10,
+- [x] T022 [P] [US5] `mcp/test/agent-action.test.ts` checks `extractAction` (research R-10,
   data-model 4.1):
   - a bare object, an object in a ```` ```json ```` fence, an object after prose;
   - `{"answer": ""}` (fails, `min(1)`), two objects (the first wins), no JSON, a JSON array;
   - `arguments` default `{}` (part of US5-3).
-- [ ] T023 [US5] `mcp/test/agent.test.ts` covers US5-1 … US5-5. It uses the in-process MCP
+- [x] T023 [US5] `mcp/test/agent.test.ts` covers US5-1 … US5-5. It uses the in-process MCP
   pair, `createMCPClient({ transport: <InMemoryTransport half> })`, the fake gateway serving
   the admin fixtures and scripted chat answers, and a fixed clock (2026-10-31):
   - **US5-1.** The scripted model asks for the daily cost, then the route cost for each day,
@@ -226,25 +226,25 @@ and T023 pass with scripted model answers; T030 records the real run.
 
 ### Implementation
 
-- [ ] T024 [P] `mcp/src/agent/action.ts`: `AgentActionSchema` (data-model 4.1) and
+- [x] T024 [P] `mcp/src/agent/action.ts`: `AgentActionSchema` (data-model 4.1) and
   `extractAction`.
-- [ ] T025 [P] `mcp/src/agent/gateway-model.ts`: `createOpenAICompatible({ name: "tamiz",
+- [x] T025 [P] `mcp/src/agent/gateway-model.ts`: `createOpenAICompatible({ name: "tamiz",
   baseURL: <gateway>/v1, apiKey })`. If T023's body check fails on an extra field, switch
   the model call to `fetch` plus the contract (research R-09 risk), and record which path
   was taken.
-- [ ] T026 [P] `mcp/src/agent/prompts/system.v1.md` (research R-11: answer only from tool
+- [x] T026 [P] `mcp/src/agent/prompts/system.v1.md` (research R-11: answer only from tool
   results; the spend recipe; UTC days with `from` inclusive and `to` exclusive; the one-object
   JSON format; the `{{today}}` and `{{tools}}` placeholders). The build copies `prompts/` to
   `dist/agent/prompts/`.
-- [ ] T027 `mcp/src/agent/run-agent.ts`: `runAgent({ question, model, mcpTools, now,
+- [x] T027 `mcp/src/agent/run-agent.ts`: `runAgent({ question, model, mcpTools, now,
   maxSteps = 6, observationLimit = 8000 })`, implementing the loop of data-model 4.3 and the
   messages of `contracts/agent-protocol.md`. It returns an `AgentRun` and calls
   `generateText` with `temperature: 0, maxRetries: 0`.
-- [ ] T028 `mcp/src/agent/demo.ts` and the `agent:demo` script. It reads the agent variables
+- [x] T028 `mcp/src/agent/demo.ts` and the `agent:demo` script. It reads the agent variables
   of data-model section 3, connects with `createMCPClient({ transport: { type: "http", url,
   headers: { Authorization: "Bearer …" } } })`, runs one question, prints the answer and the
   run record as JSON, closes the client in `finally`, and exits 0 when answered, 1 otherwise.
-- [ ] T029 `mcp/demo/seed-audit.sql`: synthetic, content-free audit rows for the two days
+- [x] T029 `mcp/demo/seed-audit.sql`: synthetic, content-free audit rows for the two days
   before today, relative to `now()`, with columns taken from the gateway's Drizzle schema
   (`apps/gateway/src/infrastructure/persistence/`). Yesterday's cost on one route is about
   twice the day before's. The file uses fixed UUIDs and a fixed `request_hash` value of 64
@@ -256,7 +256,7 @@ and T023 pass with scripted model answers; T030 records the real run.
 
   If the local model cannot follow the format within 6 steps, record that, and try
   `qwen2.5:3b` through a policy override. Do not raise the step limit silently.
-- [ ] T031 Polish:
+- [x] T031 Polish:
   - the README status line (009);
   - `docs/architecture.md`: the MCP server and the agent in the system view, with the
     agent's calls through the gateway;

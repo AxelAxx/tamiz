@@ -25,9 +25,10 @@ flowchart LR
     infra -->|OTLP| jaeger["Jaeger"]
 
     dash["Dashboard (Next.js 16)"] -->|"read-only admin API"| pres
-    mcp["MCP server"] -->|"admin API"| pres
-    agent["Agent (AI SDK 6)"] -->|"MCP tools"| mcp
-    agent -->|"LLM calls through Tamiz"| pres
+    host["MCP host (Claude Desktop / Code)"] -->|"MCP: stdio or streamable HTTP"| mcp
+    mcp["MCP server (apps/mcp-server)"] -->|"POST /v1/simulate, GET /v1/admin/* (read-only)"| pres
+    agent["Agent (AI SDK 6, apps/mcp-server/src/agent)"] -->|"MCP tools over HTTP (admin key)"| mcp
+    agent -->|"POST /v1/chat/completions, model tamiz-local (client key)"| pres
 ```
 
 ## Request flow
