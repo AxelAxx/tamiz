@@ -5,7 +5,7 @@
 
 **Created**: 2026-10-31
 
-**Status**: Draft (pending Alex's review)
+**Status**: Approved (reviewed by Alex on 2026-10-31)
 
 **Input**: User description: "Native OpenAI tool calling through the Tamiz gateway (backlog
 T-009-05): tools, tool_choice, assistant tool_calls and tool messages in the chat contract;

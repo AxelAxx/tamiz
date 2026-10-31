@@ -8,7 +8,7 @@
 | Branch / PR | `T-009-05-native-tool-calling-spec` (spec, draft PR); implementation on `T-009-05-native-tool-calling` after approval |
 | Date | 2026-10-31 |
 | Session | Claude Code (Claude Opus 5.5), side session |
-| Status | **draft**: spec, plan and tasks written, pending Alex's approval; implementation not started |
+| Status | spec approved by Alex on 2026-10-31 ("Approve", D1-D8 as written); implementation follows on `T-009-05-native-tool-calling` |
 
 ## What was done
 
